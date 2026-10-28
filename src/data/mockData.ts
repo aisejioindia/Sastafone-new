@@ -689,9 +689,9 @@ export const CONDITION_CRITERIA = {
     badgeColor: 'bg-orange-50 text-orange-700 border-orange-300'
   },
   dead: {
-    label: 'Dead / Won\'t Turn On (बंद फोन)',
-    description: 'फोन ऑन नहीं हो रहा, मदरबोर्ड डेड या पानी में पूरी तरह खराब। स्पेयर पार्ट्स वैल्यू।',
-    multiplier: 0.22,
+    label: 'Dead / Scrap (पूरा बंद व डेड फोन)',
+    description: 'फोन बिल्कुल ऑन नहीं हो रहा, मदरबोर्ड डेड या पानी में खराब। तय कीमत: ₹600 से ₹1,200 लास्ट (256GB हाई स्टोरेज होने पर ₹1,600 लास्ट)।',
+    multiplier: 0.15,
     badgeColor: 'bg-rose-50 text-rose-700 border-rose-300'
   }
 };

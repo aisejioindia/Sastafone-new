@@ -13,7 +13,6 @@ import { InvoiceModal } from './components/InvoiceModal';
 import { AuthorizedServiceCentersModal } from './components/AuthorizedServiceCentersModal';
 import { HappyCustomersSection } from './components/HappyCustomersSection';
 import { RazorpayPaymentModal } from './components/RazorpayPaymentModal';
-import { MobileFinderSection } from './components/MobileFinderSection';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { Footer } from './components/Footer';
 
@@ -34,7 +33,6 @@ function MainApp() {
         {activeTab === 'sell' && (
           <>
             <SellFlowSection />
-            <MobileFinderSection />
             <BuyPhonesSection />
             <P2PMarketplaceSection />
             <RepairServiceSection />
@@ -44,7 +42,6 @@ function MainApp() {
         {/* Buy Certified Phone Deals */}
         {activeTab === 'buy' && (
           <>
-            <MobileFinderSection />
             <BuyPhonesSection />
             <P2PMarketplaceSection />
             <SellFlowSection />
@@ -59,7 +56,6 @@ function MainApp() {
             <P2PMarketplaceSection />
             <SellFlowSection />
             <BuyPhonesSection />
-            <MobileFinderSection />
           </>
         )}
 
@@ -67,7 +63,6 @@ function MainApp() {
         {activeTab === 'bazaar' && (
           <>
             <P2PMarketplaceSection />
-            <MobileFinderSection />
             <SellFlowSection />
             <BuyPhonesSection />
             <RepairServiceSection />

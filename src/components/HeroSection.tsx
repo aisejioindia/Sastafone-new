@@ -179,15 +179,14 @@ export const HeroSection: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                setActiveTab('buy');
+                setActiveTab('sell');
                 setTimeout(() => {
-                  document.getElementById('mobile-finder')?.scrollIntoView({ behavior: 'smooth' });
+                  document.getElementById('dead-phone-section')?.scrollIntoView({ behavior: 'smooth' });
                 }, 80);
               }}
-              className="flex items-center gap-1.5 bg-amber-50 text-amber-900 px-3.5 py-1.5 rounded-full border border-amber-300 shadow-2xs hover:bg-amber-100 cursor-pointer font-bold"
+              className="flex items-center gap-1.5 bg-rose-50 text-rose-900 px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs hover:bg-rose-100 cursor-pointer font-bold"
             >
-              <SlidersHorizontal className="w-4 h-4 text-amber-600" />
-              <span>🔍 बजट मोबाइल फाइंडर (Price Slider)</span>
+              <span>♻️ डेड व स्क्रैप फोन बेचें (₹600 - ₹1,600 / किलो के भाव)</span>
             </button>
             <span className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />

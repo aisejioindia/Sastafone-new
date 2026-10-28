@@ -26,6 +26,42 @@ export function calculateValuation(selection: SellSelection): ValuationQuote {
   // Condition multiplier
   const condition = selection.condition || 'good';
   const conditionInfo = CONDITION_CRITERIA[condition];
+
+  // Special Dead / Scrap Phone Pricing Rules (as specified by user):
+  // Normal dead/pura band phone: ₹600 to ₹1,200 last
+  // High storage (256GB or higher): ₹1,600 last
+  if (condition === 'dead') {
+    const isHighStorage = Boolean(
+      selection.variant?.storage.includes('256') ||
+      selection.variant?.storage.includes('512') ||
+      selection.variant?.storage.includes('1 TB') ||
+      selection.variant?.storage.includes('1TB')
+    );
+
+    const deadMin = isHighStorage ? 1200 : 600;
+    const deadMax = isHighStorage ? 1600 : 1200;
+    let evaluatedPrice = isHighStorage ? 1400 : 900;
+
+    let accessoriesBonus = 0;
+    if (selection.hasOriginalBox) accessoriesBonus += 100;
+    if (selection.hasValidBill) accessoriesBonus += 150;
+    if (selection.hasOriginalCharger) accessoriesBonus += 100;
+    const videoBonus = selection.verifiedVideo ? 150 : 0;
+
+    evaluatedPrice = Math.min(deadMax, evaluatedPrice + accessoriesBonus + videoBonus);
+
+    return {
+      basePrice,
+      minPrice: deadMin,
+      maxPrice: deadMax,
+      conditionDeduction: Math.max(0, basePrice - deadMax),
+      accessoriesBonus,
+      videoBonus,
+      currency: '₹',
+      timestamp: new Date().toISOString()
+    };
+  }
+
   const multiplier = conditionInfo.multiplier;
 
   // Accessories bonus

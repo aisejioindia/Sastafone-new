@@ -135,6 +135,69 @@ export const SellFlowSection: React.FC = () => {
           )}
         </div>
 
+        {/* Dead & Scrap Phone Special Buyback Card (User Rule: KG Rate & 600-1200 / 1600 for 256GB) */}
+        <div id="dead-phone-section" className="mb-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-rose-950 via-slate-900 to-indigo-950 text-white shadow-xl border border-rose-500/30 relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">
+            <div className="space-y-2 max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
+                  <span>♻️ स्क्रैप व डेड फोन खरीद सेवा</span>
+                </span>
+                <span className="bg-white/10 text-rose-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white/20">
+                  किलो व पीस के भाव में तुरंत नकद भुगतान
+                </span>
+              </div>
+
+              <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
+                पूरा बंद, टूटा हुआ या कबाड़ डेड फोन बेचें • सूरत में तुरंत कैश!
+              </h3>
+
+              <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+                अगर आपका फोन बिल्कुल ऑन नहीं हो रहा, मदरबोर्ड डेड है या पानी में खराब है, तो भी हम उसे सबसे अच्छी कीमत में खरीदते हैं:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
+                <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
+                  <div className="flex justify-between items-center font-bold">
+                    <span className="text-white">📱 डेड स्मार्टफोन (Dead Smartphone)</span>
+                    <span className="text-amber-400 font-black">₹600 - ₹1,200</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    256GB या अधिक हाई स्टोरेज होने पर <strong>₹1,600 लास्ट</strong> नकद भुगतान!
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
+                  <div className="flex justify-between items-center font-bold">
+                    <span className="text-white">⚖️ कीपैड व बल्क फोन (किलो / KG के भाव)</span>
+                    <span className="text-emerald-400 font-black">₹150 - ₹250 / KG</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300">
+                    पुराने कीपैड फोन या घर में पड़ा इलेक्ट्रॉनिक कबाड़ किलो के भाव बेचें।
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 w-full md:w-auto text-center space-y-2">
+              <a
+                href={generateWhatsAppLink('sell', {
+                  modelName: 'Dead / Scrap Phone (डेड व बंद फोन)',
+                  condition: 'Dead / Scrap (₹600 - ₹1,600 / किलो के भाव)',
+                  locality: selectedLocality,
+                  quotePrice: 1200
+                })}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full md:w-auto py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer"
+              >
+                <span>💬 डेड फोन पिकअप बुक करें</span>
+              </a>
+              <p className="text-[10px] text-slate-400">सूरत में 2 घंटे में टेक्नीशियन विज़िट व इंस्टेंट पेमेंट</p>
+            </div>
+          </div>
+        </div>
+
         {/* 1. Brand Selection (19 Brands Grid) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs mb-6">
           <div className="flex items-center justify-between mb-3.5">
@@ -418,6 +481,19 @@ export const SellFlowSection: React.FC = () => {
                     ? `सूरत (${selectedLocality}) में 2 घंटे के भीतर फ्री होम पिकअप और तुरंत UPI/कैश भुगतान।`
                     : `Free 2-hour doorstep pickup and instant UPI/Cash in ${selectedLocality}, Surat.`}
                 </p>
+
+                {sellSelection.condition === 'dead' && (
+                  <div className="my-2 p-2.5 rounded-xl bg-rose-500/25 border border-rose-400/40 text-rose-200 text-xs space-y-0.5">
+                    <p className="font-bold flex items-center gap-1.5 text-white">
+                      <span>♻️ डेड व बंद फोन गारंटी रेट:</span>
+                    </p>
+                    <p className="text-[11px] text-rose-200">
+                      {sellSelection.variant?.storage.includes('256') || sellSelection.variant?.storage.includes('512') || sellSelection.variant?.storage.includes('1 TB') || sellSelection.variant?.storage.includes('1TB')
+                        ? 'हाई स्टोरेज (256GB+) होने पर ₹1,600 लास्ट नकद भुगतान मिलेगा!'
+                        : 'सामान्य डेड फोन पर ₹600 से ₹1,200 लास्ट नकद भुगतान मौके पर मिलेगा!'}
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
                   <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">

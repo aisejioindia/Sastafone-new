@@ -156,6 +156,19 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <button
+                  onClick={() => {
+                    setActiveTab('sell');
+                    setTimeout(() => {
+                      document.getElementById('dead-phone-section')?.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                  }}
+                  className="text-rose-400 hover:text-rose-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <span>♻️ डेड व स्क्रैप फोन बेचें (₹600 - ₹1,600 / KG भाव)</span>
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => setIsBrandCentersModalOpen(true)}
                   className="text-blue-400 hover:text-blue-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
                 >

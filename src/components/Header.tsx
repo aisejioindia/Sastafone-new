@@ -41,26 +41,11 @@ export const Header: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                const el = document.getElementById('mobile-finder');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  setActiveTab('buy');
-                }
-              }}
-              className="hidden lg:inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-white font-bold transition-colors cursor-pointer"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>मोबाइल फाइंडर</span>
-            </button>
-
-            <button
               onClick={() => setIsBrandCentersModalOpen(true)}
-              className="hidden md:inline-flex items-center gap-1 text-[11px] text-blue-200 hover:text-white font-bold transition-colors cursor-pointer"
+              className="hidden md:inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-white font-bold transition-colors cursor-pointer"
             >
               <Building2 className="w-3.5 h-3.5" />
-              <span>ब्रांड सर्विस सेंटर</span>
+              <span>सूरत के ब्रांड सर्विस सेंटर</span>
             </button>
 
             <div className="flex items-center bg-blue-900/60 rounded-full p-0.5 border border-blue-400/30">
@@ -178,20 +163,6 @@ export const Header: React.FC = () => {
             <span className="bg-emerald-500 text-white text-[9px] px-1 rounded-full font-black">₹99</span>
           </button>
 
-          {/* Mobile Finder Quick Link */}
-          <button
-            onClick={() => {
-              setActiveTab('buy');
-              setTimeout(() => {
-                document.getElementById('mobile-finder')?.scrollIntoView({ behavior: 'smooth' });
-              }, 100);
-            }}
-            className="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 text-slate-700 hover:text-blue-700 hover:bg-slate-200/60 cursor-pointer"
-            title="बजट व फीचर्स के अनुसार मोबाइल खोजें"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-blue-600" />
-            <span>फाइंडर</span>
-          </button>
         </nav>
 
         {/* Right Action Buttons */}
