@@ -57,7 +57,7 @@ export const InvoiceModal: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1 font-medium">
-                Surat Doorstep Mobile Hub • AllIndia.si Network Partner
+                Surat Doorstep Mobile Hub • sastaphone.in Official
               </p>
               <p className="text-[11px] text-slate-500">
                 GSTIN: 24AATCS8921P1Z4 • Ring Road / Adajan Tech Hub, Surat
@@ -90,9 +90,9 @@ export const InvoiceModal: React.FC = () => {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 सूरत टेक्नीशियन व विज़िट स्लॉट:
               </span>
-              <p className="text-slate-600 font-medium">हेल्पडेस्क: AllIndia.si कॉर्पोरेट सपोर्ट</p>
+              <p className="text-slate-600 font-medium">हेल्पडेस्क: सस्ताफोन सूरत कस्टमर सपोर्ट (+91 9372802044)</p>
               <p className="font-bold text-amber-800 mt-1">स्लॉट: {order.timeSlot}</p>
-              <p className="text-[11px] text-emerald-700 font-semibold">पेमेंट मोड: {order.paymentMethod || 'ऑलइंडिया पे / सुरक्षित UPI'}</p>
+              <p className="text-[11px] text-emerald-700 font-semibold">पेमेंट मोड: {order.paymentMethod || 'सस्ताफोन पे / सुरक्षित UPI'}</p>
             </div>
           </div>
 

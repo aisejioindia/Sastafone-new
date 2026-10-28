@@ -14,7 +14,10 @@ import { AuthorizedServiceCentersModal } from './components/AuthorizedServiceCen
 import { HappyCustomersSection } from './components/HappyCustomersSection';
 import { RazorpayPaymentModal } from './components/RazorpayPaymentModal';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
+import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
+import { ProAuditModal } from './components/ProAuditModal';
+import { AdminPortalModal } from './components/AdminPortalModal';
 
 function MainApp() {
   const { activeTab } = useApp();
@@ -80,9 +83,14 @@ function MainApp() {
       <AuthorizedServiceCentersModal />
       <RazorpayPaymentModal />
       <LegalModals />
+      <ProAuditModal />
+      <AdminPortalModal />
 
-      {/* Floating Quick Support Chat (AllIndia.si Support) */}
+      {/* Floating Quick Support Chat (Sastaphone Surat Support) */}
       <WhatsAppFloatingButton />
+
+      {/* Surat Local SEO & Google My Business Ranking Directory */}
+      <SuratLocalSeoSection />
 
       {/* Footer & Compliance */}
       <Footer />

@@ -1,15 +1,23 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
-import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones } from 'lucide-react';
+import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setLegalModal, setSelectedLocality, setActiveTab, setIsBrandCentersModalOpen, language } = useApp();
+  const {
+    setLegalModal,
+    setSelectedLocality,
+    setActiveTab,
+    setIsBrandCentersModalOpen,
+    language,
+    setIsAdminModalOpen,
+    user
+  } = useApp();
 
   return (
     <footer className="bg-slate-950 text-slate-300 pt-12 pb-8 border-t border-slate-800 text-xs">
       <div className="container mx-auto px-4 max-w-6xl">
-        {/* Prominent AllIndia.si Parent Brand & Corporate Trust Banner */}
+        {/* Sastaphone Surat Trust & Doorstep Assurance Banner */}
         <div className="mb-10 p-6 rounded-3xl bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border border-blue-500/30 shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -17,55 +25,44 @@ export const Footer: React.FC = () => {
             <div className="space-y-2 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/30">
                 <Flag className="w-3.5 h-3.5 text-amber-400" />
-                <span>100% भारतीय स्वामित्व वाली पैरेंट कंपनी (Proudly Indian Enterprise)</span>
+                <span>सूरत का 100% प्रामाणिक व अधिकृत मोबाइल हब (sastaphone.in)</span>
               </div>
 
               <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                <span>AllIndia.si (aisiindia) पैरेंट ग्रुप का अटूट विश्वास</span>
+                <span>सस्ताफोन सूरत (Sastaphone.in) - अटूट भरोसा व पारदर्शिता</span>
               </h3>
 
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                <strong className="text-white">sastaphone.in</strong> सम्पूर्ण रूप से <strong className="text-blue-400">AllIndia.si (aisiindia)</strong> के प्रतिष्ठित भारतीय डिजिटल नेटवर्क द्वारा संचालित और 100% गारंटीकृत है। sastaphone.in का सम्पूर्ण वेब ट्रैफिक AllIndia.si के सुरक्षित नेशनल पैरेंट पोर्टल पर रीडायरेक्ट और मॉनिटर होता है। देश के नागरिकों के लिए निष्पक्ष डील्स, 100% डेटा प्राइवेसी और सुरक्षित लेनदेन का राष्ट्रीय भरोसा।
+                <strong className="text-white">sastaphone.in</strong> सूरत वासियों के लिए पुराना मोबाइल बेचने, 6 माह वारंटी वाले सर्टिफाइड फोन खरीदने, 30 मिनट में घर बैठे ओरिजिनल रिपेयर करवाने एवं डेड/स्क्रैप फोन के उच्चतम दाम पाने का आधिकारिक डिजिटल प्लेटफॉर्म है। निष्पक्ष डील्स, 100% डेटा प्राइवेसी और सुरक्षित लेनदेन का सच्चा भरोसा।
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
                 <a
-                  href="https://allindia.si"
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे जानकारी चाहिए।`}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black flex items-center gap-1.5 transition-all shadow-md"
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
                 >
-                  <Globe className="w-3.5 h-3.5" />
-                  <span>allindia.si आधिकारिक पोर्टल</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-
-                <a
-                  href="https://aisi.si"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-blue-200 hover:text-white font-bold flex items-center gap-1.5 border border-white/20 transition-all"
-                >
-                  <span>aisi.si नेटवर्क गेटवे</span>
-                  <ExternalLink className="w-3 h-3" />
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>सूरत WhatsApp हेल्पलाइन (+91 {WHATSAPP_NUMBER})</span>
                 </a>
 
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>पैरेंट कंपनी ऑलइंडिया सुरक्षा प्रमाणन</span>
+                  <span>100% डेटा प्राइवेसी व ऑन-स्पॉट पेमेंट गारंटी</span>
                 </span>
               </div>
             </div>
 
-            {/* Corporate Badge */}
+            {/* Sastaphone Badge */}
             <div className="shrink-0 p-4 rounded-2xl bg-white/5 border border-white/15 text-center space-y-1">
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                Parent Company Guarantee
+                Official Surat Portal
               </span>
-              <p className="text-lg font-black text-white">AllIndia.si</p>
-              <p className="text-[10px] text-blue-300">National Digital Ecosystem</p>
-              <span className="inline-block px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-bold">
-                ISO & Trust Compliant
+              <p className="text-lg font-black text-white">Sastaphone.in</p>
+              <p className="text-[10px] text-amber-300">सूरत नंबर 1 डोरस्टेप हब</p>
+              <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-bold">
+                ✓ 100% Verified
               </span>
             </div>
           </div>
@@ -96,7 +93,7 @@ export const Footer: React.FC = () => {
                 Official Entity:
               </span>
               <p className="text-slate-300 font-semibold">
-                Sastaphone Surat • A Venture of AllIndia.si Network
+                Sastaphone Surat • Authorized Mobile Hub (sastaphone.in)
               </p>
               <p className="text-[10px] text-slate-500">
                 रिंग रोड व अडाजण सेंट्रल मोबाइल लैब, सूरत, गुजरात
@@ -202,26 +199,26 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Col 4: Official Parent Support (Personal number is hidden!) */}
+          {/* Col 4: Official Sastaphone Surat Support */}
           <div className="space-y-3">
             <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-2">
-              ऑलइंडिया कॉर्पोरेट हेल्पडेस्क
+              सस्ताफोन सूरत हेल्पडेस्क
             </h4>
             <p className="text-slate-400 leading-relaxed text-[11px]">
-              सुबह 9:00 बजे से रात 9:00 बजे तक पैरेंट कंपनी AllIndia.si द्वारा 24x7 डिजिटल सहायता उपलब्ध है।
+              सुबह 9:00 बजे से रात 9:30 बजे तक सूरत वासियों के लिए तुरंत डिजिटल व ऑन-कॉल सहायता उपलब्ध है।
             </p>
 
             {/* Official Support Channel without exposing raw personal number */}
             <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
-                <Headphones className="w-4 h-4 text-blue-400" />
-                <span>AllIndia.si हेल्पडेस्क</span>
+                <Headphones className="w-4 h-4 text-amber-400" />
+                <span>सूरत कस्टमर केयर</span>
               </div>
               <p className="text-[11px] text-slate-400">
-                कॉर्पोरेट ईमेल: <span className="text-blue-300">support@allindia.si</span>
+                आधिकारिक ईमेल: <span className="text-blue-300">support@sastaphone.in</span>
               </p>
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते AllIndia.si / Sastaphone Surat! मुझे सहायता चाहिए।`}
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे सहायता चाहिए।`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors shadow-xs"
@@ -233,15 +230,37 @@ export const Footer: React.FC = () => {
 
             <div className="flex items-center gap-2 text-[11px] text-emerald-400 pt-1">
               <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>AllIndia.si 100% सुरक्षित भुगतान व डेटा वाइप गारंटी</span>
+              <span>सस्ताफोन 100% सुरक्षित भुगतान व डेटा वाइप गारंटी</span>
             </div>
           </div>
         </div>
 
+        {/* Dedicated Admin Portal Trigger in Footer (Owner / Staff) */}
+        <div className="mt-8 pt-4 pb-2 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
+          <div className="flex items-center gap-2 text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>सूरत सेंट्रल हब सर्वर लाइव • sastaphone.in अधिकृत डिजिटल हब</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsAdminModalOpen(true)}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+              user.role === 'admin'
+                ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-md font-black'
+                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-400/50 text-slate-400 hover:text-amber-300'
+            }`}
+            title="सस्ताफोन अधिकृत ओनर व एडमिन पोर्टल लॉगिन"
+          >
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
+            <span>{user.role === 'admin' ? '🛡️ एडमिन कंट्रोल रूम (ओनर एक्टिव)' : '🔐 एडमिन मोड (sastaphone.in)'}</span>
+          </button>
+        </div>
+
         {/* Bottom Bar & Legal Links */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>
-            © {new Date().getFullYear()} Sastaphone Surat. All rights reserved. An Official Venture of <strong className="text-slate-400">AllIndia.si (aisiindia)</strong>.
+            © {new Date().getFullYear()} Sastaphone Surat (sastaphone.in). All rights reserved. सूरत का नंबर 1 विश्वसनीय मोबाइल प्लेटफॉर्म।
           </p>
 
           <div className="flex flex-wrap items-center gap-4">

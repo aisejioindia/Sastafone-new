@@ -14,6 +14,14 @@ export const BuyPhonesSection: React.FC = () => {
   const [customerPhoneInput, setCustomerPhoneInput] = useState(user.phone || '9372802044');
   const [isSuccessBooked, setIsSuccessBooked] = useState(false);
 
+  // Custom phone demand state
+  const [isCustomBuyModalOpen, setIsCustomBuyModalOpen] = useState(false);
+  const [customBuyBrand, setCustomBuyBrand] = useState('Apple');
+  const [customBuyModel, setCustomBuyModel] = useState('');
+  const [customBuyBudget, setCustomBuyBudget] = useState('₹15,000 - ₹30,000');
+  const [customBuyStorage, setCustomBuyStorage] = useState('128GB');
+  const [customBuySuccess, setCustomBuySuccess] = useState(false);
+
   const handleOpenBuyModal = (phone: RefurbishedPhone) => {
     setSelectedPhone(phone);
   };
@@ -173,6 +181,32 @@ export const BuyPhonesSection: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Custom Phone Demand Card (Unlisted model buy request) */}
+        <div className="mt-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 shadow-xl flex flex-col md:flex-row items-center justify-between gap-5">
+          <div className="space-y-1.5 max-w-2xl text-left">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-bold border border-indigo-500/30">
+              <span>🔍 कोई खास मॉडल नहीं मिला?</span>
+            </div>
+            <h3 className="text-lg sm:text-xl font-black text-white">
+              {language === 'hi'
+                ? 'अपनी पसंद का मॉडल, RAM व स्टोरेज बताएं - सूरत में 24 घंटे में अरेंज करेंगे!'
+                : 'Need a specific phone? Tell us your model & budget - sourced in Surat within 24 hours!'}
+            </h3>
+            <p className="text-xs text-slate-300">
+              iPhone 13, 14, Samsung S23 Ultra, OnePlus 11R, Vivo X100 या कोई भी मॉडल 6 महीने की वारंटी के साथ उपलब्ध कराया जाएगा।
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setCustomBuySuccess(false);
+              setIsCustomBuyModalOpen(true);
+            }}
+            className="shrink-0 w-full md:w-auto px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>✍️ अनलिस्टेड फोन डिमांड दर्ज करें</span>
+          </button>
+        </div>
       </div>
 
       {/* Buy Now / Doorstep Booking Modal */}
@@ -284,6 +318,148 @@ export const BuyPhonesSection: React.FC = () => {
                     {language === 'hi' ? 'सूरत में ऑर्डर बुक करें' : 'Confirm Order in Surat'}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Custom Buy Request Modal */}
+      {isCustomBuyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+            {customBuySuccess ? (
+              <div className="text-center py-6 space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900">
+                  डिमांड सफलतापूर्वक दर्ज हुई!
+                </h3>
+                <p className="text-xs text-slate-600">
+                  सूरत टीम आपके लिए यह फोन 24 घंटे में बेस्ट रेट और 6 महीने की वारंटी के साथ अरेंज करेगी।
+                </p>
+                <button
+                  onClick={() => setIsCustomBuyModalOpen(false)}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs"
+                >
+                  ठीक है (Close)
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base">
+                      ✍️ अनलिस्टेड फोन डिमांड दर्ज करें
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      जो मॉडल आप खरीदना चाहते हैं, उसका विवरण भरें
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomBuyModalOpen(false)}
+                    className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!customBuyModel.trim()) return;
+                    setCustomBuySuccess(true);
+                  }}
+                  className="space-y-3.5 text-xs text-left"
+                >
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      पसंदीदा ब्रांड:
+                    </label>
+                    <select
+                      value={customBuyBrand}
+                      onChange={e => setCustomBuyBrand(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-semibold"
+                    >
+                      {['Apple', 'Samsung', 'OnePlus', 'Vivo', 'Realme', 'Xiaomi', 'iQOO', 'Motorola', 'Google', 'Nothing', 'Oppo'].map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                      <option value="Other">अन्य (Other)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      मॉडल का नाम:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customBuyModel}
+                      onChange={e => setCustomBuyModel(e.target.value)}
+                      placeholder="उदा: iPhone 13 / Galaxy S23 / OnePlus 11R"
+                      className="w-full p-2.5 rounded-xl border border-slate-200 font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">
+                        स्टोरेज:
+                      </label>
+                      <select
+                        value={customBuyStorage}
+                        onChange={e => setCustomBuyStorage(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-semibold"
+                      >
+                        {['128GB', '256GB', '512GB', '64GB'].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">
+                        आपका बजट:
+                      </label>
+                      <select
+                        value={customBuyBudget}
+                        onChange={e => setCustomBuyBudget(e.target.value)}
+                        className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-semibold"
+                      >
+                        {['₹8,000 - ₹15,000', '₹15,000 - ₹30,000', '₹30,000 - ₹50,000', '₹50,000+'].map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
+                    ⭐ <strong>सूरत वारंटी:</strong> हमारे द्वारा उपलब्ध कराए गए सभी फोनों पर 6 महीने की वारंटी और 7 दिन टेस्टिंग वारंटी मिलती है।
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="submit"
+                      className="py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      डिमांड सबमिट करें
+                    </button>
+
+                    <a
+                      href={generateWhatsAppLink('buy', {
+                        phoneName: `${customBuyBrand} ${customBuyModel || 'Phone'} (${customBuyStorage})`,
+                        locality: selectedLocality
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs text-center flex items-center justify-center gap-1 transition-all"
+                    >
+                      <span>💬 WhatsApp पर मांगें</span>
+                    </a>
+                  </div>
+                </form>
               </div>
             )}
           </div>

@@ -1,0 +1,256 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { SURAT_LOCALITIES, BRANDS } from '../data/mockData';
+import { MapPin, Search, ShieldCheck, Sparkles, Star, ChevronDown, ChevronUp, Wrench, Smartphone, Tag, RefreshCw } from 'lucide-react';
+
+export const SuratLocalSeoSection: React.FC = () => {
+  const { setSelectedLocality, setActiveTab, language } = useApp();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const singleKeywords = [
+    'sastaphone', 'sastafone', 'सस्ताफोन', 'सस्ता फोन', 'surat', 'mobile', 'repair',
+    'refurbished', 'secondhand', 'buyback', 'deadphone', 'scrap', 'bazaar', 'mandi', 'sastaphonein'
+  ];
+
+  const doubleKeywords = [
+    'sastaphone surat', 'sastafone surat', 'second hand mobile surat', 'purana phone surat',
+    'mobile repair surat', 'doorstep mobile repair', 'phone repair near me', 'sell phone surat',
+    'buy phone surat', 'dead mobile surat', 'sasta bazar surat', 'mobile mandi surat',
+    'refurbished phone surat', 'screen repair surat', 'battery change surat', 'scrap mobile surat'
+  ];
+
+  const tripleKeywords = [
+    'second hand mobile in surat near me',
+    'best price purana mobile beche surat',
+    '30 minute doorstep mobile repair in surat',
+    'purana band dead phone scrap rate surat per kg',
+    'apple iphone screen replacement surat doorstep',
+    'samsung original display repair near me surat',
+    'vivo oppo realme refurbished 5g phone in surat',
+    'sasta bazar direct p2p mobile mandi 0 brokerage',
+    'sastaphone official contact number surat whatsapp',
+    'high storage 256gb dead phone cash buyback surat'
+  ];
+
+  const brandKeywords = [
+    'Samsung Repair Surat', 'iPhone Screen Repair Surat', 'Vivo Service Surat',
+    'Oppo Doorstep Repair Surat', 'Realme 5G Phone Surat', 'OnePlus Display Fix Surat',
+    'Xiaomi Redmi Repair Surat', 'Motorola Buyback Surat', 'iQOO Phone Deals Surat',
+    'POCO Screen Change Surat', 'Lava Mobile Service Surat', 'Nothing Phone Repair Surat'
+  ];
+
+  return (
+    <section id="surat-seo-directory" className="py-10 bg-slate-900 text-slate-300 border-t border-slate-800 text-xs">
+      <div className="container mx-auto px-4 max-w-6xl">
+        {/* Header with Google My Business Trust */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-800">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-[11px] font-bold mb-2">
+              <MapPin className="w-3.5 h-3.5 text-amber-400" />
+              <span>सूरत's #1 गूगल व AI-सर्च वेरीफाइड मोबाइल डायरेक्टरी</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              सस्ताफोन सूरत (Sastaphone / Sastafone) - ऑल सूरत मोबाइल हब
+            </h2>
+            <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
+              सूरत के प्रत्येक वार्ड व लोकैलिटी में पुराना मोबाइल बेचने, सर्टिफाइड सेकंड-हैंड फोन खरीदने, 30 मिनट में घर बैठे ओरिजिनल रिपेयर करवाने एवं डेड स्मार्टफोन बेस्ट प्राइस में बेचने की सम्पूर्ण अधिकृत डायरेक्टरी।
+            </p>
+          </div>
+
+          {/* GMB Rating Card */}
+          <div className="shrink-0 p-3.5 rounded-2xl bg-slate-800/80 border border-slate-700 space-y-1 text-center md:text-right">
+            <div className="flex items-center justify-center md:justify-end gap-1 text-amber-400">
+              {[...Array(5)].map((_, i) => (
+                <Star key={i} className="w-4 h-4 fill-amber-400" />
+              ))}
+              <span className="text-white font-black text-sm ml-1">4.9 / 5</span>
+            </div>
+            <p className="text-[11px] text-slate-300 font-semibold">Google My Business Surat Rating</p>
+            <p className="text-[10px] text-slate-400">285+ सत्यापित सूरत ग्राहक समीक्षाएं • 100% संतोष</p>
+          </div>
+        </div>
+
+        {/* 4 Interactive Feature Columns linking directly to sections */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <div
+            onClick={() => {
+              setActiveTab('sell');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            role="button"
+            tabIndex={0}
+            className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-blue-400 font-bold mb-1">
+              <Smartphone className="w-4 h-4" />
+              <span>पुराना फोन बेचें सूरत</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              सूरत में 2 घंटे में फ्री होम पिकअप, बेस्ट AI वैल्यूएशन व ऑन-स्पॉट बोनस कैश।
+            </p>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab('repair');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            role="button"
+            tabIndex={0}
+            className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-indigo-400 font-bold mb-1">
+              <Wrench className="w-4 h-4" />
+              <span>घर पर रिपेयरिंग ₹199</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              सूरत के हर इलाके में 30 मिनट में टेक्नीशियन विज़िट, ओरिजिनल पार्ट्स, 90 दिन वारंटी।
+            </p>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab('buy');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            role="button"
+            tabIndex={0}
+            className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 hover:border-blue-500 hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-amber-400 font-bold mb-1">
+              <Sparkles className="w-4 h-4" />
+              <span>सेकंड हैंड फोन डील्स</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              32-पॉइंट टेस्टेड, 6 महीने वारंटी, 7 दिन रिप्लेसमेंट गारंटी के साथ सूरत में डिलीवरी।
+            </p>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab('sell');
+              setTimeout(() => {
+                document.getElementById('dead-phone-section')?.scrollIntoView({ behavior: 'smooth' });
+              }, 80);
+            }}
+            role="button"
+            tabIndex={0}
+            className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 hover:border-rose-500 hover:bg-slate-800 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2 text-rose-400 font-bold mb-1">
+              <RefreshCw className="w-4 h-4" />
+              <span>डेड फोन ₹600-₹1600</span>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              पूरा बंद या टूटा स्मार्टफोन, 256GB+ पर ₹1,600 लास्ट एवं ऑन न होने वाले स्मार्टफोन्स ₹600-₹1200।
+            </p>
+          </div>
+        </div>
+
+        {/* Surat Localities Grid (Adajan, Vesu, Pal, Varachha, Katargam, etc.) - HIGHLIGHTED AS REQUESTED */}
+        <div className="mb-8 p-6 sm:p-7 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border-2 border-amber-400/70 shadow-2xl shadow-amber-500/10 relative overflow-hidden">
+          {/* Glowing Ambient Backdrop Accent */}
+          <div className="absolute -top-16 -right-16 w-56 h-56 bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-gradient-to-tr from-blue-500/15 via-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-slate-800">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400 text-slate-950 text-xs font-black shadow-sm">
+                  <MapPin className="w-4 h-4 text-slate-950 fill-amber-300" />
+                  <span>सूरत के प्रमुख इलाके (Surat Localities Fast Doorstep Coverage)</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight pt-1">
+                  📍 अपने इलाके का चयन करें • <span className="bg-gradient-to-r from-amber-300 via-orange-300 to-amber-200 bg-clip-text text-transparent">30 से 45 मिनट में डोरस्टेप सर्विस</span>
+                </h3>
+                <p className="text-xs text-slate-300 leading-relaxed max-w-2xl">
+                  सूरत के किसी भी इलाके पर क्लिक करें — पिकअप, रिपेयरिंग व डिलीवरी का समय तुरंत आपके पते के अनुसार सेट हो जाएगा।
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                <span className="text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>24x7 एक्टिव ऑल-सूरत नेटवर्क</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Locality Cards Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+              {SURAT_LOCALITIES.map(loc => (
+                <button
+                  key={loc.id}
+                  onClick={() => {
+                    setSelectedLocality(`${loc.name}, Surat`);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="p-3 rounded-2xl bg-slate-950/90 hover:bg-gradient-to-br hover:from-blue-600 hover:to-indigo-700 text-slate-200 hover:text-white border border-slate-800 hover:border-amber-400/80 shadow-md transition-all duration-200 text-left cursor-pointer group hover:scale-[1.03] active:scale-95"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-black text-xs text-amber-300 group-hover:text-white truncate">
+                      📍 {loc.name}
+                    </span>
+                    <span className="text-[10px] text-slate-500 group-hover:text-amber-200 font-mono">
+                      {loc.pincode}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 group-hover:text-blue-100 flex items-center justify-between">
+                    <span>{loc.hindiName}</span>
+                    <span className="text-[9px] bg-slate-800 group-hover:bg-white/20 px-1.5 py-0.5 rounded text-slate-300 group-hover:text-white font-semibold">
+                      30 Mins
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Helper Notice */}
+            <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+              <span className="flex items-center gap-1.5 text-slate-300">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>सूरत म्युनिसिपल कॉर्पोरेशन (SMC) क्षेत्र में 100% फ्री डोरस्टेप पिकअप व कैश ऑन डिलीवरी</span>
+              </span>
+              <span className="text-amber-300 font-bold">
+                अडाजण • वेसू • पाल • वराछा • कतारगाम • घोड़ दोड़ रोड • सिटीलाइट
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 
+          SEO KEYWORD & SEARCH INDEX BLOCK (HIDDEN FROM VISIBLE UI AS REQUESTED BY USER)
+          Kept accessible in DOM (sr-only / schema) so Google, Bing, and AI LLM search crawlers index all keywords
+          without cluttering the human user interface.
+        */}
+        <div className="sr-only" aria-hidden="true">
+          <h3>सूरत मोबाइल सर्च इंडेक्स (Google, Bing & AI LLM Search Keywords)</h3>
+          <div>
+            <h4>Trending Surat Mobile Keywords</h4>
+            <ul>
+              {doubleKeywords.map((kw, i) => (
+                <li key={i}>{kw}</li>
+              ))}
+              {tripleKeywords.map((kw, i) => (
+                <li key={i}>{kw}</li>
+              ))}
+              {brandKeywords.map((bkw, i) => (
+                <li key={i}>{bkw}</li>
+              ))}
+              {singleKeywords.map((skw, i) => (
+                <li key={i}>{skw}</li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4>Sastaphone Surat Official Google My Business Entity Data</h4>
+            <p>Business Name: Sastaphone Surat (सस्ताफोन) • Surat Certified Mobile Hub (sastaphone.in)</p>
+            <p>Physical Hubs: Ring Road, Athwa Gate & Adajan Central Super Lab, Surat, Gujarat 395001</p>
+            <p>Service Coverage: Adajan, Vesu, Pal, Varachha, Katargam, Citylight, Piplod, Ghod Dod Road, Athwa, Rander, Udhna, Dindoli, Althan, VIP Road, Begampura, Surat</p>
+            <p>Helpline: +91 9372802044 | Open Daily 9:00 AM – 9:30 PM</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};

@@ -311,7 +311,7 @@ export const INITIAL_CUSTOMER_REVIEWS: CustomerReview[] = [
     phoneModel: 'iPhone 14 (128GB Midnight)',
     serviceDetail: 'सर्टिफाइड सुपर फ्रेश • 96% बैटरी हेल्थ',
     rating: 5,
-    reviewText: 'दिवाली ऑफर में सर्टिफाइड आईफोन 14 मंगवाया। फोन बिल्कुल सील-पैक नया जैसा निकला, 96% बैटरी हेल्थ और 6 महीने की फुल वारंटी मिली। मार्केट से ₹14,000 की बचत हुई। AllIndia.si का भरोसा सच है।',
+    reviewText: 'दिवाली ऑफर में सर्टिफाइड आईफोन 14 मंगवाया। फोन बिल्कुल सील-पैक नया जैसा निकला, 96% बैटरी हेल्थ और 6 महीने की फुल वारंटी मिली। मार्केट से ₹14,000 की बचत हुई। सस्ताफोन का भरोसा सच है।',
     date: '24 Oct 2026',
     verified: true,
     orderNumber: 'STP-SURAT-8712',
@@ -577,58 +577,97 @@ export const SURAT_LOCALITIES: SuratLocality[] = [
 
 export const REPAIR_ISSUES: RepairIssue[] = [
   {
+    id: 'phone-makeover-combo',
+    name: 'Make My Phone Like New (All-In-One Full Restoration Combo)',
+    hindiName: '🌟 मेरा फोन बिल्कुल नया जैसा बनाओ (मेगा मेकओवर कॉम्बो)',
+    iconName: 'Sparkles',
+    minPrice: 2499,
+    maxPrice: 4499,
+    estimatedTime: '45-60 मिनट (फुल मेकओवर)',
+    description: 'फोन को शो-रूम जैसी नई चमक दें! नया डिस्प्ले + 100% नई बैटरी + नया बैक पैनल/बॉडी कवर + नया कैमरा ग्लास + 9D टेम्पर्ड ग्लास + पूरी डीप क्लीनिंग व थर्मल सर्विस एक साथ कॉम्बो स्पेशल रेट में!',
+    popular: true,
+    category: 'combo',
+    isMakeoverCombo: true,
+    comboItems: [
+      'नया प्रीमियम डिस्प्ले व टच स्क्रीन (New Display & Touch)',
+      'नई 100% ओरिजिनल बैटरी (100% New Battery)',
+      'नया बैक पैनल व बॉडी हाउसिंग कवर (New Back Panel / Body Frame)',
+      'नया क्रिस्टल क्लियर कैमरा लेंस ग्लास (New Camera Lens Glass)',
+      '9D/11D प्रीमियम टेम्पर्ड ग्लास गार्ड (9D/11D Tempered Glass)',
+      'फुल अल्ट्रासोनिक डीप क्लीनिंग व थर्मल ओवरहाल (Full Deep Clean & Service)'
+    ],
+    originalSeparateTotal: { min: 3394, max: 7894 }
+  },
+  {
     id: 'broken-screen',
     name: 'Broken / Cracked Display Screen',
-    hindiName: 'डिस्प्ले क्रैक / टच नहीं चल रहा',
+    hindiName: 'नया डिस्प्ले स्क्रीन / टच क्रैक रिप्लेसमेंट',
     iconName: 'Smartphone',
     minPrice: 1299,
     maxPrice: 3499,
     estimatedTime: '30 मिनट में घर पर',
     description: 'ओरिजिनल क्वालिटी डिस्प्ले रिप्लेसमेंट, 6 महीने वारंटी और टच वारंटी के साथ।',
-    popular: true
+    popular: true,
+    category: 'screen'
   },
   {
     id: 'battery-drain',
-    name: 'Battery Draining / Shutting Off',
-    hindiName: 'बैटरी ऑन-ऑफ / जल्दी खत्म होना',
+    name: 'Battery Draining / New Battery Replacement',
+    hindiName: 'नई ओरिजिनल बैटरी (100% हेल्थ व बैकअप)',
     iconName: 'BatteryCharging',
     minPrice: 899,
     maxPrice: 1799,
     estimatedTime: '25 मिनट में घर पर',
-    description: 'नई 100% क्षमता वाली बैटरी इंस्टॉलेशन + पुरानी बैटरी का सेफ डिस्पोजल।',
-    popular: true
+    description: 'नई 100% क्षमता वाली बैटरी इंस्टॉलेशन, पूरे दिन का बैकअप + पुरानी बैटरी का सेफ डिस्पोजल।',
+    popular: true,
+    category: 'battery'
   },
   {
-    id: 'heating-issue',
-    name: 'Phone Overheating & Freezing',
-    hindiName: 'फोन बहुत ज्यादा हीट (गर्म) हो रहा है',
-    iconName: 'Flame',
+    id: 'back-glass',
+    name: 'Back Glass / Outer Body Housing Cracked',
+    hindiName: 'नया बैक पैनल / बॉडी हाउसिंग कवर',
+    iconName: 'Shield',
     minPrice: 499,
-    maxPrice: 1199,
-    estimatedTime: '35 मिनट में डायग्नोस्टिक',
-    description: 'थर्मल पेस्ट क्लीनिंग, आईसी वोल्टेज चेक और बैकग्राउंड बैटरी ड्रेन फिक्स।',
+    maxPrice: 1299,
+    estimatedTime: '25 मिनट में फिटिंग',
+    description: 'लेजर बैक ग्लास रिमूवल व नया ओरिजिनल प्रीमियम बैक पैनल व शाइनिंग बॉडी फ्रेम फिटिंग।',
+    category: 'body',
     popular: true
   },
   {
-    id: 'hanging-lag',
-    name: 'Phone Hanging / Slow Lagging',
-    hindiName: 'फोन हैंग / अटक कर चल रहा है',
-    iconName: 'Cpu',
-    minPrice: 399,
-    maxPrice: 899,
-    estimatedTime: '30 मिनट में सर्विस',
-    description: 'सॉफ्टवेयर फ्लैशिंग, रैम कैश ऑप्टिमाइज़ेशन और जंक क्लीनअप।',
+    id: 'camera-glass-lens',
+    name: 'Rear Camera Glass Lens Replacement',
+    hindiName: 'नया कैमरा लेंस ग्लास (क्रिस्टल क्लियर सफायर)',
+    iconName: 'Camera',
+    minPrice: 299,
+    maxPrice: 599,
+    estimatedTime: '20 मिनट में रिप्लेसमेंट',
+    description: 'टूटे या स्क्रैच पड़े रियर कैमरा ग्लास लेंस का रिप्लेसमेंट, सफायर कोटिंग और क्रिस्टल-क्लियर फोटो।',
+    category: 'camera',
     popular: true
   },
   {
-    id: 'motherboard-chipset',
-    name: 'Motherboard IC Level / Dead Phone',
-    hindiName: 'मदरबोर्ड आईसी / बंद फोन (सेंट्रल लैब सर्विस)',
-    iconName: 'Cpu',
-    minPrice: 1499,
-    maxPrice: 3899,
-    estimatedTime: '2 से 4 घंटे (सेंट्रल लैब)',
-    description: 'रिंग रोड सेंट्रल सुपर लैब में BGA मशीन द्वारा माइक्रो-सोल्डरिंग व चिपसेट रिपेयर।',
+    id: 'tempered-glass-guard',
+    name: 'Premium 9D/11D Tempered Glass Guard',
+    hindiName: '9D/11D प्रीमियम टेम्पर्ड ग्लास (एज-टू-एज)',
+    iconName: 'Shield',
+    minPrice: 149,
+    maxPrice: 299,
+    estimatedTime: '10 मिनट में परफेक्ट फिटिंग',
+    description: 'सुपर टफ 9D/11D कर्व्ड एज स्क्रीन प्रोटेक्टर, स्क्रैच प्रूफ, ओलेओफोबिक एंटी-फिंगरप्रिंट कोटिंग।',
+    category: 'protection',
+    popular: true
+  },
+  {
+    id: 'deep-clean-service',
+    name: 'Full Phone Deep Cleaning & Overhaul Service',
+    hindiName: 'फुल सर्विस व डीप क्लीनिंग (अंदर-बाहर डस्ट व थर्मल)',
+    iconName: 'Sparkles',
+    minPrice: 249,
+    maxPrice: 499,
+    estimatedTime: '25 मिनट में डीप क्लीन',
+    description: 'अल्ट्रासोनिक मदरबोर्ड डस्ट क्लीनिंग, स्पीकर/माइक जाली डी-क्लॉग, चार्जिंग पोर्ट सर्विस व फ्रेश थर्मल पेस्ट।',
+    category: 'service',
     popular: true
   },
   {
@@ -639,17 +678,65 @@ export const REPAIR_ISSUES: RepairIssue[] = [
     minPrice: 499,
     maxPrice: 999,
     estimatedTime: '20 मिनट में रिपेयर',
-    description: 'टाइप-सी / लाइटनिंग पोर्ट क्लीनिंग या नया ओरिजिनल जैक रिप्लेसमेंट।'
+    description: 'टाइप-सी / लाइटनिंग पोर्ट क्लीनिंग या नया ओरिजिनल जैक रिप्लेसमेंट।',
+    category: 'charging'
+  },
+  {
+    id: 'speaker-mic',
+    name: 'Speaker / Mic / Earpiece Audio Issue',
+    hindiName: 'माइक / स्पीकर / आवाज़ नहीं आ रही',
+    iconName: 'Volume2',
+    minPrice: 399,
+    maxPrice: 899,
+    estimatedTime: '25 मिनट में रिपेयर',
+    description: 'कॉल पर आवाज़ न जाना या रिंगटोन/म्यूजिक न बजना - ओरिजिनल माइक व लाउडस्पीकर रिपेयर।',
+    category: 'audio'
   },
   {
     id: 'camera-broken',
-    name: 'Camera Blurry / Glass Cracked',
-    hindiName: 'कैमरा धुंधला / लेंस टूटा हुआ है',
+    name: 'Camera Sensor Blurry / Shaking Failure',
+    hindiName: 'कैमरा सेंसर ब्लर / फोकस खराबी',
     iconName: 'Camera',
     minPrice: 699,
     maxPrice: 1899,
-    estimatedTime: '25 मिनट में रिपेयर',
-    description: 'सफायर कैमरा ग्लास रिप्लेसमेंट और सेंसर डस्ट क्लीनिंग।'
+    estimatedTime: '30 मिनट में रिपेयर',
+    description: 'ओआईएस कैमरा स्टेबलाइजेशन व इंटरनल कैमरा मॉड्यूल रिप्लेसमेंट।',
+    category: 'camera'
+  },
+  {
+    id: 'heating-issue',
+    name: 'Phone Overheating & Freezing',
+    hindiName: 'फोन बहुत ज्यादा हीट (गर्म) हो रहा है',
+    iconName: 'Flame',
+    minPrice: 499,
+    maxPrice: 1199,
+    estimatedTime: '35 मिनट में डायग्नोस्टिक',
+    description: 'थर्मल पेस्ट क्लीनिंग, आईसी वोल्टेज चेक और बैकग्राउंड बैटरी ड्रेन फिक्स।',
+    popular: true,
+    category: 'board'
+  },
+  {
+    id: 'hanging-lag',
+    name: 'Phone Hanging / Slow Lagging',
+    hindiName: 'फोन हैंग / अटक कर चल रहा है',
+    iconName: 'Cpu',
+    minPrice: 399,
+    maxPrice: 899,
+    estimatedTime: '30 मिनट में सर्विस',
+    description: 'सॉफ्टवेयर फ्लैशिंग, रैम कैश ऑप्टिमाइज़ेशन और जंक क्लीनअप।',
+    popular: true,
+    category: 'board'
+  },
+  {
+    id: 'network-wifi',
+    name: 'Network / SIM / WiFi / Bluetooth Problem',
+    hindiName: 'नेटवर्क नहीं आ रहा / नो-सर्विस / वाई-फाई प्रॉब्लम',
+    iconName: 'Wifi',
+    minPrice: 599,
+    maxPrice: 1499,
+    estimatedTime: '35 मिनट में रिपेयर',
+    description: 'सिम ट्रे जैक, बेस-बैंड आईसी या एंटीना स्ट्रिप रिपेयर।',
+    category: 'network'
   },
   {
     id: 'water-damage',
@@ -659,7 +746,34 @@ export const REPAIR_ISSUES: RepairIssue[] = [
     minPrice: 799,
     maxPrice: 2200,
     estimatedTime: 'सेंट्रल क्लीनरूम लैब टेस्ट',
-    description: 'अल्ट्रासोनिक मदरबोर्ड डी-ऑक्सीडेशन और शॉर्ट सर्किट प्रोटेक्शन चेक।'
+    description: 'अल्ट्रासोनिक मदरबोर्ड डी-ऑक्सीडेशन और शॉर्ट सर्किट प्रोटेक्शन चेक।',
+    category: 'board'
+  },
+  {
+    id: 'motherboard-chipset',
+    name: 'Motherboard IC Level / Dead Phone',
+    hindiName: 'मदरबोर्ड आईसी / डेड फोन (सेंट्रल लैब सर्विस)',
+    iconName: 'Cpu',
+    minPrice: 1499,
+    maxPrice: 3899,
+    estimatedTime: '2 से 4 घंटे (सेंट्रल लैब)',
+    description: 'रिंग रोड सेंट्रल सुपर लैब में BGA मशीन द्वारा माइक्रो-सोल्डरिंग व चिपसेट रिपेयर।',
+    popular: true,
+    category: 'board'
+  },
+  {
+    id: 'unidentified-sudden-dead',
+    name: 'Unknown Fault / Sudden Dead / Check Yourself',
+    hindiName: '⚠️ पता नहीं क्या हुआ / अचानक बंद हो गया (फुल डायग्नोस्टिक जांच)',
+    iconName: 'AlertTriangle',
+    minPrice: 199,
+    maxPrice: 1499,
+    estimatedTime: 'लैब डीप डायग्नोस्टिक (30-60 मिनट)',
+    description: 'ग्राहक को नहीं पता या अचानक बंद हुआ। सख्त एंटी-फ्रॉड, प्री-इंस्पेक्शन शॉर्ट सर्किट व वाटर-डैमेज ट्रेसिंग प्रोटोकॉल।',
+    popular: true,
+    isStrictDiagnostic: true,
+    warningNotice: '⚠️ सख्त दुकान व टेक्नीशियन सुरक्षा नियम: कई बार वाटर डैमेज, अनधिकृत छेड़छाड़ या छिपी हुई शॉर्टिंग छुपाकर लाया जाता है। डायग्नोस्टिक से पहले लिखित/डिजिटल स्वीकृति अनिवार्य है। टाइम-पास व फेक कॉल्स से बचने के लिए ₹199 टोकन अनिवार्य है, जो फोन रिपेयर होने पर 100% माफ/एडजस्ट होगा।',
+    category: 'diagnostic'
   }
 ];
 

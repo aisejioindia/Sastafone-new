@@ -71,6 +71,19 @@ interface AppContextType {
   paymentModalRequest: PaymentRequest | null;
   openPaymentModal: (request: PaymentRequest) => void;
   closePaymentModal: () => void;
+  // Admin & Pro-Audit Controls
+  isAdminModalOpen: boolean;
+  setIsAdminModalOpen: (open: boolean) => void;
+  isProAuditModalOpen: boolean;
+  setIsProAuditModalOpen: (open: boolean) => void;
+  selectedAuditOrder: OrderItem | null;
+  setSelectedAuditOrder: (order: OrderItem | null) => void;
+  loginAsAdmin: (email?: string) => void;
+  switchToCustomerRole: () => void;
+  updateOrder: (orderId: string, updates: Partial<OrderItem>) => void;
+  setOrderAdminQuote: (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => void;
+  confirmOrderPaymentAndHandover: (orderId: string, isPaid: boolean, isHandedOver: boolean) => void;
+  saveOrderProAudit: (orderId: string, audit: import('../types').ProAuditVerification) => void;
 }
 
 const initialSellSelection: SellSelection = {
@@ -83,6 +96,30 @@ const initialSellSelection: SellSelection = {
 };
 
 const initialSampleOrders: OrderItem[] = [
+  {
+    id: 'ord-103',
+    orderNumber: 'STP-SURAT-9941',
+    type: 'repair',
+    title: 'Samsung Galaxy S24 Ultra 5G',
+    subtitle: '1 समस्या: कैमरा सेंसर ब्लर / फोकस खराबी • सूरत लैब व डोरस्टेप सर्विस',
+    amount: 199,
+    status: 'in_inspection',
+    statusHindi: 'जांच व प्राइसिंग समीक्षा में (एडमिन अप्रूवल पेंडिंग)',
+    locality: 'Pal, Surat',
+    fullAddress: 'A-304, Rajhans Synfonia, Near Pal RTO, Surat',
+    customerName: 'Jignesh Mewada',
+    customerPhone: '9825123456',
+    date: 'Today, 11:45 AM',
+    timeSlot: 'Today, 12:00 PM - 1:00 PM',
+    technicianName: 'Sanjay Prajapati (Surat Tech Lead)',
+    technicianPhone: '9372802044',
+    visitCharge: 199,
+    paymentMethod: 'UPI / Doorstep',
+    paymentStatus: 'paid',
+    originalEstimateMin: 699,
+    originalEstimateMax: 1899,
+    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा (Visit Free)।'
+  },
   {
     id: 'ord-101',
     orderNumber: 'STP-SURAT-8921',
@@ -98,7 +135,7 @@ const initialSampleOrders: OrderItem[] = [
     customerPhone: '9825012345',
     date: 'Today, 2:30 PM',
     timeSlot: '2:00 PM - 4:00 PM',
-    technicianName: 'Sanjay Prajapati (AllIndia Hub Lead)',
+    technicianName: 'Sanjay Prajapati (Sastaphone Hub Lead)',
     technicianPhone: 'ऑफ़िशियल हब',
     videoUploaded: true
   },
@@ -117,10 +154,10 @@ const initialSampleOrders: OrderItem[] = [
     customerPhone: '9879098765',
     date: 'Today, 10:15 AM',
     timeSlot: '11:00 AM - 12:00 PM',
-    technicianName: 'Sanjay Prajapati (AllIndia Doorstep Lead)',
+    technicianName: 'Sanjay Prajapati (Sastaphone Doorstep Lead)',
     technicianPhone: 'ऑफ़िशियल हब',
     visitCharge: 199,
-    paymentMethod: 'सुरक्षित डिजिटल भुगतान (AllIndia Network)',
+    paymentMethod: 'सुरक्षित डिजिटल भुगतान (Sastaphone Network)',
     paymentStatus: 'paid',
     refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा। यदि फोन नहीं बन सका तो ₹99 रिफंड होगा।'
   }
@@ -274,6 +311,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Unified Razorpay Payment Modal state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentModalRequest, setPaymentModalRequest] = useState<PaymentRequest | null>(null);
+
+  // Admin & Pro-Audit states
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isProAuditModalOpen, setIsProAuditModalOpen] = useState(false);
+  const [selectedAuditOrder, setSelectedAuditOrder] = useState<OrderItem | null>(null);
+
+  const loginAsAdmin = (email: string = 'sastafone@sastafone.in') => {
+    setUser(prev => ({
+      ...prev,
+      name: 'सस्ताफोन ओनर (अधिकृत एडमिन)',
+      email: email,
+      phone: '9372802044',
+      role: 'admin',
+      isAdmin: true
+    }));
+  };
+
+  const switchToCustomerRole = () => {
+    setUser(prev => ({
+      ...prev,
+      role: 'customer',
+      isAdmin: false
+    }));
+  };
+
+  const updateOrder = (orderId: string, updates: Partial<OrderItem>) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+  };
+
+  const setOrderAdminQuote = (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          finalQuoteAmount: finalAmount,
+          discountOfferedPct: discountPct,
+          adminNotes,
+          adminApprovedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          paymentQrGenerated: true,
+          status: 'technician_assigned',
+          statusHindi: `फाइनल प्राइस ₹${finalAmount.toLocaleString('en-IN')} सेट हुआ • पेमेंट QR तैयार`
+        };
+      }
+      return o;
+    }));
+  };
+
+  const confirmOrderPaymentAndHandover = (orderId: string, isPaid: boolean, isHandedOver: boolean) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          paymentCollected: isPaid,
+          paymentStatus: isPaid ? 'paid' : o.paymentStatus,
+          phoneHandedOver: isHandedOver,
+          status: isHandedOver ? 'completed' : isPaid ? 'technician_assigned' : o.status,
+          statusHindi: isHandedOver
+            ? 'सफलतापूर्वक हैंडओवर व 6-माह वारंटी जारी'
+            : isPaid
+            ? 'पेमेंट वेरिफाइड • हैंडओवर पेंडिंग'
+            : o.statusHindi
+        };
+      }
+      return o;
+    }));
+  };
+
+  const saveOrderProAudit = (orderId: string, audit: import('../types').ProAuditVerification) => {
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          proAudit: audit,
+          status: 'in_inspection',
+          statusHindi: audit.auditPassed ? 'हार्डवेयर प्रो-ऑडिट 100% पास' : 'ऑडिट जांच में इश्यू मिला'
+        };
+      }
+      return o;
+    }));
+  };
 
   const openPaymentModal = (request: PaymentRequest) => {
     setPaymentModalRequest(request);
@@ -618,7 +735,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isPaymentModalOpen,
         paymentModalRequest,
         openPaymentModal,
-        closePaymentModal
+        closePaymentModal,
+        // Admin & Pro-Audit
+        isAdminModalOpen,
+        setIsAdminModalOpen,
+        isProAuditModalOpen,
+        setIsProAuditModalOpen,
+        selectedAuditOrder,
+        setSelectedAuditOrder,
+        loginAsAdmin,
+        switchToCustomerRole,
+        updateOrder,
+        setOrderAdminQuote,
+        confirmOrderPaymentAndHandover,
+        saveOrderProAudit
       }}
     >
       {children}

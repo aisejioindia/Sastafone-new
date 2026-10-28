@@ -730,7 +730,7 @@ export const P2PMarketplaceSection: React.FC = () => {
             <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200 text-left text-xs text-blue-950 space-y-1">
               <p className="font-bold flex items-center gap-1.5 text-blue-900">
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>100% सुरक्षित भुगतान (AllIndia Network Guarantee):</span>
+                <span>100% सुरक्षित भुगतान (Sastaphone Guarantee):</span>
               </p>
               <p className="text-[11px] text-blue-800">
                 पेमेंट होते ही तुरंत फोटो अपलोड और मॉडल विवरण भरने का फॉर्म खुल जाएगा और आपका विज्ञापन सूरत बाज़ार में लाइव हो जाएगा।
@@ -836,7 +836,7 @@ export const P2PMarketplaceSection: React.FC = () => {
             <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-left text-xs text-emerald-950 space-y-1">
               <p className="font-bold flex items-center gap-1.5 text-emerald-800">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>100% भारतीय AllIndia.si सुरक्षित पेमेंट नेटवर्क:</span>
+                <span>100% सुरक्षित सस्ताफोन डिजिटल पेमेंट नेटवर्क:</span>
               </p>
               <p className="text-[11px] text-emerald-900">
                 पेमेंट होते ही नंबर तुरंत अनमास्क हो जाएगा तथा कॉल और व्हाट्सएप बटन उपलब्ध हो जाएंगे। कोई हिडन चार्ज नहीं।

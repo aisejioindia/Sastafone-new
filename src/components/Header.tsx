@@ -14,8 +14,7 @@ export const Header: React.FC = () => {
     setIsDashboardOpen,
     activeTab,
     setActiveTab,
-    setIsBrandCentersModalOpen,
-    user
+    setIsBrandCentersModalOpen
   } = useApp();
 
   const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
@@ -31,11 +30,11 @@ export const Header: React.FC = () => {
             </span>
             <span className="hidden sm:inline">
               {language === 'hi'
-                ? '🇮🇳 AllIndia.si (aisiindia) - भारत की राष्ट्रीय पैरेंट कंपनी का विश्वास | सूरत 2 घंटे डोरस्टेप सर्विस'
-                : '🇮🇳 An Official Venture of AllIndia.si (aisiindia) - National Parent Ecosystem | Surat Doorstep Service'}
+                ? '🇮🇳 Sastaphone Surat (sastaphone.in) • सूरत में 2 घंटे में डोरस्टेप फोन पिकअप व होम रिपेयर'
+                : '🇮🇳 Sastaphone Surat (sastaphone.in) • Fastest Doorstep Phone Pickup & Repair in Surat'}
             </span>
             <span className="sm:hidden">
-              {language === 'hi' ? '🇮🇳 AllIndia.si (aisiindia) • सूरत' : '🇮🇳 AllIndia.si (aisiindia)'}
+              {language === 'hi' ? '🇮🇳 सस्ताफोन सूरत • 2 घंटे में डोरस्टेप सर्विस' : '🇮🇳 Sastaphone Surat Doorstep'}
             </span>
           </div>
 
@@ -91,7 +90,7 @@ export const Header: React.FC = () => {
                   सस्ताफोन
                 </span>
               </div>
-              <p className="text-[10px] text-blue-700 font-bold">A Venture of AllIndia.si (aisiindia)</p>
+              <p className="text-[10px] text-blue-700 font-bold">सूरत का नंबर 1 मोबाइल हब (sastaphone.in)</p>
             </div>
           </button>
 
@@ -172,10 +171,10 @@ export const Header: React.FC = () => {
             target="_blank"
             rel="noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow-emerald-500/20 transition-all"
-            title="AllIndia.si सपोर्ट डेस्क"
+            title="Sastaphone सूरत 24x7 सपोर्ट डेस्क"
           >
             <MessageCircle className="w-4 h-4 fill-white" />
-            <span>AllIndia.si सपोर्ट</span>
+            <span>सूरत हेल्पलाइन</span>
           </a>
 
           <button

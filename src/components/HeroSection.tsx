@@ -12,7 +12,7 @@ export const HeroSection: React.FC = () => {
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 text-emerald-900 text-[11px] font-black shadow-2xs">
-              <span>🇮🇳 AllIndia.si (aisiindia) का अटूट भरोसा • 100% भारतीय कंपनी</span>
+              <span>🇮🇳 सस्ताफोन सूरत (sastaphone.in) • 100% प्रामाणिक व विश्वसनीय सेवा</span>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-200 shadow-xs">
@@ -45,8 +45,8 @@ export const HeroSection: React.FC = () => {
 
           <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mb-6 leading-relaxed">
             {language === 'hi'
-              ? 'बिना टाइप किए 100% क्लिकेबल AI वैल्यूएशन, ₹199 में डोरस्टेप रिपेयर (बिल में एडजस्टेड) और "सस्ता बाज़ार" डायरेक्ट मोबाइल मंडी।'
-              : 'Zero-typing 100% clickable valuation, doorstep repair with ₹199 token, and SastaBazaar direct mobile trade.'}
+              ? 'सूरत में पुराना फोन बेचें तुरंत नकद में, ₹199 में घर बैठे रिपेयर (बिल में एडजस्टेड), सर्टिफाइड सेकंड-हैंड फोन डील्स और सस्ता बाज़ार P2P मोबाइल मंडी।'
+              : 'Sell old phones for instant cash, get doorstep repair at ₹199, buy certified refurbished phones, or trade directly on SastaBazaar in Surat.'}
           </p>
 
           {/* 4 Main Interactive Service Cards */}
@@ -186,7 +186,7 @@ export const HeroSection: React.FC = () => {
               }}
               className="flex items-center gap-1.5 bg-rose-50 text-rose-900 px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs hover:bg-rose-100 cursor-pointer font-bold"
             >
-              <span>♻️ डेड व स्क्रैप फोन बेचें (₹600 - ₹1,600 / किलो के भाव)</span>
+              <span>♻️ डेड स्मार्टफोन बेचें (₹600 - ₹1,600 लास्ट)</span>
             </button>
             <span className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />

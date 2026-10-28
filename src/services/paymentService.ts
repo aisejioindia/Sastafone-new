@@ -5,7 +5,7 @@
 
 import { OrderItem, PaymentTierType, PaymentRequest, UserProfile } from '../types';
 
-// Official Razorpay link provided for Sastaphone / AllIndia.si operations
+// Official Razorpay link provided for Sastaphone Surat operations
 export const RAZORPAY_PAYMENT_LINK = 'https://rzp.io/rzp/7i9TRrRg';
 
 export interface PaymentTierConfig {
@@ -28,7 +28,7 @@ export const PAYMENT_TIERS: Record<PaymentTierType, PaymentTierConfig> = {
     title: 'Doorstep Repair Visit Token (30 Mins)',
     titleHindi: 'घर पर रिपेयर अपॉइंटमेंट टोकन शुल्क',
     badge: '₹99 REFUND GUARANTEE',
-    tagline: 'सूरत में 30 मिनट में सर्टिफाइड ऑलइंडिया टेक्नीशियन आपके पते पर',
+    tagline: 'सूरत में 30 मिनट में सर्टिफाइड सस्ताफोन टेक्नीशियन आपके पते पर',
     descriptionHindi: '₹199 विज़िट टोकन: फोन रिपेयर होने पर यह ₹199 फाइनल बिल में माइनस होगा। यदि फोन किसी कारण से रिपेयर नहीं हो सका, तो ₹99 तुरंत रिफंड होगा।',
     benefits: [
       '30 मिनट के भीतर होम विज़िट',
@@ -36,7 +36,7 @@ export const PAYMENT_TIERS: Record<PaymentTierType, PaymentTierConfig> = {
       'फोन रिपेयर होने पर ₹199 की पूरी छूट',
       'फोन न बन पाने पर ₹99 तत्काल रिफंड'
     ],
-    refundPolicyHindi: 'फोन नहीं बनने पर ₹99 तत्काल रिफंड (AllIndia.si ट्रस्ट प्रोटेक्टेड)',
+    refundPolicyHindi: 'फोन नहीं बनने पर ₹99 तत्काल रिफंड (सस्ताफोन ट्रस्ट प्रोटेक्टेड)',
     popular: true
   },
   basic_99: {
@@ -149,10 +149,10 @@ export const createPaymentOrderItem = (
     customerPhone,
     date: 'Just now',
     timeSlot,
-    technicianName: request.type === 'appointment_199' ? 'Sanjay Prajapati (AllIndia Doorstep Lead)' : 'AllIndia.si डिजिटल सिस्टम',
+    technicianName: request.type === 'appointment_199' ? 'Sanjay Prajapati (Sastaphone Doorstep Lead)' : 'सस्ताफोन डिजिटल सिस्टम',
     technicianPhone: 'ऑफ़िशियल हब',
     visitCharge: request.type === 'appointment_199' ? 199 : undefined,
-    paymentMethod: `Razorpay UPI / AllIndia Pay (Ref: ${txId})`,
+    paymentMethod: `Razorpay UPI / Sastaphone Pay (Ref: ${txId})`,
     paymentStatus: 'paid',
     refundPolicyNote: request.refundNote || (request.type === 'appointment_199'
       ? 'फोन रिपेयर होने पर ₹199 फाइनल बिल में माइनस होगा। फोन रिपेयर न होने पर ₹99 तुरंत रिफंड होगा।'

@@ -346,8 +346,8 @@ export const UserDashboardModal: React.FC = () => {
                   </div>
 
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 space-y-1">
-                    <p className="font-bold text-slate-800">100% सुरक्षित भारतीय डिजिटल नेटवर्क:</p>
-                    <p>आपका डेटा, ऑर्डर्स और अनलॉक पास AllIndia.si पैरेंट नेटवर्क द्वारा 256-बिट SSL एन्क्रिप्शन के साथ पूर्णतः सुरक्षित हैं।</p>
+                    <p className="font-bold text-slate-800">100% सुरक्षित सस्ताफोन डिजिटल नेटवर्क:</p>
+                    <p>आपका डेटा, ऑर्डर्स और अनलॉक पास Sastaphone Surat (sastaphone.in) द्वारा 256-बिट SSL एन्क्रिप्शन के साथ पूर्णतः सुरक्षित हैं।</p>
                   </div>
 
                   <button

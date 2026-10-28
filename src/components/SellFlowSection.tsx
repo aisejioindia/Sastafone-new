@@ -22,6 +22,22 @@ export const SellFlowSection: React.FC = () => {
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isCustomModelModalOpen, setIsCustomModelModalOpen] = useState(false);
+
+  // Custom model form state
+  const [customBrandName, setCustomBrandName] = useState('Samsung');
+  const [customModelName, setCustomModelName] = useState('');
+  const [customRam, setCustomRam] = useState('8GB');
+  const [customStorage, setCustomStorage] = useState('128GB');
+  const [customNetworkType, setCustomNetworkType] = useState<'5G' | '4G'>('5G');
+  const [customColor, setCustomColor] = useState('Black');
+  const [customCondition, setCustomCondition] = useState<ConditionGrade>('good');
+  const [customEstimatedPrice, setCustomEstimatedPrice] = useState<number>(22000);
+  const [customHasOriginalBox, setCustomHasOriginalBox] = useState<boolean>(true);
+  const [customHasOriginalCharger, setCustomHasOriginalCharger] = useState<boolean>(true);
+  const [customHasValidBill, setCustomHasValidBill] = useState<boolean>(false);
+  const [customError, setCustomError] = useState<string | null>(null);
+
   const [selectedSlot, setSelectedSlot] = useState('Today, 2:00 PM - 4:00 PM');
   const [addressInput, setAddressInput] = useState(user.address || `Near Main Road, ${selectedLocality}`);
   const [customerNameInput, setCustomerNameInput] = useState(user.name || 'Surat Resident');
@@ -35,13 +51,87 @@ export const SellFlowSection: React.FC = () => {
     : [];
 
   const handleSelectBrand = (brand: Brand) => {
+    setCustomBrandName(brand.name);
     updateSellSelection({
       brand,
       model: undefined,
       variant: undefined,
       color: undefined,
-      condition: 'good'
+      condition: 'good',
+      isCustomModel: false
     });
+  };
+
+  const handleApplyCustomModel = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customModelName.trim()) {
+      setCustomError('कृपया मोबाइल का मॉडल नाम लिखें (e.g. Realme 12 Pro+ / Vivo V29e)');
+      return;
+    }
+    setCustomError(null);
+
+    const is5G = customNetworkType === '5G';
+    const baseVal = Number(customEstimatedPrice) || 20000;
+    const cleanBrand = customBrandName.trim() || 'Other';
+    const cleanModel = customModelName.trim();
+    const networkTag = customNetworkType === '5G' ? '(5G)' : '(4G)';
+
+    const customBrandObj = sellSelection.brand || BRANDS.find(b => b.name.toLowerCase() === cleanBrand.toLowerCase()) || {
+      id: cleanBrand.toLowerCase().replace(/\s+/g, '-'),
+      name: cleanBrand,
+      logoText: cleanBrand.slice(0, 2).toUpperCase(),
+      badgeColor: 'bg-slate-700'
+    };
+
+    const customModelObj: PhoneModel = {
+      id: `custom-${Date.now()}`,
+      brandId: customBrandObj.id,
+      name: `${cleanBrand} ${cleanModel} ${networkTag}`,
+      baseValuation: baseVal,
+      imageUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&auto=format&fit=crop&q=80',
+      variants: [
+        { storage: customStorage, ram: customRam, priceModifier: 0 }
+      ],
+      colors: [
+        { name: customColor || 'Black', hex: '#1e293b' }
+      ],
+      category: baseVal >= 45000 ? 'flagship' : baseVal >= 18000 ? 'midrange' : 'budget',
+      is5G: is5G,
+      specScore: 92,
+      processor: `${customRam} RAM • ${networkTag} • ${customStorage}`
+    };
+
+    updateSellSelection({
+      isCustomModel: true,
+      customDetails: {
+        modelName: cleanModel,
+        brandName: cleanBrand,
+        ram: customRam,
+        storage: customStorage,
+        is5G: is5G,
+        color: customColor,
+        condition: customCondition,
+        expectedPrice: baseVal
+      },
+      brand: customBrandObj,
+      model: customModelObj,
+      variant: customModelObj.variants[0],
+      color: customModelObj.colors[0],
+      condition: customCondition,
+      hasOriginalBox: customHasOriginalBox,
+      hasOriginalCharger: customHasOriginalCharger,
+      hasValidBill: customHasValidBill
+    });
+
+    setIsCustomModelModalOpen(false);
+
+    // Smooth scroll down to valuation summary
+    setTimeout(() => {
+      const el = document.getElementById('sell-valuation-result');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
   };
 
   const handleSelectModel = (model: PhoneModel) => {
@@ -105,11 +195,11 @@ export const SellFlowSection: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider">
-                100% Clickable Zero-Typing Flow
+              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-bold tracking-wider">
+                {language === 'hi' ? '3 आसान स्टेप्स में सेल' : '3 Easy Steps Buyback'}
               </span>
               <span className="text-xs text-slate-500 font-medium">
-                {language === 'hi' ? 'सूरत स्पेशल' : 'Surat Special'}
+                {language === 'hi' ? 'सूरत स्पेशल • तुरंत नकद' : 'Surat Special • Instant Cash'}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-1">
@@ -119,8 +209,8 @@ export const SellFlowSection: React.FC = () => {
             </h2>
             <p className="text-xs sm:text-sm text-slate-600">
               {language === 'hi'
-                ? 'बिना कुछ टाइप किए केवल क्लिक करें। AI तुरंत आपके फोन की वास्तविक मार्केट वैल्यू निकालेगा।'
-                : 'Zero typing required. Tap each step to get accurate AI market valuation in seconds.'}
+                ? 'ब्रांड व मॉडल चुनें या अपना अनलिस्टेड फोन दर्ज करें। तुरंत सटीक वैल्यूएशन और होम पिकअप पाएं।'
+                : 'Select brand and model, or enter unlisted phone details. Get fast valuation & doorstep pickup.'}
             </p>
           </div>
 
@@ -135,25 +225,25 @@ export const SellFlowSection: React.FC = () => {
           )}
         </div>
 
-        {/* Dead & Scrap Phone Special Buyback Card (User Rule: KG Rate & 600-1200 / 1600 for 256GB) */}
+        {/* Dead Smartphone Buyback Card (Smartphones only: 600-1200 / 1600 for 256GB+) */}
         <div id="dead-phone-section" className="mb-6 p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-rose-950 via-slate-900 to-indigo-950 text-white shadow-xl border border-rose-500/30 relative overflow-hidden">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">
             <div className="space-y-2 max-w-2xl">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-3 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-xs">
-                  <span>♻️ स्क्रैप व डेड फोन खरीद सेवा</span>
+                  <span>♻️ डेड स्मार्टफोन खरीद सेवा</span>
                 </span>
                 <span className="bg-white/10 text-rose-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-white/20">
-                  किलो व पीस के भाव में तुरंत नकद भुगतान
+                  सिर्फ स्मार्टफोन • तुरंत नकद भुगतान
                 </span>
               </div>
 
               <h3 className="text-lg sm:text-2xl font-black text-white tracking-tight leading-snug">
-                पूरा बंद, टूटा हुआ या कबाड़ डेड फोन बेचें • सूरत में तुरंत कैश!
+                पूरा बंद, टूटा हुआ या डेड स्मार्टफोन बेचें • सूरत में तुरंत कैश!
               </h3>
 
               <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-                अगर आपका फोन बिल्कुल ऑन नहीं हो रहा, मदरबोर्ड डेड है या पानी में खराब है, तो भी हम उसे सबसे अच्छी कीमत में खरीदते हैं:
+                अगर आपका स्मार्टफोन बिल्कुल ऑन नहीं हो रहा, मदरबोर्ड डेड है या पानी में खराब है, तो भी हम उसे सबसे अच्छी कीमत में खरीदते हैं:
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
@@ -163,17 +253,17 @@ export const SellFlowSection: React.FC = () => {
                     <span className="text-amber-400 font-black">₹600 - ₹1,200</span>
                   </div>
                   <p className="text-[11px] text-slate-300">
-                    256GB या अधिक हाई स्टोरेज होने पर <strong>₹1,600 लास्ट</strong> नकद भुगतान!
+                    ऑन न होने वाले स्मार्टफोन पर मौके पर त्वरित नकद भुगतान।
                   </p>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-white/10 border border-white/15 space-y-1">
                   <div className="flex justify-between items-center font-bold">
-                    <span className="text-white">⚖️ कीपैड व बल्क फोन (किलो / KG के भाव)</span>
-                    <span className="text-emerald-400 font-black">₹150 - ₹250 / KG</span>
+                    <span className="text-white">⚡ 256GB+ हाई स्टोरेज डेड फोन</span>
+                    <span className="text-emerald-400 font-black">₹1,600 लास्ट कैश</span>
                   </div>
                   <p className="text-[11px] text-slate-300">
-                    पुराने कीपैड फोन या घर में पड़ा इलेक्ट्रॉनिक कबाड़ किलो के भाव बेचें।
+                    हाई स्टोरेज मदरबोर्ड पार्ट्स रिकवरी के लिए सर्वाधिक नकद राशि।
                   </p>
                 </div>
               </div>
@@ -182,8 +272,8 @@ export const SellFlowSection: React.FC = () => {
             <div className="shrink-0 w-full md:w-auto text-center space-y-2">
               <a
                 href={generateWhatsAppLink('sell', {
-                  modelName: 'Dead / Scrap Phone (डेड व बंद फोन)',
-                  condition: 'Dead / Scrap (₹600 - ₹1,600 / किलो के भाव)',
+                  modelName: 'Dead Smartphone (डेड स्मार्टफोन)',
+                  condition: 'Dead Smartphone (₹600 - ₹1,600 लास्ट)',
                   locality: selectedLocality,
                   quotePrice: 1200
                 })}
@@ -191,30 +281,40 @@ export const SellFlowSection: React.FC = () => {
                 rel="noreferrer"
                 className="w-full md:w-auto py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-105 cursor-pointer"
               >
-                <span>💬 डेड फोन पिकअप बुक करें</span>
+                <span>💬 डेड स्मार्टफोन पिकअप बुक करें</span>
               </a>
               <p className="text-[10px] text-slate-400">सूरत में 2 घंटे में टेक्नीशियन विज़िट व इंस्टेंट पेमेंट</p>
             </div>
           </div>
         </div>
 
-        {/* 1. Brand Selection (19 Brands Grid) */}
+        {/* 1. Brand Selection (24 Brands Grid + Custom Entry) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs mb-6">
-          <div className="flex items-center justify-between mb-3.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3.5">
             <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">1</span>
               <span>{language === 'hi' ? 'ब्रांड चुनें (24 प्रमुख ब्रांड्स - 91mobiles डेटा)' : 'Select Brand (24 Brands)'}</span>
             </h3>
-            {sellSelection.brand && (
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
-                ✓ {sellSelection.brand.name}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsCustomModelModalOpen(true)}
+                className="text-xs font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1 rounded-full cursor-pointer transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <span>✍️</span>
+                <span>{language === 'hi' ? '+ अन्य / कस्टम मॉडल' : '+ Other / Custom Model'}</span>
+              </button>
+              {sellSelection.brand && (
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+                  ✓ {sellSelection.brand.name}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5">
             {BRANDS.map(brand => {
-              const isSelected = sellSelection.brand?.id === brand.id;
+              const isSelected = sellSelection.brand?.id === brand.id && !sellSelection.isCustomModel;
               return (
                 <button
                   key={brand.id}
@@ -232,6 +332,50 @@ export const SellFlowSection: React.FC = () => {
                 </button>
               );
             })}
+
+            {/* Other / Custom Model Tile in Brand Grid */}
+            <button
+              type="button"
+              onClick={() => {
+                setCustomBrandName('');
+                setIsCustomModelModalOpen(true);
+              }}
+              className={`p-2.5 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                sellSelection.isCustomModel
+                  ? 'bg-amber-100 text-amber-950 border-amber-500 shadow-md ring-2 ring-amber-400/20 scale-102'
+                  : 'bg-amber-50/70 hover:bg-amber-100 border-amber-300 hover:border-amber-500 text-amber-900'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-200/80 flex items-center justify-center text-base">
+                ✍️
+              </div>
+              <span className="text-[11px] font-black leading-tight text-center">
+                {language === 'hi' ? '+ अन्य मॉडल' : '+ Other Model'}
+              </span>
+              <span className="text-[9px] text-amber-700 font-bold">
+                कस्टम फ़ॉर्म
+              </span>
+            </button>
+          </div>
+
+          {/* Quick Helper Banner below brands */}
+          <div className="mt-3.5 p-3 rounded-2xl bg-amber-50/80 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-amber-950">
+            <div className="flex items-center gap-2">
+              <span className="text-base shrink-0">📱</span>
+              <span className="leading-snug">
+                {language === 'hi'
+                  ? 'आपका मोबाइल ब्रांड या मॉडल लिस्ट में नहीं मिला? कोई बात नहीं!'
+                  : 'Mobile brand or model not in list? Enter it manually!'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCustomModelModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs transition-all flex items-center gap-1.5 shrink-0"
+            >
+              <span>✍️</span>
+              <span>{language === 'hi' ? 'अपना मॉडल, RAM व कंडीशन खुद भरें' : 'Enter Custom Model & RAM'}</span>
+            </button>
           </div>
         </div>
 
@@ -247,14 +391,55 @@ export const SellFlowSection: React.FC = () => {
                     : `Select ${sellSelection.brand.name} Model (${brandModels.length} models)`}
                 </span>
               </h3>
-              {sellSelection.model && (
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
-                  ✓ {sellSelection.model.name}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomModelModalOpen(true)}
+                  className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1 rounded-full cursor-pointer transition-all"
+                >
+                  ✍️ {language === 'hi' ? '+ अनलिस्टेड दर्ज करें' : '+ Custom Entry'}
+                </button>
+                {sellSelection.model && (
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
+                    ✓ {sellSelection.model.name}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {/* Custom Model Card in Grid */}
+              <div
+                onClick={() => setIsCustomModelModalOpen(true)}
+                role="button"
+                tabIndex={0}
+                className={`p-3 rounded-2xl border-2 border-dashed text-left cursor-pointer transition-all flex flex-col justify-between ${
+                  sellSelection.isCustomModel
+                    ? 'bg-amber-50 border-amber-500 shadow-md ring-2 ring-amber-400/20'
+                    : 'bg-amber-50/50 border-amber-300 hover:border-amber-500 hover:bg-amber-100/50'
+                }`}
+              >
+                <div className="h-28 w-full rounded-xl bg-amber-100/70 border border-amber-200 flex flex-col items-center justify-center p-2 text-center mb-2">
+                  <span className="text-2xl mb-1">✍️</span>
+                  <span className="text-xs font-black text-amber-950">
+                    + अनलिस्टेड मॉडल
+                  </span>
+                  <span className="text-[10px] text-amber-700 font-semibold">
+                    (RAM, Storage, 5G खुद भरें)
+                  </span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs text-amber-950 flex items-center justify-between">
+                    <span className="truncate">{sellSelection.isCustomModel ? 'कस्टम मॉडल' : 'अन्य मॉडल'}</span>
+                    <span className="text-[9px] font-black bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded">
+                      फ़ॉर्म
+                    </span>
+                  </h4>
+                  <p className="text-[10px] text-amber-800 mt-0.5 truncate">
+                    {sellSelection.isCustomModel ? sellSelection.model?.name : 'सूची में नहीं तो खुद लिखें'}
+                  </p>
+                </div>
+              </div>
               {brandModels.length > 0 ? (
                 brandModels.map(model => {
                   const isSelected = sellSelection.model?.id === model.id;
@@ -301,10 +486,23 @@ export const SellFlowSection: React.FC = () => {
                   );
                 })
               ) : (
-                <div className="col-span-full p-6 text-center text-slate-500 bg-slate-50 rounded-2xl text-xs">
-                  {language === 'hi'
-                    ? `${sellSelection.brand.name} के मॉडल्स के लिए WhatsApp (9372802044) पर तुरंत रेट पाएं।`
-                    : `Contact our Surat Hub on WhatsApp (9372802044) for unlisted ${sellSelection.brand.name} models.`}
+                <div className="col-span-full p-6 text-center text-slate-700 bg-amber-50/60 rounded-2xl border border-amber-200/80 text-xs space-y-2">
+                  <p className="font-bold">
+                    {language === 'hi'
+                      ? `${sellSelection.brand.name} के मॉडल्स को आप यहाँ सीधे दर्ज करके लाइव रेट पा सकते हैं:`
+                      : `You can directly enter your ${sellSelection.brand.name} model below for live rate:`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomBrandName(sellSelection.brand?.name || '');
+                      setIsCustomModelModalOpen(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs cursor-pointer shadow-xs inline-flex items-center gap-1.5 transition-all"
+                  >
+                    <span>✍️</span>
+                    <span>{language === 'hi' ? `${sellSelection.brand.name} का मॉडल, RAM व स्टोरेज दर्ज करें` : `Enter ${sellSelection.brand.name} Model Details`}</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -314,10 +512,22 @@ export const SellFlowSection: React.FC = () => {
         {/* 3. Variant & Color Selection */}
         {sellSelection.model && (
           <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs mb-6">
-            <h3 className="text-sm sm:text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">3</span>
-              <span>{language === 'hi' ? 'वेरिएंट और कलर चुनें' : 'Select Storage & Color'}</span>
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-black">3</span>
+                <span>{language === 'hi' ? 'वेरिएंट और कलर चुनें' : 'Select Storage & Color'}</span>
+              </h3>
+              {sellSelection.isCustomModel && (
+                <button
+                  type="button"
+                  onClick={() => setIsCustomModelModalOpen(true)}
+                  className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1 rounded-full cursor-pointer transition-all flex items-center gap-1"
+                >
+                  <span>✏️</span>
+                  <span>{language === 'hi' ? 'कस्टम मॉडल बदलें' : 'Edit Custom Model'}</span>
+                </button>
+              )}
+            </div>
 
             <div className="mb-4">
               <label className="text-xs font-bold text-slate-700 block mb-2">
@@ -455,7 +665,7 @@ export const SellFlowSection: React.FC = () => {
 
         {/* 5. AI Live Valuation Card */}
         {sellSelection.model && (
-          <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-blue-500/30 relative overflow-hidden">
+          <div id="sell-valuation-result" className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 shadow-xl border border-blue-500/30 relative overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-white/10">
               <div className="flex items-center gap-2">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -494,6 +704,23 @@ export const SellFlowSection: React.FC = () => {
                     </p>
                   </div>
                 )}
+
+                {/* Doorstep Spot Hike Bonus Notice */}
+                <div className="my-2.5 p-3 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-blue-500/20 to-amber-500/20 border border-emerald-400/40 text-emerald-200 text-xs">
+                  <div className="flex items-center gap-2 text-white font-bold mb-1">
+                    <span className="text-base">🤝</span>
+                    <span className="text-amber-300 font-black">
+                      सूरत डोरस्टेप स्पॉट बोनस (Spot Inspection Hike)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-200 leading-relaxed">
+                    फोन की स्थिति व ओरिजिनल बिल/कंडीशन जांचने के बाद हमारे सूरत एग्जीक्यूटिव द्वारा मौके पर{' '}
+                    <strong className="text-emerald-300 underline font-black">
+                      +₹500 से +₹{formatINR(quote.potentialSpotHike || 1200)} तक अतिरिक्त बोनस कैश
+                    </strong>{' '}
+                    बढ़ाया जा सकता है ताकि आपको पूरा संतोष मिले!
+                  </p>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
                   <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-lg font-bold flex items-center gap-1">
@@ -700,6 +927,355 @@ export const SellFlowSection: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {/* Custom / Unlisted Model Entry Modal */}
+      {isCustomModelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 mb-4 sticky top-0 bg-white z-10">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-900 flex items-center justify-center text-base">
+                    ✍️
+                  </div>
+                  <h3 className="font-black text-slate-900 text-base sm:text-lg">
+                    {language === 'hi' ? 'अनलिस्टेड मोबाइल मॉडल दर्ज करें' : 'Enter Custom Phone Model'}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {language === 'hi'
+                    ? 'ब्रांड, मॉडल, RAM, स्टोरेज, 5G/4G व कंडीशन खुद भरकर तुरंत लाइव एस्टीमेट पाएं'
+                    : 'Enter brand, model, RAM, storage, 5G/4G & condition for instant valuation'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCustomModelModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold cursor-pointer transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyCustomModel} className="space-y-4 text-xs text-left">
+              {customError && (
+                <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{customError}</span>
+                </div>
+              )}
+
+              {/* 1. Mobile Brand */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
+                  <span>{language === 'hi' ? '1. मोबाइल ब्रांड (कंपनी):' : '1. Phone Brand:'}</span>
+                  <span className="text-[11px] font-semibold text-blue-600">
+                    चयनित: {customBrandName || 'कस्टम'}
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['Samsung', 'Apple', 'OnePlus', 'Vivo', 'Oppo', 'Realme', 'Xiaomi', 'Motorola', 'iQOO', 'Poco', 'Google', 'Infinix', 'Tecno', 'Nothing', 'Other'].map(b => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setCustomBrandName(b === 'Other' ? '' : b)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                        customBrandName === b
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={customBrandName}
+                  onChange={e => setCustomBrandName(e.target.value)}
+                  placeholder={language === 'hi' ? 'या कोई अन्य ब्रांड नाम लिखें (e.g. Lava, Itel, Nokia, Sharp)...' : 'Or type custom brand name...'}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 font-semibold text-xs bg-slate-50/50"
+                />
+              </div>
+
+              {/* 2. Exact Model Name */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1.5">
+                  {language === 'hi' ? '2. मॉडल का पूरा नाम (Model Name):' : '2. Exact Model Name:'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customModelName}
+                  onChange={e => setCustomModelName(e.target.value)}
+                  placeholder="उदा: Realme 12 Pro+ / Vivo V30e / Moto Edge 50 Fusion / Infinix Note 40"
+                  className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs font-bold text-slate-900"
+                />
+              </div>
+
+              {/* 3. Connectivity / Network (5G / 4G Smartphone) */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1.5">
+                  {language === 'hi' ? '3. नेटवर्क टाइप (5G / 4G स्मार्टफोन):' : '3. Smartphone Network Connectivity:'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomNetworkType('5G')}
+                    className={`p-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      customNetworkType === '5G'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
+                    }`}
+                  >
+                    <span>⚡ 5G स्मार्टफोन</span>
+                    <span className="hidden sm:inline font-normal">(हाई स्पीड)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomNetworkType('4G')}
+                    className={`p-2.5 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      customNetworkType === '4G'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
+                    }`}
+                  >
+                    <span>📶 4G LTE स्मार्टफोन</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. RAM & Storage Selection */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* RAM */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5">
+                    {language === 'hi' ? '4. रैम (RAM):' : '4. RAM:'}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {['3GB', '4GB', '6GB', '8GB', '12GB', '16GB+'].map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setCustomRam(r)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          customRam === r
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={customRam}
+                    onChange={e => setCustomRam(e.target.value)}
+                    placeholder="कस्टम RAM (e.g. 8GB)"
+                    className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs font-semibold"
+                  />
+                </div>
+
+                {/* Storage */}
+                <div>
+                  <label className="font-bold text-slate-800 block mb-1.5 flex items-center justify-between">
+                    <span>{language === 'hi' ? '5. इंटरनल स्टोरेज (ROM):' : '5. Storage:'}</span>
+                    <span className="text-[10px] text-emerald-600 font-bold">256GB+ पर डेड बोनस</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {['32GB', '64GB', '128GB', '256GB', '512GB', '1TB'].map(s => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setCustomStorage(s)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                          customStorage === s
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={customStorage}
+                    onChange={e => setCustomStorage(e.target.value)}
+                    placeholder="कस्टम स्टोरेज (e.g. 256GB)"
+                    className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs font-semibold"
+                  />
+                </div>
+              </div>
+
+              {/* 5. Condition Selection (Flawless, Good, Average, Damaged, Dead) */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1.5">
+                  {language === 'hi' ? '6. फोन की मौजूदा हालत (Condition):' : '6. Phone Physical Condition:'}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {(Object.keys(CONDITION_CRITERIA) as ConditionGrade[]).map(grade => {
+                    const info = CONDITION_CRITERIA[grade];
+                    const isSelected = customCondition === grade;
+                    return (
+                      <div
+                        key={grade}
+                        onClick={() => setCustomCondition(grade)}
+                        role="button"
+                        tabIndex={0}
+                        className={`p-2.5 rounded-xl border text-left cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'bg-slate-50/70 border-slate-200 hover:bg-white'
+                        } ${grade === 'dead' ? 'sm:col-span-2' : ''}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${info.badgeColor}`}>
+                            {info.label}
+                          </span>
+                          {isSelected && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                        </div>
+                        <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                          {info.description}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 6. Color Selection */}
+              <div>
+                <label className="font-bold text-slate-800 block mb-1.5">
+                  {language === 'hi' ? '7. फोन का रंग (Color):' : '7. Phone Color:'}
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['Black', 'Blue', 'Silver / White', 'Gold', 'Green', 'Grey'].map(col => (
+                    <button
+                      key={col}
+                      type="button"
+                      onClick={() => setCustomColor(col)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                        customColor === col
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {col}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={customColor}
+                  onChange={e => setCustomColor(e.target.value)}
+                  placeholder="उदा: Midnight Blue, Sunset Gold..."
+                  className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs font-semibold"
+                />
+              </div>
+
+              {/* 7. Approximate Purchase MRP Price */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-800">
+                    {language === 'hi' ? '8. खरीद के समय नई कीमत (MRP):' : '8. Original MRP / Purchase Price:'}
+                  </label>
+                  <span className="font-black text-blue-600 text-sm">
+                    {formatINR(customEstimatedPrice)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="6000"
+                  max="140000"
+                  step="2000"
+                  value={customEstimatedPrice}
+                  onChange={e => setCustomEstimatedPrice(Number(e.target.value))}
+                  className="w-full accent-blue-600 cursor-pointer mb-1"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {[8000, 15000, 25000, 45000, 75000].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setCustomEstimatedPrice(val)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                        customEstimatedPrice === val
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {formatINR(val)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 8. Accessories Checkboxes */}
+              <div className="pt-2 border-t border-slate-100">
+                <label className="font-bold text-slate-800 block mb-1.5">
+                  {language === 'hi' ? '9. उपलब्ध ओरिजिनल सामान (अतिरिक्त कैश बोनस):' : '9. Available Original Accessories:'}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCustomHasOriginalBox(!customHasOriginalBox)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      customHasOriginalBox ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${customHasOriginalBox ? 'text-emerald-600' : 'text-slate-300'}`} />
+                    <span>{language === 'hi' ? 'ओरिजिनल बॉक्स (+₹400)' : 'Original Box (+₹400)'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomHasOriginalCharger(!customHasOriginalCharger)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      customHasOriginalCharger ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${customHasOriginalCharger ? 'text-emerald-600' : 'text-slate-300'}`} />
+                    <span>{language === 'hi' ? 'ओरिजिनल चार्जर (+₹350)' : 'Original Charger (+₹350)'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomHasValidBill(!customHasValidBill)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer ${
+                      customHasValidBill ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-50 text-slate-600 border-slate-200'
+                    }`}
+                  >
+                    <Check className={`w-3.5 h-3.5 ${customHasValidBill ? 'text-emerald-600' : 'text-slate-300'}`} />
+                    <span>{language === 'hi' ? 'बिल / इनवॉइस (+₹600)' : 'Original Bill (+₹600)'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Surat Doorstep Guarantee Info */}
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-[11px] leading-relaxed">
+                💡 <strong>सूरत डोरस्टेप पिकअप:</strong> यह कस्टम विवरण तुरंत AI वैल्यूएशन में लोड हो जाएगा। सूरत में 2 घंटे में फ्री पिकअप और मौके पर टेक्नीशियन द्वारा <strong>स्पॉट बोनस</strong> भी मिलेगा!
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomModelModalOpen(false)}
+                  className="w-1/3 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer text-center"
+                >
+                  {language === 'hi' ? 'रद्द करें' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className="w-2/3 py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-blue-500/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>⚡</span>
+                  <span>{language === 'hi' ? 'तुरंत AI वैल्यूएशन निकालें' : 'Calculate AI Valuation'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

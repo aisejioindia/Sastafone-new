@@ -133,12 +133,12 @@ export const RazorpayPaymentModal: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-sm tracking-wide">ALLINDIA PAY</span>
+                <span className="font-black text-sm tracking-wide">SASTAPHONE PAY</span>
                 <span className="text-[10px] bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 px-1.5 py-0.5 rounded font-mono font-bold">
                   256-BIT SSL
                 </span>
               </div>
-              <p className="text-[11px] text-blue-100">सुरक्षित डिजिटल भुगतान गेटवे • AllIndia.si Network</p>
+              <p className="text-[11px] text-blue-100">सुरक्षित डिजिटल भुगतान गेटवे • Sastaphone Surat Official</p>
             </div>
           </div>
 
@@ -329,7 +329,7 @@ export const RazorpayPaymentModal: React.FC = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">भुगतान तरीका:</span>
-                    <span className="font-medium text-emerald-700">Razorpay AllIndia Pay</span>
+                    <span className="font-medium text-emerald-700">Razorpay Sastaphone Pay</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">स्थिति:</span>

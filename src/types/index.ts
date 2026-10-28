@@ -90,6 +90,12 @@ export interface RepairIssue {
   estimatedTime: string;
   description: string;
   popular?: boolean;
+  isStrictDiagnostic?: boolean;
+  warningNotice?: string;
+  category?: 'screen' | 'battery' | 'audio' | 'board' | 'charging' | 'camera' | 'body' | 'network' | 'diagnostic' | 'combo' | 'protection' | 'service';
+  isMakeoverCombo?: boolean;
+  comboItems?: string[];
+  originalSeparateTotal?: { min: number; max: number };
 }
 
 export interface SuratLocality {
@@ -113,6 +119,18 @@ export interface SellSelection {
   screenCondition: 'flawless' | 'minor_scratches' | 'cracked';
   bodyCondition: 'flawless' | 'minor_dents' | 'bent_heavy_scratches';
   functionalIssues: string[];
+  isCustomModel?: boolean;
+  customDetails?: {
+    modelName: string;
+    brandName?: string;
+    ram?: string;
+    storage?: string;
+    is5G?: boolean;
+    color?: string;
+    condition?: ConditionGrade;
+    expectedPrice?: number;
+    notes?: string;
+  };
   verifiedVideo?: {
     fileUrl?: string;
     videoName?: string;
@@ -128,9 +146,12 @@ export interface ValuationQuote {
   conditionDeduction: number;
   accessoriesBonus: number;
   videoBonus: number;
+  potentialSpotHike?: number;
   currency: string;
   timestamp: string;
 }
+
+export type OrderStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'booked' | 'technician_assigned' | 'in_inspection';
 
 export interface OrderItem {
   id: string;
@@ -139,7 +160,7 @@ export interface OrderItem {
   title: string;
   subtitle: string;
   amount: number;
-  status: 'booked' | 'technician_assigned' | 'in_inspection' | 'completed' | 'cancelled';
+  status: OrderStatus;
   statusHindi: string;
   locality: string;
   fullAddress: string;
@@ -154,6 +175,39 @@ export interface OrderItem {
   paymentMethod?: string;
   paymentStatus?: 'paid' | 'pay_on_visit';
   refundPolicyNote?: string;
+  // Admin & Pro-Audit Additions
+  finalQuoteAmount?: number;
+  originalEstimateMin?: number;
+  originalEstimateMax?: number;
+  discountOfferedPct?: number;
+  adminNotes?: string;
+  internalNotes?: string;
+  adminApprovedAt?: string;
+  paymentQrGenerated?: boolean;
+  paymentCollected?: boolean;
+  phoneHandedOver?: boolean;
+  proAudit?: ProAuditVerification;
+}
+
+export interface ProAuditVerification {
+  imei: string;
+  imeiMatched: boolean;
+  touchSensitivity: 'passed' | 'failed' | 'tested';
+  screenDisplayCheck: 'flawless' | 'minor_scratches' | 'replaced_tested' | 'dead_pixels';
+  frontCameraCheck: boolean;
+  rearCameraCheck: boolean;
+  cameraAutofocusCheck: boolean;
+  micEarpieceCheck: boolean;
+  loudspeakerCheck: boolean;
+  proximitySensorCheck: boolean;
+  biometricsCheck: boolean;
+  chargingCurrentDrawAmps?: number;
+  batteryHealthPct?: number;
+  lciWaterMarkerStatus: 'dry_white_ok' | 'red_liquid_contact' | 'repaired';
+  technicianNotes?: string;
+  auditPassed: boolean;
+  auditTimestamp: string;
+  auditorName: string;
 }
 
 export interface ChatMessage {
@@ -179,6 +233,8 @@ export interface UserProfile {
   sellerPostCredits?: number;
   buyerCredits?: number;
   buyerPlan?: 'none' | 'basic_99' | 'pro_299';
+  role?: 'customer' | 'admin' | 'technician';
+  isAdmin?: boolean;
 }
 
 export interface P2PListing {
