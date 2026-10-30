@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, User, Phone, MapPin, Package, Clock, CheckCircle2, ChevronRight, LogOut, ShieldCheck, MessageCircle, AlertCircle, Star } from 'lucide-react';
+import {
+  X,
+  User,
+  Phone,
+  MapPin,
+  Package,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
+  LogOut,
+  ShieldCheck,
+  MessageCircle,
+  AlertCircle,
+  Star,
+  QrCode,
+  FileText,
+  Sparkles,
+  Check,
+  Image as ImageIcon,
+  Eye,
+  HelpCircle
+} from 'lucide-react';
 import { formatINR, generateWhatsAppLink } from '../utils/valuation';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
 import confetti from 'canvas-confetti';
@@ -31,6 +52,8 @@ export const UserDashboardModal: React.FC = () => {
   const [otpStep, setOtpStep] = useState(false);
   const [enteredOtp, setEnteredOtp] = useState('');
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+  const [expandedQrOrderId, setExpandedQrOrderId] = useState<string | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   if (!isDashboardOpen) return null;
 
@@ -222,6 +245,165 @@ export const UserDashboardModal: React.FC = () => {
                           {order.refundPolicyNote ||
                             '✓ फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा | ✓ फोन न बनने पर ₹99 रिफंड होगा।'}
                         </p>
+                      </div>
+                    )}
+
+                    {/* ADMIN & HUB OWNER RETURNED REPORT CARD (INVOICE, DOUBT RESOLUTION, PHOTOS, QR) */}
+                    {(order.invoiceSentToCustomer || order.finalQuoteAmount || order.customerDoubtResolved) && (
+                      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/90 via-indigo-50/70 to-slate-50 border-2 border-blue-400 space-y-3 shadow-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-200/80 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black">
+                              ✓
+                            </span>
+                            <div>
+                              <h5 className="font-black text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                                <span>सस्ताफोन ओनर व सर्टिफाइड लैब रिपोर्ट</span>
+                                <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.2 rounded-full">
+                                  VERIFIED
+                                </span>
+                              </h5>
+                              <p className="text-[10px] text-blue-800 font-semibold">
+                                रसीद / इनवॉइस: <strong className="font-mono text-slate-900">{order.invoiceNumber || 'STP-INV-2026-103'}</strong>
+                              </p>
+                            </div>
+                          </div>
+
+                          {order.finalQuoteAmount && (
+                            <div className="text-right">
+                              <span className="text-[10px] text-slate-500 block">फाइनल स्वीकृत ऑफर:</span>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                {order.originalEstimateMax && order.originalEstimateMax > order.finalQuoteAmount && (
+                                  <span className="line-through text-slate-400 text-xs font-mono">
+                                    {formatINR(order.originalEstimateMax)}
+                                  </span>
+                                )}
+                                <span className="text-base font-black text-emerald-700 font-mono">
+                                  {formatINR(order.finalQuoteAmount)}
+                                </span>
+                              </div>
+                              {order.discountOfferedPct ? (
+                                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
+                                  {order.discountOfferedPct}% स्पेशल छूट लागू
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Customer Stated Requirement */}
+                        {order.customerRequirement && (
+                          <div className="p-2.5 rounded-xl bg-white border border-blue-200 text-xs">
+                            <span className="text-[10px] font-black text-blue-900 uppercase block mb-0.5">
+                              🎯 आपकी आवश्यकता / समस्या:
+                            </span>
+                            <p className="text-slate-800 font-medium">{order.customerRequirement}</p>
+                          </div>
+                        )}
+
+                        {/* Admin / Lab Doubt Resolution & Technical Advice */}
+                        {order.customerDoubtResolved && (
+                          <div className="p-2.5 rounded-xl bg-teal-50 border border-teal-300 text-xs space-y-1">
+                            <span className="text-[10px] font-black text-teal-950 uppercase flex items-center gap-1">
+                              <HelpCircle className="w-3.5 h-3.5 text-teal-700" />
+                              <span>ओनर व सर्टिफाइड लैब रिस्पॉन्स (समाधान):</span>
+                            </span>
+                            <p className="text-teal-900 font-semibold leading-relaxed">
+                              "{order.customerDoubtResolved}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Verified Phone Photos Uploaded by Customer / Lab */}
+                        {order.phonePhotos && order.phonePhotos.length > 0 && (
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] font-bold text-slate-600 block">
+                              📸 लैब द्वारा सत्यापित आपके फोन की तस्वीरें:
+                            </span>
+                            <div className="grid grid-cols-3 gap-2">
+                              {order.phonePhotos.map((photo, pIdx) => (
+                                <div
+                                  key={pIdx}
+                                  onClick={() => setPreviewPhotoUrl(photo)}
+                                  className="relative rounded-xl overflow-hidden border border-slate-300 aspect-video bg-white cursor-pointer shadow-2xs hover:border-blue-500 transition-all group"
+                                >
+                                  <img src={photo} alt={`Device photo ${pIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[8px] font-bold px-1 py-0.2 rounded">
+                                    {pIdx === 0 ? 'डिस्प्ले' : pIdx === 1 ? 'कैमरा व बैक' : 'फ्रेम'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dynamic Payment QR & Payout status */}
+                        <div className="p-3 rounded-2xl bg-slate-900 text-white space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <QrCode className="w-4 h-4 text-amber-400" />
+                              <span className="text-xs font-bold">सस्ताफोन पेमेंट स्कैनर:</span>
+                            </div>
+                            {order.paymentCollected ? (
+                              <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                <span>भुगतान प्राप्त (Paid Online)</span>
+                              </span>
+                            ) : (
+                              <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                पहले पेमेंट, फिर फोन हैंडओवर
+                              </span>
+                            )}
+                          </div>
+
+                          {order.paymentCollected ? (
+                            <p className="text-[11px] text-emerald-300">
+                              ✓ भुगतान सफलता से सत्यापित हुआ। 6 महीने की वारंटी सक्रिय कर दी गई है।
+                            </p>
+                          ) : (
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-300">
+                                  देय राशि: <strong className="text-amber-400 font-mono text-sm">{formatINR(order.finalQuoteAmount || order.amount)}</strong>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedQrOrderId(expandedQrOrderId === order.id ? null : order.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-[11px] cursor-pointer transition-all"
+                                >
+                                  {expandedQrOrderId === order.id ? 'QR छुपाएं' : 'UPI QR कोड देखें'}
+                                </button>
+                              </div>
+
+                              {expandedQrOrderId === order.id && (
+                                <div className="p-3 rounded-xl bg-white text-slate-900 text-center space-y-2 animate-in fade-in">
+                                  <div className="w-36 h-36 bg-slate-900 rounded-xl p-2 flex flex-col items-center justify-center relative overflow-hidden mx-auto">
+                                    <div className="w-full h-full bg-white rounded-lg p-1.5 flex flex-col justify-between">
+                                      <div className="flex justify-between">
+                                        <div className="w-6 h-6 bg-black rounded-xs flex items-center justify-center"><div className="w-2.5 h-2.5 bg-white" /></div>
+                                        <div className="w-6 h-6 bg-black rounded-xs flex items-center justify-center"><div className="w-2.5 h-2.5 bg-white" /></div>
+                                      </div>
+                                      <div className="text-[8px] font-black text-slate-900 tracking-tighter text-center">
+                                        Sastaphone Surat<br />
+                                        <span className="text-blue-600 font-mono text-[9px]">₹{order.finalQuoteAmount || order.amount}</span>
+                                      </div>
+                                      <div className="flex justify-between items-end">
+                                        <div className="w-6 h-6 bg-black rounded-xs flex items-center justify-center"><div className="w-2.5 h-2.5 bg-white" /></div>
+                                        <div className="w-5 h-5 border-2 border-black flex items-center justify-center text-[7px] font-bold">UPI</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="text-[10px] text-slate-600 font-bold">
+                                    GPay / PhonePe / Paytm से स्कैन करके भुगतान करें
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 font-mono">
+                                    UPI ID: 9372802044@okbizaxis
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -520,6 +702,35 @@ export const UserDashboardModal: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Photo Zoom Lightbox Preview for Customer */}
+      {previewPhotoUrl && (
+        <div
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewPhotoUrl(null)}
+        >
+          <div className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-3 border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreviewPhotoUrl(null)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center text-sm font-black shadow-md cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="rounded-2xl overflow-hidden bg-black max-h-[75vh] flex items-center justify-center">
+              <img src={previewPhotoUrl} alt="Inspection zoom" className="w-full h-auto max-h-[75vh] object-contain" />
+            </div>
+            <div className="p-3 text-center">
+              <p className="text-white font-bold text-xs">
+                📸 आपके फोन का लैब वेरिफाइड फोटो
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                सस्ताफोन सूरत सर्टिफाइड हार्डवेयर लैब रिपोर्ट
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

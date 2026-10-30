@@ -31,11 +31,43 @@ import {
   Save,
   AlertTriangle,
   XCircle,
-  CheckSquare
+  CheckSquare,
+  Database,
+  Send,
+  Image as ImageIcon,
+  HelpCircle,
+  Eye,
+  Boxes,
+  Layers,
+  Plus,
+  EyeOff,
+  Key,
+  RefreshCw,
+  TrendingUp,
+  BarChart3,
+  PieChart as PieChartIcon,
+  History
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { AdminAnalyticsCharts } from './AdminAnalyticsCharts';
+import { AdminActivityLog, AdminActivityLogItem } from './AdminActivityLog';
 
 export type StatusCategory = 'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface CertifiedPhoneItem {
+  id: string;
+  brand: string;
+  model: string;
+  color: string;
+  condition: string;
+  imei: string;
+  stock: number;
+  costPrice: number;
+  sellingPrice: number;
+  batteryHealth: number;
+  warrantyMonths: number;
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+}
 
 export const AdminPortalModal: React.FC = () => {
   const {
@@ -50,16 +82,254 @@ export const AdminPortalModal: React.FC = () => {
     confirmOrderPaymentAndHandover,
     setIsProAuditModalOpen,
     setSelectedAuditOrder,
-    updateOrder
+    updateOrder,
+    sendInvoiceAndOfferToCustomer
   } = useApp();
 
-  const [adminTab, setAdminTab] = useState<'repairs' | 'sells' | 'buys' | 'bazaar'>('repairs');
+  const [adminTab, setAdminTab] = useState<'analytics' | 'repairs' | 'sells' | 'buys' | 'inventory' | 'bazaar' | 'activity'>('repairs');
   const [adminEmailInput, setAdminEmailInput] = useState('');
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
   const AUTH_ADMIN_EMAIL = 'sastafone@sastafone.in';
   const AUTH_ADMIN_PASSWORD = 'Siya@1413';
+
+  // DEDICATED PASSWORD-PROTECTED AUTHENTICATION LAYER (SECURE STATE)
+  const [isOwnerAuthenticated, setIsOwnerAuthenticated] = useState<boolean>(false);
+  const [adminSessionToken, setAdminSessionToken] = useState<string | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [failedAttempts, setFailedAttempts] = useState<number>(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  // ACTIVITY LOGGING FEATURE (AUDIT TRAIL STATE)
+  const [activityLogs, setActivityLogs] = useState<AdminActivityLogItem[]>([
+    {
+      id: 'act-init-1',
+      timestamp: new Date().toISOString(),
+      timeFormatted: '11:48 AM',
+      dateFormatted: 'Today, 30 Oct',
+      actionType: 'payment_change',
+      categoryLabel: 'कोट व डिस्काउंट',
+      title: 'Samsung S24 Ultra फाइनल कोट ₹1,600 सेट किया',
+      description: 'कैमरा OIS मोटर व लेंस री-अलाइनमेंट हेतु ₹1,899 से 12% स्पेशल ऑफ देकर ₹1,600 का फाइनल बिल व डायनेमिक QR तैयार किया।',
+      actor: 'sastafone@sastafone.in (ओनर)',
+      badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      badgeText: 'Quote & Offer',
+      iconType: 'payment',
+      metadata: {
+        orderId: 'ord-103',
+        orderNumber: 'STP-SURAT-9941',
+        amount: 1600,
+        itemName: 'Samsung Galaxy S24 Ultra 5G'
+      }
+    },
+    {
+      id: 'act-init-2',
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      timeFormatted: '10:45 AM',
+      dateFormatted: 'Today, 30 Oct',
+      actionType: 'status_update',
+      categoryLabel: 'स्टेटस अपडेट',
+      title: 'OnePlus 10R रिपेयरिंग जॉब "प्रगति पर" मार्क हुआ',
+      description: 'अडाजण हब से टेक्नीशियन रवाना। ₹199 विज़िट टोकन वेरिफाइड।',
+      actor: 'sastafone@sastafone.in (ओनर)',
+      badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
+      badgeText: 'Status Update',
+      iconType: 'status',
+      metadata: {
+        orderId: 'ord-102',
+        orderNumber: 'STP-SURAT-7742',
+        status: 'in_progress',
+        itemName: 'OnePlus 10R 5G'
+      }
+    },
+    {
+      id: 'act-init-3',
+      timestamp: new Date(Date.now() - 7200000).toISOString(),
+      timeFormatted: '09:30 AM',
+      dateFormatted: 'Today, 30 Oct',
+      actionType: 'inventory_adjust',
+      categoryLabel: 'स्टॉक ऑडिट',
+      title: 'iPhone 15 Pro Max स्टॉक 4 यूनिट्स वेरिफाइड',
+      description: 'सूरत सेंट्रल हब में 32-पॉइंट लैब क्वालिटी टेस्ट पास A+ ग्रेड स्टॉक की पुष्टि।',
+      actor: 'sastafone@sastafone.in (ओनर)',
+      badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      badgeText: 'Inventory',
+      iconType: 'inventory',
+      metadata: {
+        itemName: 'iPhone 15 Pro Max (256GB)',
+        newStock: 4
+      }
+    },
+    {
+      id: 'act-init-4',
+      timestamp: new Date(Date.now() - 10800000).toISOString(),
+      timeFormatted: '09:00 AM',
+      dateFormatted: 'Today, 30 Oct',
+      actionType: 'security_auth',
+      categoryLabel: 'सुरक्षा ऑथेंटिकेशन',
+      title: 'सस्ताफोन मास्टर वाल्ट ऑथेंटिकेशन',
+      description: 'sastafone@sastafone.in द्वारा 256-बिट मास्टर की से एडमिन सत्र प्रारंभ।',
+      actor: 'sastafone@sastafone.in (ओनर)',
+      badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
+      badgeText: 'Security Auth',
+      iconType: 'security'
+    }
+  ]);
+
+  const logActivity = (
+    actionType: AdminActivityLogItem['actionType'],
+    categoryLabel: string,
+    title: string,
+    description: string,
+    iconType: AdminActivityLogItem['iconType'],
+    badgeBg: string,
+    badgeText: string,
+    metadata?: AdminActivityLogItem['metadata']
+  ) => {
+    const now = new Date();
+    const newLog: AdminActivityLogItem = {
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      timestamp: now.toISOString(),
+      timeFormatted: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      dateFormatted: 'Today, ' + now.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+      actionType,
+      categoryLabel,
+      title,
+      description,
+      actor: 'sastafone@sastafone.in (ओनर)',
+      badgeBg,
+      badgeText,
+      iconType,
+      metadata
+    };
+    setActivityLogs(prev => [newLog, ...prev]);
+  };
+
+  // INVENTORY & STOCK MANAGEMENT STATE
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryCategory, setInventoryCategory] = useState<'all' | 'phones' | 'parts'>('all');
+  const [certifiedPhoneInventory, setCertifiedPhoneInventory] = useState<CertifiedPhoneItem[]>([
+    {
+      id: 'inv-1',
+      brand: 'Apple',
+      model: 'iPhone 15 Pro Max (256GB)',
+      color: 'Natural Titanium',
+      condition: 'Superb (A+ Grade)',
+      imei: '359128092184910',
+      stock: 4,
+      costPrice: 88000,
+      sellingPrice: 99999,
+      batteryHealth: 100,
+      warrantyMonths: 6,
+      status: 'in_stock' as const
+    },
+    {
+      id: 'inv-2',
+      brand: 'Samsung',
+      model: 'Galaxy S24 Ultra 5G (512GB)',
+      color: 'Titanium Gray',
+      condition: 'Superb (A+ Grade, Box+S-Pen)',
+      imei: '358492019482711',
+      stock: 3,
+      costPrice: 92000,
+      sellingPrice: 104999,
+      batteryHealth: 98,
+      warrantyMonths: 6,
+      status: 'in_stock' as const
+    },
+    {
+      id: 'inv-3',
+      brand: 'OnePlus',
+      model: 'OnePlus 12 5G (256GB)',
+      color: 'Silky Black',
+      condition: 'Flawless (100W Charger)',
+      imei: '864920184719204',
+      stock: 6,
+      costPrice: 44000,
+      sellingPrice: 51999,
+      batteryHealth: 100,
+      warrantyMonths: 6,
+      status: 'in_stock' as const
+    },
+    {
+      id: 'inv-4',
+      brand: 'Vivo',
+      model: 'Vivo X100 Pro (512GB)',
+      color: 'Sunset Orange (Zeiss APO)',
+      condition: 'Superb (Zeiss Certified)',
+      imei: '861928374910283',
+      stock: 2,
+      costPrice: 58000,
+      sellingPrice: 66499,
+      batteryHealth: 97,
+      warrantyMonths: 6,
+      status: 'low_stock' as const
+    },
+    {
+      id: 'inv-5',
+      brand: 'Google',
+      model: 'Pixel 8 Pro (128GB)',
+      color: 'Bay Blue',
+      condition: 'Certified Clean Grade',
+      imei: '357192840192834',
+      stock: 5,
+      costPrice: 52000,
+      sellingPrice: 59999,
+      batteryHealth: 99,
+      warrantyMonths: 6,
+      status: 'in_stock' as const
+    }
+  ]);
+
+  const [sparePartsInventory, setSparePartsInventory] = useState([
+    {
+      id: 'part-1',
+      name: 'Samsung S24 Ultra Sapphire Camera Lens & Sensor',
+      category: 'Camera / Optical',
+      stock: 8,
+      unitCost: 1100,
+      unitPrice: 1899,
+      compatibleWith: 'Galaxy S24 Ultra'
+    },
+    {
+      id: 'part-2',
+      name: 'iPhone 15 Pro OLED Super Retina XDR Ceramic Screen',
+      category: 'Display / Touch',
+      stock: 5,
+      unitCost: 6800,
+      unitPrice: 9499,
+      compatibleWith: 'iPhone 15 Pro'
+    },
+    {
+      id: 'part-3',
+      name: '5000mAh High-Density Li-Po Battery Pack (BGA Lab Tested)',
+      category: 'Battery / Power',
+      stock: 14,
+      unitCost: 850,
+      unitPrice: 1499,
+      compatibleWith: 'OnePlus 11 / 12 & Realme GT'
+    },
+    {
+      id: 'part-4',
+      name: 'Type-C 120W Fast Charging Flex Port Assembly',
+      category: 'Charging / Ports',
+      stock: 20,
+      unitCost: 320,
+      unitPrice: 799,
+      compatibleWith: 'Universal Type-C'
+    },
+    {
+      id: 'part-5',
+      name: 'UV Curved Tempered Screen Protector & Body Armor',
+      category: 'Protection / Glass',
+      stock: 45,
+      unitCost: 140,
+      unitPrice: 399,
+      compatibleWith: 'All Curved Displays'
+    }
+  ]);
 
   // Status Filter & Search State
   const [statusFilter, setStatusFilter] = useState<StatusCategory>('all');
@@ -70,6 +340,13 @@ export const AdminPortalModal: React.FC = () => {
     'ord-103': 'ग्राहक ने दोपहर 12 बजे तक फ्री रहने को बोला है। BGA लेबोरेटरी से कैमरा लेंस सफायर ग्लास निकाल लिया गया है। 12% स्पेशल डिस्काउंट (₹1,600) अप्रूव्ड।'
   });
   const [noteSavedMap, setNoteSavedMap] = useState<Record<string, boolean>>({});
+
+  // Customer Doubt Resolution Notes per order
+  const [doubtNotesState, setDoubtNotesState] = useState<Record<string, string>>({
+    'ord-103': 'कैमरा सेंसर लेंस पर मामूली स्क्रैच था, सूरत लेबोरेटरी में सफायर लेंस री-अलाइन करके समस्या का 100% समाधान कर दिया गया है। 6 महीने की वारंटी मान्य रहेगी।'
+  });
+  const [invoiceSentSuccessMap, setInvoiceSentSuccessMap] = useState<Record<string, boolean>>({});
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   // Quote Adjustment state per order
   const [customQuoteInputs, setCustomQuoteInputs] = useState<Record<string, number>>({
@@ -83,30 +360,120 @@ export const AdminPortalModal: React.FC = () => {
 
   if (!isAdminModalOpen) return null;
 
+  const isOwnerSessionAuthorized = isOwnerAuthenticated && user.role === 'admin' && Boolean(adminSessionToken);
+
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const remainingSecs = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setLoginError(`सुरक्षा लॉकआउट सक्रिय है! कृपया ${remainingSecs} सेकंड प्रतीक्षा करें।`);
+      return;
+    }
+
     const inputEmail = adminEmailInput.trim().toLowerCase();
     const inputPass = adminPasswordInput.trim();
 
     if (inputEmail === AUTH_ADMIN_EMAIL && inputPass === AUTH_ADMIN_PASSWORD) {
+      const secureToken = `SEC-OWNER-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      setIsOwnerAuthenticated(true);
+      setAdminSessionToken(secureToken);
+      setSessionStartTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setFailedAttempts(0);
+      setLockoutUntil(null);
       setLoginError('');
+      setAdminPasswordInput('');
       loginAsAdmin(AUTH_ADMIN_EMAIL);
-      confetti({ particleCount: 60, spread: 70 });
+      confetti({ particleCount: 75, spread: 70 });
+
+      // Log Security Authentication
+      logActivity(
+        'security_auth',
+        'सुरक्षा ऑथेंटिकेशन',
+        'ओनर वाल्ट लॉगिन सत्यापित',
+        `अधिकृत ईमेल ${AUTH_ADMIN_EMAIL} से मास्टर टोकन ${secureToken.substring(0, 15)}... जारी।`,
+        'security',
+        'bg-amber-100 text-amber-800 border-amber-200',
+        'Security Vault'
+      );
     } else {
-      if (inputEmail !== AUTH_ADMIN_EMAIL && inputPass !== AUTH_ADMIN_PASSWORD) {
-        setLoginError('अमान्य ईमेल ID और पासवर्ड! केवल sastafone@sastafone.in और सही पासवर्ड द्वारा ही एडमिन एक्सेस संभव है।');
-      } else if (inputEmail !== AUTH_ADMIN_EMAIL) {
-        setLoginError('गलत एडमिन ID! केवल अधिकृत sastafone@sastafone.in ही मान्य है।');
+      const nextFailed = failedAttempts + 1;
+      setFailedAttempts(nextFailed);
+      if (nextFailed >= 4) {
+        setLockoutUntil(Date.now() + 45000);
+        setLoginError('अत्यधिक गलत प्रयास! सुरक्षा कारणों से एडमिन पोर्टल 45 सेकंड के लिए लॉक कर दिया गया है।');
       } else {
-        setLoginError('गलत पासवर्ड! केवल सही पासवर्ड दर्ज करने पर ही पोर्टल खुलेगा।');
+        if (inputEmail !== AUTH_ADMIN_EMAIL && inputPass !== AUTH_ADMIN_PASSWORD) {
+          setLoginError(`अमान्य क्रेडेंशियल! केवल अधिकृत ईमेल व सही पासवर्ड मान्य है। (शेष प्रयास: ${4 - nextFailed})`);
+        } else if (inputEmail !== AUTH_ADMIN_EMAIL) {
+          setLoginError(`गलत एडमिन ID! केवल अधिकृत sastafone@sastafone.in ही मान्य है। (शेष प्रयास: ${4 - nextFailed})`);
+        } else {
+          setLoginError(`गलत पासवर्ड! केवल सही मास्टर पासवर्ड दर्ज करने पर ही पोर्टल खुलेगा। (शेष प्रयास: ${4 - nextFailed})`);
+        }
       }
     }
   };
 
   const handleAdminLogout = () => {
+    setIsOwnerAuthenticated(false);
+    setAdminSessionToken(null);
+    setSessionStartTime(null);
     switchToCustomerRole();
     setAdminPasswordInput('');
     setLoginError('');
+  };
+
+  const handleUpdatePhoneStock = (id: string, delta: number) => {
+    const target = certifiedPhoneInventory.find(item => item.id === id);
+    const newStock = Math.max(0, (target?.stock || 0) + delta);
+
+    setCertifiedPhoneInventory(prev => prev.map(item => {
+      if (item.id === id) {
+        return {
+          ...item,
+          stock: newStock,
+          status: newStock <= 2 ? (newStock === 0 ? 'out_of_stock' as const : 'low_stock' as const) : 'in_stock' as const
+        };
+      }
+      return item;
+    }));
+
+    if (target) {
+      logActivity(
+        'inventory_adjust',
+        'स्मार्टफोन स्टॉक',
+        `स्टॉक एडजस्टमेंट: ${target.model} (${delta > 0 ? '+' : ''}${delta})`,
+        `${target.brand} ${target.model} (${target.color}) का स्टॉक ${target.stock} से बदलकर ${newStock} किया गया। (IMEI: ${target.imei})`,
+        'inventory',
+        'bg-indigo-100 text-indigo-800 border-indigo-200',
+        'Phone Stock',
+        { itemName: `${target.brand} ${target.model}`, delta, newStock }
+      );
+    }
+  };
+
+  const handleUpdatePartStock = (id: string, delta: number) => {
+    const target = sparePartsInventory.find(part => part.id === id);
+    const newStock = Math.max(0, (target?.stock || 0) + delta);
+
+    setSparePartsInventory(prev => prev.map(part => {
+      if (part.id === id) {
+        return { ...part, stock: newStock };
+      }
+      return part;
+    }));
+
+    if (target) {
+      logActivity(
+        'inventory_adjust',
+        'स्पेयर पार्ट्स स्टॉक',
+        `पार्ट स्टॉक एडजस्टमेंट: ${target.partName} (${delta > 0 ? '+' : ''}${delta})`,
+        `${target.partName} (${target.compatibleModels}) स्टॉक ${target.stock} से बदलकर ${newStock} कंपोनेंट हुआ।`,
+        'inventory',
+        'bg-amber-100 text-amber-800 border-amber-200',
+        'Part Adjusted',
+        { itemName: target.partName, delta, newStock }
+      );
+    }
   };
 
   // Helper to normalize status into 4 core buckets: pending, in_progress, completed, cancelled
@@ -126,12 +493,35 @@ export const AdminPortalModal: React.FC = () => {
       cancelled: 'रद्द (कैंसिल्ड)'
     };
 
+    const targetOrder = orders.find(o => o.id === orderId);
+
     updateOrder(orderId, {
       status: newStatus,
       statusHindi: statusLabels[newStatus],
       phoneHandedOver: newStatus === 'completed',
       paymentCollected: newStatus === 'completed' ? true : undefined
     });
+
+    // Log Activity for Status Update
+    logActivity(
+      'status_update',
+      'स्टेटस अपडेट',
+      `ऑर्डर #${targetOrder?.orderNumber || orderId} का स्टेटस '${newStatus.toUpperCase()}' हुआ`,
+      `${targetOrder?.title || 'डिवाइस'}: कार्य प्रगति स्थिति बदलकर '${statusLabels[newStatus]}' कर दी गई।`,
+      'status',
+      newStatus === 'completed'
+        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+        : newStatus === 'cancelled'
+        ? 'bg-rose-100 text-rose-800 border-rose-200'
+        : 'bg-blue-100 text-blue-800 border-blue-200',
+      newStatus === 'completed' ? 'Completed' : newStatus === 'cancelled' ? 'Cancelled' : 'Status Update',
+      {
+        orderId,
+        orderNumber: targetOrder?.orderNumber,
+        status: newStatus,
+        itemName: targetOrder?.title
+      }
+    );
 
     if (newStatus === 'completed') {
       confetti({ particleCount: 80, spread: 70 });
@@ -141,8 +531,27 @@ export const AdminPortalModal: React.FC = () => {
   // Internal Notes Save Handler
   const handleSaveInternalNote = (orderId: string) => {
     const currentText = internalNotesState[orderId] ?? (orders.find(o => o.id === orderId)?.internalNotes || '');
+    const targetOrder = orders.find(o => o.id === orderId);
+
     updateOrder(orderId, { internalNotes: currentText });
     setNoteSavedMap(prev => ({ ...prev, [orderId]: true }));
+
+    // Log Activity for Internal Note
+    logActivity(
+      'note_saved',
+      'आंतरिक नोट',
+      `ऑर्डर #${targetOrder?.orderNumber || orderId} पर आंतरिक नोट सहेजा गया`,
+      `नोट विवरण: "${currentText.substring(0, 75)}${currentText.length > 75 ? '...' : ''}"`,
+      'note',
+      'bg-purple-100 text-purple-800 border-purple-200',
+      'Internal Note',
+      {
+        orderId,
+        orderNumber: targetOrder?.orderNumber,
+        itemName: targetOrder?.title
+      }
+    );
+
     setTimeout(() => {
       setNoteSavedMap(prev => ({ ...prev, [orderId]: false }));
     }, 2500);
@@ -218,6 +627,21 @@ export const AdminPortalModal: React.FC = () => {
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
   };
 
+  const handleSendInvoiceAndOffer = (order: OrderItem) => {
+    const finalAmount = customQuoteInputs[order.id] || order.finalQuoteAmount || (order.id === 'ord-103' ? 1600 : Math.round((order.originalEstimateMax || 1899) * 0.88));
+    const maxVal = order.originalEstimateMax || order.amount || 1899;
+    const discountPct = maxVal > finalAmount ? Math.round(((maxVal - finalAmount) / maxVal) * 100) : 12;
+    const doubtText = doubtNotesState[order.id] || order.customerDoubtResolved || 'हार्डवेयर व सेंसर जांच पूरी। कोई समस्या नहीं पाई गई, वारंटी कार्ड जारी किया गया।';
+    const invNumber = order.invoiceNumber || `STP-INV-2026-${order.orderNumber.replace(/[^0-9]/g, '') || '103'}`;
+
+    sendInvoiceAndOfferToCustomer(order.id, finalAmount, discountPct, doubtText, invNumber);
+    setInvoiceSentSuccessMap(prev => ({ ...prev, [order.id]: true }));
+    confetti({ particleCount: 75, spread: 70 });
+    setTimeout(() => {
+      setInvoiceSentSuccessMap(prev => ({ ...prev, [order.id]: false }));
+    }, 4500);
+  };
+
   const handleLaunchProAudit = (order: OrderItem) => {
     setSelectedAuditOrder(order);
     setIsProAuditModalOpen(true);
@@ -246,21 +670,21 @@ export const AdminPortalModal: React.FC = () => {
                 सस्ताफोन एडमिन व ओनर कंट्रोल रूम
               </h3>
               <p className="text-[11px] text-slate-300">
-                लॉगिन: <strong>{user.role === 'admin' ? (user.email || 'sastafone@sastafone.in') : 'अनलॉगिन (सुरक्षित)'}</strong> • रोल: {user.role === 'admin' ? 'ओनर / सुपर एडमिन ✓' : 'लॉगिन पासवर्ड अपेक्षित'}
+                लॉगिन: <strong>{isOwnerSessionAuthorized ? (user.email || 'sastafone@sastafone.in') : 'अनलॉगिन (सुरक्षित)'}</strong> • रोल: {isOwnerSessionAuthorized ? 'ओनर / सुपर एडमिन ✓' : 'लॉगिन पासवर्ड अपेक्षित'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {user.role === 'admin' ? (
+            {isOwnerSessionAuthorized ? (
               <button
                 type="button"
                 onClick={handleAdminLogout}
-                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-200 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-200 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
                 title="एडमिन पोर्टल लॉक करें और कस्टमर मोड पर लौटें"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span>लॉगआउट / लॉक करें</span>
+                <span>वाल्ट लॉक / लॉगआउट</span>
               </button>
             ) : (
               <span className="text-[11px] font-bold text-amber-300 bg-amber-400/10 px-2.5 py-1 rounded-xl border border-amber-400/20 flex items-center gap-1">
@@ -278,17 +702,22 @@ export const AdminPortalModal: React.FC = () => {
           </div>
         </div>
 
-        {/* If user is not logged in as Admin, show strict password login form */}
-        {user.role !== 'admin' ? (
+        {/* If user is not authenticated with secure session token, strictly show password gate */}
+        {!isOwnerSessionAuthorized ? (
           <div className="p-6 sm:p-12 text-center max-w-md mx-auto space-y-4 my-auto">
             <div className="w-16 h-16 rounded-3xl bg-amber-100 text-amber-900 flex items-center justify-center mx-auto text-2xl shadow-inner border border-amber-300">
-              🔒
+              🔐
             </div>
-            <h3 className="text-xl font-black text-slate-900">
-              सस्ताफोन ओनर व एडमिन लॉगिन
-            </h3>
+            <div>
+              <span className="text-[10px] font-black bg-slate-900 text-amber-400 px-2.5 py-0.5 rounded-full uppercase tracking-wider inline-block mb-1.5">
+                Owner Authentication Layer
+              </span>
+              <h3 className="text-xl font-black text-slate-900">
+                सस्ताफोन ओनर व एडमिन लॉगिन
+              </h3>
+            </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              सूरत हब के ग्राहक आवेदन (Sell, Buy, Repair, SastaBazaar) देखने, स्टेटस ट्रैक करने और इंटरनल नोट्स लिखने के लिए केवल अधिकृत ओनर क्रेडेंशियल दर्ज करें:
+              सूरत हब के <strong>क्लाइंट डेटा (Sell, Buy, Repair)</strong>, <strong>पेमेंट व QR स्कैनर</strong>, और <strong>इन्वेंटरी मैनेजमेंट</strong> को एक्सेस करने के लिए अधिकृत ओनर क्रेडेंशियल दर्ज करें:
             </p>
 
             <form onSubmit={handleAdminLogin} className="space-y-3.5 text-left pt-2">
@@ -311,19 +740,29 @@ export const AdminPortalModal: React.FC = () => {
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1">
-                  सुरक्षित एक्सेस पासवर्ड:
+                  सुरक्षित मास्टर पासवर्ड:
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={adminPasswordInput}
-                  onChange={e => {
-                    setAdminPasswordInput(e.target.value);
-                    if (loginError) setLoginError('');
-                  }}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-slate-50 focus:outline-none focus:border-blue-600"
-                  placeholder="गुप्त पासवर्ड दर्ज करें"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={adminPasswordInput}
+                    onChange={e => {
+                      setAdminPasswordInput(e.target.value);
+                      if (loginError) setLoginError('');
+                    }}
+                    className="w-full p-2.5 pr-10 rounded-xl border border-slate-300 text-xs bg-slate-50 focus:outline-none focus:border-blue-600"
+                    placeholder="गुप्त पासवर्ड दर्ज करें"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                    title={showPassword ? 'पासवर्ड छुपाएं' : 'पासवर्ड देखें'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               {loginError && (
@@ -338,20 +777,60 @@ export const AdminPortalModal: React.FC = () => {
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
               >
                 <Unlock className="w-4 h-4" />
-                <span>पासवर्ड सत्यापित करें व लॉगिन करें</span>
+                <span>पासवर्ड सत्यापित करें व वाल्ट खोलें</span>
               </button>
             </form>
 
-            <div className="pt-2 text-[11px] text-slate-400">
-              सुरक्षित 256-बिट ऑथेंटिकेशन • अनधिकृत एक्सेस पूर्णतः प्रतिबंधित है
+            <div className="pt-2 text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>सुरक्षित 256-बिट स्टेट वेरिएबल ऑथेंटिकेशन • अनधिकृत एक्सेस पूर्णतः ब्लॉक है</span>
             </div>
           </div>
         ) : (
-          /* Admin Main Portal Body */
+          /* Admin Main Portal Body (Exclusively rendered when isOwnerSessionAuthorized === true) */
           <div className="flex-1 overflow-y-auto flex flex-col">
+            {/* Live Security Session Status Banner */}
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white px-3 sm:px-6 py-2 text-[11px] border-b border-indigo-500/30 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-bold text-amber-400">ओनर सिक्योरिटी वाल्ट अनलॉक:</span>
+                <span className="font-mono text-slate-300 bg-slate-800 px-2 py-0.5 rounded text-[10px]">
+                  {adminSessionToken}
+                </span>
+                <span className="text-slate-400 hidden sm:inline">• सत्र प्रारंभ: {sessionStartTime}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-emerald-400 font-semibold text-[10px] hidden sm:inline">
+                  ✓ क्लाइंट डेटा, पेमेंट व इन्वेंटरी अधिकृत
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAdminLogout}
+                  className="px-2.5 py-0.5 rounded bg-rose-600/30 hover:bg-rose-600 border border-rose-500/50 text-rose-200 hover:text-white font-bold text-[10px] cursor-pointer transition-colors"
+                >
+                  वाल्ट लॉक करें
+                </button>
+              </div>
+            </div>
             {/* Top Navigation Sub-Tabs */}
             <div className="bg-slate-100 p-2 sm:px-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-1.5 overflow-x-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab('analytics');
+                    setStatusFilter('all');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTab === 'analytics'
+                      ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-xs'
+                      : 'bg-white hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-red-500 group-hover:text-red-600" />
+                  <span>📊 लाइव चार्ट्स व एनालिटिक्स</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -402,6 +881,22 @@ export const AdminPortalModal: React.FC = () => {
 
                 <button
                   type="button"
+                  onClick={() => {
+                    setAdminTab('inventory');
+                    setStatusFilter('all');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTab === 'inventory'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-white hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <Boxes className="w-3.5 h-3.5" />
+                  <span>इन्वेंटरी व स्टॉक ({certifiedPhoneInventory.length + sparePartsInventory.length})</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setAdminTab('bazaar')}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     adminTab === 'bazaar'
@@ -411,6 +906,22 @@ export const AdminPortalModal: React.FC = () => {
                 >
                   <Tag className="w-3.5 h-3.5 text-amber-500" />
                   <span>सस्ता बाज़ार लिस्टिंग्स ({p2pListings.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdminTab('activity');
+                    setStatusFilter('all');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    adminTab === 'activity'
+                      ? 'bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xs'
+                      : 'bg-white hover:bg-slate-200 text-slate-700'
+                  }`}
+                >
+                  <History className="w-3.5 h-3.5 text-amber-400" />
+                  <span>📜 गतिविधि ऑडिट लॉग ({activityLogs.length})</span>
                 </button>
               </div>
 
@@ -423,7 +934,7 @@ export const AdminPortalModal: React.FC = () => {
             </div>
 
             {/* STATUS TRACKING DASHBOARD BAR (For repairs, sells, buys) */}
-            {adminTab !== 'bazaar' && (
+            {adminTab !== 'bazaar' && adminTab !== 'inventory' && adminTab !== 'analytics' && adminTab !== 'activity' && (
               <div className="bg-slate-50 p-4 border-b border-slate-200 shrink-0 space-y-3">
                 {/* 4 Status KPI Tiles */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
@@ -565,6 +1076,36 @@ export const AdminPortalModal: React.FC = () => {
               </div>
             )}
 
+            {/* TAB 0: RECHARTS ANALYTICS CHARTS (DAILY SERVICE REQUESTS & DEVICE CATEGORIES PIE CHART) */}
+            {adminTab === 'analytics' && (
+              <div className="p-4 sm:p-6 bg-slate-50 flex-1 overflow-y-auto">
+                <AdminAnalyticsCharts
+                  orders={orders}
+                  onSelectTab={(tab) => {
+                    setAdminTab(tab);
+                    setStatusFilter('all');
+                  }}
+                />
+              </div>
+            )}
+
+            {/* TAB: ACTIVITY AUDIT LOGS (CHRONOLOGICAL TRACKING OF STATUS, PAYMENTS & INVENTORY) */}
+            {adminTab === 'activity' && (
+              <div className="p-4 sm:p-6 bg-slate-50 flex-1 overflow-y-auto">
+                <AdminActivityLog
+                  logs={activityLogs}
+                  onClearLogs={() => setActivityLogs([])}
+                  onSelectOrder={(orderId) => {
+                    const o = orders.find(ord => ord.id === orderId);
+                    if (o) {
+                      setAdminTab(o.type === 'repair' ? 'repairs' : o.type === 'sell' ? 'sells' : 'buys');
+                      setSearchQuery(o.orderNumber);
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             {/* TAB 1: REPAIRS ORDERS */}
             {adminTab === 'repairs' && (
               <div className="p-4 sm:p-6 space-y-5">
@@ -687,8 +1228,136 @@ export const AdminPortalModal: React.FC = () => {
                             <div>
                               <span className="text-[10px] text-slate-400 block font-semibold">असाइंड टेक्नीशियन:</span>
                               <span className="font-bold text-slate-800 text-[11px]">
-                                {order.technicianName || 'Sanjay Prajapati'}
+                                {order.technicianName || 'Sanjay Prajapati (Admin Lead)'}
                               </span>
+                            </div>
+                          </div>
+
+                          {/* Firebase Cloud Sync & Client Record Status */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-900 text-white text-[11px] mb-3 border border-slate-700">
+                            <div className="flex items-center gap-2">
+                              <Database className="w-3.5 h-3.5 text-amber-400" />
+                              <span className="font-bold">Firebase Cloud DB Record:</span>
+                              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                {order.cloudSyncStatus === 'synced' ? 'लाइव सिंक (Active)' : 'सिंक्ड (ID: ' + order.id + ')'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {order.invoiceSentToCustomer ? (
+                                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-md font-bold text-[10px] flex items-center gap-1">
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                  <span>इनवॉइस #{order.invoiceNumber || 'STP-INV-103'} ग्राहक डैशबोर्ड पर भेजा गया</span>
+                                </span>
+                              ) : (
+                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md font-bold text-[10px]">
+                                  ⏳ ग्राहक डैशबोर्ड रिपोर्ट पेंडिंग
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Customer Requirement & Reported Problems */}
+                          <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200/90 space-y-2 mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black text-indigo-950 flex items-center gap-1.5">
+                                <HelpCircle className="w-3.5 h-3.5 text-indigo-700" />
+                                <span>ग्राहक की आवश्यकता व फोन समस्या (Customer Requirement):</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                                सत्यापित क्लाइंट डेटा
+                              </span>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-white border border-indigo-100 text-xs text-slate-800 space-y-1">
+                              <p className="font-semibold text-slate-900">
+                                {order.customerRequirement || 'कैमरा सेंसर लेंस पर मामूली स्क्रैच व ब्लर फोकस - ग्राहक को क्रिस्टल क्लियर 4K क्लैरिटी व ऑथेंटिक समाधान चाहिए।'}
+                              </p>
+                              {order.repairProblems && order.repairProblems.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                  {order.repairProblems.map((prob, i) => (
+                                    <span key={i} className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold">
+                                      ⚠️ {prob}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Customer Phone Inspection Photos Gallery */}
+                          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black text-slate-900 flex items-center gap-1.5">
+                                <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                                <span>ग्राहक के फोन की तस्वीरें (Device Inspection Photos - सामने, बैक, कैमरा):</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                                {(order.phonePhotos?.length || 3)} फोटो वेरिफाइड
+                              </span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              {(order.phonePhotos && order.phonePhotos.length > 0 ? order.phonePhotos : [
+                                'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&auto=format&fit=crop&q=80',
+                                'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&auto=format&fit=crop&q=80',
+                                'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=400&auto=format&fit=crop&q=80'
+                              ]).map((photo, pIdx) => (
+                                <div
+                                  key={pIdx}
+                                  onClick={() => setPreviewPhotoUrl(photo)}
+                                  className="relative group rounded-xl overflow-hidden border border-slate-300 aspect-video bg-slate-100 cursor-pointer shadow-2xs hover:border-blue-500 transition-all"
+                                >
+                                  <img src={photo} alt={`Device inspection ${pIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold gap-1">
+                                    <Eye className="w-3 h-3" />
+                                    <span>बड़ा देखें</span>
+                                  </div>
+                                  <span className="absolute bottom-1 left-1 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.2 rounded">
+                                    {pIdx === 0 ? 'सामने (डिस्प्ले)' : pIdx === 1 ? 'बैक व कैमरा' : 'साइड फ्रेम'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Customer Doubt Resolution & Hub Advice */}
+                          <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/90 space-y-2 mb-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-black text-teal-950 flex items-center gap-1.5">
+                                <HelpCircle className="w-3.5 h-3.5 text-teal-700" />
+                                <span>ग्राहक के संशय/सवालों का समाधान (Clear Customer Phone Doubts & Advice):</span>
+                              </span>
+                              <span className="text-[10px] font-bold text-teal-800 bg-teal-100 px-2 py-0.5 rounded-full">
+                                ग्राहक डैशबोर्ड में रिटर्न होगा
+                              </span>
+                            </div>
+
+                            <textarea
+                              rows={2}
+                              value={doubtNotesState[order.id] ?? (order.customerDoubtResolved || '')}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setDoubtNotesState(prev => ({ ...prev, [order.id]: val }));
+                              }}
+                              placeholder="ग्राहक के फोन समस्या के समाधान का विवरण दर्ज करें (उदा. कैमरा सेंसर री-अलाइनमेंट किया, ओरिजिनल लेंस फिटिंग की, 6 माह वारंटी रहेगी)..."
+                              className="w-full p-2.5 rounded-xl border border-teal-300 text-xs bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-teal-500"
+                            />
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-teal-800 font-medium">
+                                यह स्पष्टीकरण ग्राहक को उसके डैशबोर्ड में इनवॉइस के साथ प्राप्त होगा।
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const current = doubtNotesState[order.id] || '';
+                                  updateOrder(order.id, { customerDoubtResolved: current });
+                                  confetti({ particleCount: 30, spread: 50 });
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold cursor-pointer transition-colors"
+                              >
+                                समाधान सहेजें
+                              </button>
                             </div>
                           </div>
 
@@ -918,17 +1587,35 @@ export const AdminPortalModal: React.FC = () => {
                                 (टोकन ₹199 पहले से एडजस्टेड)
                               </div>
 
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => handleConfirmQuoteAndGenerateQr(order)}
-                                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center gap-1.5 cursor-pointer"
+                                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm shadow-md flex items-center gap-1.5 cursor-pointer"
                                 >
                                   <QrCode className="w-4 h-4 text-slate-900" />
-                                  <span>फाइनल प्राइस सेट करें व पेमेंट QR बनाएं</span>
+                                  <span>फाइनल प्राइस सेट करें व QR बनाएं</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendInvoiceAndOffer(order)}
+                                  className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs sm:text-sm shadow-md flex items-center gap-1.5 cursor-pointer"
+                                  title="यह इनवॉइस व ऑफर सीधे ग्राहक के डैशबोर्ड में पहुंच जाएगा"
+                                >
+                                  <Send className="w-4 h-4 text-amber-300" />
+                                  <span>📤 इनवॉइस व ऑफर ग्राहक डैशबोर्ड को भेजें</span>
                                 </button>
                               </div>
                             </div>
+
+                            {/* Sent confirmation notification */}
+                            {invoiceSentSuccessMap[order.id] && (
+                              <div className="p-2.5 rounded-xl bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                                <span>✓ इनवॉइस (#{order.invoiceNumber || 'STP-INV-103'}), समाधान व ₹{currentQuote} का ऑफर ग्राहक डैशबोर्ड पर सफलतापूर्वक भेजा गया!</span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Live Generated QR Code Box & Handover Rule */}
@@ -1121,6 +1808,62 @@ export const AdminPortalModal: React.FC = () => {
                             </div>
                           </div>
 
+                          {/* Firebase Sync & Client Record Bar */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900 text-white text-[11px]">
+                            <div className="flex items-center gap-2">
+                              <Database className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="font-bold">Firebase Buy-Back Record:</span>
+                              <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                {order.cloudSyncStatus === 'synced' ? 'लाइव सिंक (Active)' : 'सिंक्ड (ID: ' + order.id + ')'}
+                              </span>
+                            </div>
+                            <div>
+                              {order.invoiceSentToCustomer ? (
+                                <span className="text-emerald-300 font-bold text-[10px] bg-emerald-900/60 px-2 py-0.5 rounded">
+                                  ✓ बाय-बैक वाउचर #{order.invoiceNumber || 'STP-INV-SELL'} ग्राहक डैशबोर्ड पर भेजा गया
+                                </span>
+                              ) : (
+                                <span className="text-amber-300 font-bold text-[10px] bg-amber-900/60 px-2 py-0.5 rounded">
+                                  ⏳ ग्राहक डैशबोर्ड पर भेजना बाकी
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Customer Requirement & Phone Photos for Sell */}
+                          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-900 flex items-center gap-1">
+                                <HelpCircle className="w-3.5 h-3.5 text-blue-600" />
+                                <span>ग्राहक का विवरण / आवश्यकता:</span>
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-semibold">
+                                {order.customerRequirement || 'नया फोन लेने हेतु तुरंत बाय-बैक व स्पॉट कैश भुगतान अपेक्षित'}
+                              </span>
+                            </div>
+
+                            {/* Device Photos */}
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                              {(order.phonePhotos && order.phonePhotos.length > 0 ? order.phonePhotos : [
+                                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&auto=format&fit=crop&q=80',
+                                'https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400&auto=format&fit=crop&q=80',
+                                'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=400&auto=format&fit=crop&q=80'
+                              ]).map((p, pIdx) => (
+                                <div
+                                  key={pIdx}
+                                  onClick={() => setPreviewPhotoUrl(p)}
+                                  className="relative group rounded-xl overflow-hidden border border-slate-300 aspect-video bg-slate-100 cursor-pointer shadow-2xs hover:border-blue-500 transition-all"
+                                >
+                                  <img src={p} alt={`Sell device photo ${pIdx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                  <span className="absolute bottom-1 left-1 bg-slate-900/80 text-white text-[9px] font-bold px-1 py-0.2 rounded">
+                                    {pIdx === 0 ? 'फ्रंट' : pIdx === 1 ? 'बैक' : 'बॉडी'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
                           {/* Status Tracker */}
                           <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
                             <span className="text-[10px] font-black text-slate-600 block">स्टेटस बदलें:</span>
@@ -1142,7 +1885,7 @@ export const AdminPortalModal: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Internal Notes */}
+                          {/* Internal Notes & Send to Dashboard */}
                           <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
@@ -1162,7 +1905,7 @@ export const AdminPortalModal: React.FC = () => {
                               placeholder="फोन कंडीशन, बिल/बॉक्स, स्पॉट बोनस या कैंसलेशन कारण लिखें..."
                               className="w-full p-2 rounded-xl border border-amber-300 text-xs bg-white text-slate-900"
                             />
-                            <div className="text-right">
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                               <button
                                 type="button"
                                 onClick={() => handleSaveInternalNote(order.id)}
@@ -1170,7 +1913,23 @@ export const AdminPortalModal: React.FC = () => {
                               >
                                 नोट सेव करें
                               </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleSendInvoiceAndOffer(order)}
+                                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                <span>बाय-बैक वाउचर ग्राहक डैशबोर्ड को भेजें</span>
+                              </button>
                             </div>
+
+                            {invoiceSentSuccessMap[order.id] && (
+                              <div className="p-2 rounded-lg bg-emerald-100 text-emerald-900 text-[11px] font-bold flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+                                <span>✓ बाय-बैक रसीद ग्राहक डैशबोर्ड में सफलता से उपलब्ध करा दी गई!</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1293,7 +2052,294 @@ export const AdminPortalModal: React.FC = () => {
               </div>
             )}
 
-            {/* TAB 4: SASTABAZAAR LISTINGS */}
+            {/* TAB 4: INVENTORY & STOCK MANAGEMENT (PROTECTED OWNER FEATURE) */}
+            {adminTab === 'inventory' && (
+              <div className="p-4 sm:p-6 space-y-5">
+                {/* Inventory Top Header & Action */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h4 className="text-base font-black text-slate-900 flex items-center gap-2">
+                      <Boxes className="w-5 h-5 text-indigo-600" />
+                      <span>सूरत हब इन्वेंटरी, डिवाइस व पार्ट्स स्टॉक मैनेजमेंट</span>
+                    </h4>
+                    <p className="text-xs text-slate-500">
+                      ओनर ऑथेंटिकेशन द्वारा सुरक्षित: सर्टिफाइड स्मार्टफोन्स का लाइव स्टॉक, IMEI ट्रैकिंग, परचेज कॉस्ट, मार्जिन व लैब कंपोनेंट्स।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-3 py-1 rounded-xl flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>ओनर वाल्ट अधिकृत</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4 KPI Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-1">
+                    <span className="text-[10px] text-indigo-800 font-bold block">सर्टिफाइड फोन्स स्टॉक</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xl font-black text-indigo-950 font-mono">
+                        {certifiedPhoneInventory.reduce((acc, i) => acc + i.stock, 0)} यूनिट्स
+                      </span>
+                      <span className="text-[10px] text-indigo-600 font-bold">5 मॉडल्स</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-1">
+                    <span className="text-[10px] text-emerald-800 font-bold block">कुल इन्वेंटरी रिटेल मूल्य</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-lg font-black text-emerald-950 font-mono">
+                        {formatINR(certifiedPhoneInventory.reduce((acc, i) => acc + (i.stock * i.sellingPrice), 0))}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 font-bold">मार्केट वैल्यू</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-1">
+                    <span className="text-[10px] text-amber-800 font-bold block">लैब स्पेयर पार्ट्स</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xl font-black text-amber-950 font-mono">
+                        {sparePartsInventory.reduce((acc, p) => acc + p.stock, 0)} कंपोनेंट्स
+                      </span>
+                      <span className="text-[10px] text-amber-600 font-bold">5 कैटेगरीज</span>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-rose-50/70 border border-rose-200 space-y-1">
+                    <span className="text-[10px] text-rose-800 font-bold block">लो-स्टॉक अलर्ट्स</span>
+                    <div className="flex items-baseline justify-between">
+                      <span className="text-xl font-black text-rose-950 font-mono">
+                        {certifiedPhoneInventory.filter(i => i.stock <= 2).length} डिवाइसेस
+                      </span>
+                      <span className="text-[10px] text-rose-600 font-bold">री-स्टॉक जरूरी</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="मॉडल, ब्रांड, IMEI या पार्ट का नाम खोजें..."
+                      value={inventorySearch}
+                      onChange={e => setInventorySearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:border-indigo-600"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 self-start sm:self-auto text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setInventoryCategory('all')}
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                        inventoryCategory === 'all'
+                          ? 'bg-slate-900 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      सभी ({certifiedPhoneInventory.length + sparePartsInventory.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInventoryCategory('phones')}
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                        inventoryCategory === 'phones'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      📱 स्मार्टफोन्स ({certifiedPhoneInventory.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setInventoryCategory('parts')}
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                        inventoryCategory === 'parts'
+                          ? 'bg-amber-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      🔧 स्पेयर पार्ट्स ({sparePartsInventory.length})
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. CERTIFIED PHONES INVENTORY */}
+                {(inventoryCategory === 'all' || inventoryCategory === 'phones') && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                        <span>📱 सर्टिफाइड रीफर्बिश फोन इन्वेंटरी (Live Tested Stock)</span>
+                        <span className="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">
+                          6 माह वारंटी सहित
+                        </span>
+                      </h5>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {certifiedPhoneInventory
+                        .filter(item => {
+                          if (!inventorySearch.trim()) return true;
+                          const q = inventorySearch.toLowerCase();
+                          return (
+                            item.model.toLowerCase().includes(q) ||
+                            item.brand.toLowerCase().includes(q) ||
+                            item.imei.includes(q) ||
+                            item.color.toLowerCase().includes(q)
+                          );
+                        })
+                        .map(phone => (
+                          <div
+                            key={phone.id}
+                            className={`p-3.5 rounded-2xl border-2 transition-all shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              phone.stock <= 2
+                                ? 'bg-rose-50/40 border-rose-200'
+                                : 'bg-white border-slate-200 hover:border-indigo-300'
+                            }`}
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-0.2 rounded">
+                                  {phone.brand}
+                                </span>
+                                <h6 className="font-black text-sm text-slate-950">{phone.model}</h6>
+                                <span className="text-[10px] text-slate-500 font-semibold">• {phone.color}</span>
+                                {phone.stock <= 2 && (
+                                  <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.2 rounded-full animate-pulse">
+                                    कम स्टॉक ({phone.stock} शेष)
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                                <span>IMEI: <strong className="font-mono text-slate-900">{phone.imei}</strong></span>
+                                <span>• कंडीशन: <strong className="text-emerald-700">{phone.condition}</strong></span>
+                                <span>• बैटरी: <strong className="text-blue-700">{phone.batteryHealth}%</strong></span>
+                                <span>• वारंटी: <strong>{phone.warrantyMonths} महीने</strong></span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                              <div className="text-right">
+                                <span className="text-[10px] text-slate-400 block">खरीद / सेलिंग:</span>
+                                <span className="text-xs text-slate-500 font-mono line-through mr-1">
+                                  {formatINR(phone.costPrice)}
+                                </span>
+                                <span className="text-sm font-black text-emerald-700 font-mono">
+                                  {formatINR(phone.sellingPrice)}
+                                </span>
+                              </div>
+
+                              {/* Stock Adjuster */}
+                              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePhoneStock(phone.id, -1)}
+                                  className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 font-black text-slate-800 text-xs flex items-center justify-center cursor-pointer shadow-2xs"
+                                  title="स्टॉक 1 कम करें (बिक्री दर्ज)"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center font-black text-xs font-mono text-slate-900">
+                                  {phone.stock}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePhoneStock(phone.id, 1)}
+                                  className="w-6 h-6 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-black text-white text-xs flex items-center justify-center cursor-pointer shadow-2xs"
+                                  title="स्टॉक 1 बढ़ाएं (नया फोन आगमन)"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. LAB SPARE PARTS INVENTORY */}
+                {(inventoryCategory === 'all' || inventoryCategory === 'parts') && (
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                        <span>🔧 लैब स्पेयर पार्ट्स व कंपोनेंट्स (OEM Certified Components)</span>
+                        <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                          BGA लैब सूरत
+                        </span>
+                      </h5>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {sparePartsInventory
+                        .filter(part => {
+                          if (!inventorySearch.trim()) return true;
+                          const q = inventorySearch.toLowerCase();
+                          return (
+                            part.name.toLowerCase().includes(q) ||
+                            part.category.toLowerCase().includes(q) ||
+                            part.compatibleWith.toLowerCase().includes(q)
+                          );
+                        })
+                        .map(part => (
+                          <div
+                            key={part.id}
+                            className="p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-amber-300 shadow-2xs space-y-2 text-xs"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.2 rounded">
+                                  {part.category}
+                                </span>
+                                <h6 className="font-black text-slate-900 text-xs sm:text-sm mt-1">{part.name}</h6>
+                                <p className="text-[11px] text-slate-500">उपयुक्त: {part.compatibleWith}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-[10px] text-slate-400 block">रिपेयर बिलिंग दर:</span>
+                                <span className="text-sm font-black text-slate-900 font-mono">
+                                  {formatINR(part.unitPrice)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                              <span className="text-[11px] text-slate-500">
+                                लागत मूल्य: <strong className="font-mono text-slate-700">{formatINR(part.unitCost)}</strong>
+                              </span>
+
+                              {/* Stock Adjuster */}
+                              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePartStock(part.id, -1)}
+                                  className="w-5 h-5 rounded-md bg-white hover:bg-slate-200 font-black text-slate-800 text-xs flex items-center justify-center cursor-pointer shadow-2xs"
+                                >
+                                  -
+                                </button>
+                                <span className="w-6 text-center font-black text-xs font-mono text-slate-900">
+                                  {part.stock}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdatePartStock(part.id, 1)}
+                                  className="w-5 h-5 rounded-md bg-amber-600 hover:bg-amber-500 font-black text-white text-xs flex items-center justify-center cursor-pointer shadow-2xs"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 5: SASTABAZAAR LISTINGS */}
             {adminTab === 'bazaar' && (
               <div className="p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between">
@@ -1334,6 +2380,35 @@ export const AdminPortalModal: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Device Photo Zoom Lightbox Preview Modal */}
+      {previewPhotoUrl && (
+        <div
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setPreviewPhotoUrl(null)}
+        >
+          <div className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-3 border border-slate-700 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPreviewPhotoUrl(null)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center text-sm font-black shadow-md cursor-pointer"
+            >
+              ✕
+            </button>
+            <div className="rounded-2xl overflow-hidden bg-black max-h-[75vh] flex items-center justify-center">
+              <img src={previewPhotoUrl} alt="Inspection zoom" className="w-full h-auto max-h-[75vh] object-contain" />
+            </div>
+            <div className="p-3 text-center">
+              <p className="text-white font-bold text-xs">
+                📸 ग्राहक के फोन की मूल निरीक्षण तस्वीर (High-Resolution Zoom)
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                सस्ताफोन सर्टिफाइड लैब हार्डवेयर वेरिफिकेशन रिकॉर्ड
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

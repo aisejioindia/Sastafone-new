@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EF4444"/>
+      <stop offset="50%" stop-color="#DC2626"/>
+      <stop offset="100%" stop-color="#B91C1C"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Red Background Squircle -->
+  <rect width="64" height="64" rx="16" fill="url(#redGrad)"/>
+
+  <!-- Subtle Inner Border Highlight -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="14.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="1.5"/>
+
+  <!-- Crisp White Smartphone Silhouette -->
+  <g filter="url(#shadow)">
+    <!-- Phone Body -->
+    <rect x="18" y="9" width="28" height="46" rx="6" fill="#FFFFFF"/>
+    
+    <!-- Phone Screen (Red inset with white text/graphic) -->
+    <rect x="20.5" y="14" width="23" height="34" rx="3" fill="#DC2626"/>
+
+    <!-- Speaker / Dynamic Island Notch -->
+    <rect x="27" y="11" width="10" height="2" rx="1" fill="#DC2626" opacity="0.9"/>
+
+    <!-- Bold White Letter "S" for Sastafone inside screen -->
+    <path d="M36 21.5C36 19.8 34.5 18.5 32 18.5C29.2 18.5 27.8 20 27.8 21.6C27.8 24.6 36.2 24.8 36.2 29.5C36.2 32.5 33.6 34 31.8 34C29 34 27.4 32.2 27.4 30.2H29.6C29.6 31.3 30.5 32.3 31.8 32.3C33.4 32.3 34.2 31.3 34.2 29.6C34.2 26.5 25.8 26.3 25.8 21.6C25.8 18.7 28.3 16.8 32 16.8C35.5 16.8 38 18.8 38 21.5H36Z" fill="#FFFFFF"/>
+
+    <!-- Sparkle / Verified Star in Corner -->
+    <polygon points="39,26 40.2,28.8 43,30 40.2,31.2 39,34 37.8,31.2 35,30 37.8,28.8" fill="#FDE047" opacity="0.95"/>
+
+    <!-- Bottom Home Indicator Bar -->
+    <rect x="28" y="51" width="8" height="2" rx="1" fill="#DC2626" opacity="0.8"/>
+  </g>
+</svg>

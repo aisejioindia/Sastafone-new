@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { SastafoneLogo } from './SastafoneLogo';
 import { MapPin, Phone, ShieldCheck, Sparkles, User, ShoppingBag, Wrench, ArrowRight, MessageCircle, Building2, Tag, Star, SlidersHorizontal } from 'lucide-react';
 import { SASTAPHONE_PHONE, WHATSAPP_NUMBER } from '../data/mockData';
 import { generateWhatsAppLink } from '../utils/valuation';
@@ -78,20 +79,10 @@ export const Header: React.FC = () => {
               setActiveTab('sell');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="flex items-center gap-2 group text-left cursor-pointer"
+            className="group text-left cursor-pointer transition-transform hover:scale-[1.02]"
+            title="Sastafone Surat - होमपेज"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-blue-700 to-amber-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-              <span className="text-xl font-black tracking-tighter">S📱</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xl font-black text-slate-900 tracking-tight">Sasta<span className="text-blue-600">phone</span></span>
-                <span className="text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200 px-1.5 py-0.2 rounded-full">
-                  सस्ताफोन
-                </span>
-              </div>
-              <p className="text-[10px] text-blue-700 font-bold">सूरत का नंबर 1 मोबाइल हब (sastaphone.in)</p>
-            </div>
+            <SastafoneLogo size="md" variant="light" showSubtitle={true} />
           </button>
 
           {/* Surat Locality Pin Button */}

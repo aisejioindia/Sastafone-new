@@ -18,9 +18,15 @@ import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
 import { ProAuditModal } from './components/ProAuditModal';
 import { AdminPortalModal } from './components/AdminPortalModal';
+import { applyPageSeo } from './utils/seoData';
 
 function MainApp() {
-  const { activeTab } = useApp();
+  const { activeTab, language } = useApp();
+
+  // Dynamic SEO Title & Meta Descriptions updates for Googlebot & Users
+  React.useEffect(() => {
+    applyPageSeo(activeTab, language);
+  }, [activeTab, language]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans selection:bg-blue-600 selection:text-white">

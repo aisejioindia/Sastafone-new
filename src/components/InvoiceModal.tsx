@@ -49,11 +49,14 @@ export const InvoiceModal: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start justify-between gap-4 pb-4 border-b border-slate-200">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-amber-500 text-white flex items-center justify-center font-black text-sm">
+                <span className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 text-white flex items-center justify-center font-black text-sm shadow-xs border border-red-400/30">
                   S📱
                 </span>
                 <span className="text-xl font-black text-slate-900">
-                  Sasta<span className="text-blue-600">phone</span> Surat
+                  Sasta<span className="text-red-600">fone</span> Surat
+                </span>
+                <span className="text-[10px] font-black bg-red-600 text-white px-2 py-0.5 rounded-full">
+                  सस्ताफोन
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 mt-1 font-medium">

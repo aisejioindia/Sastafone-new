@@ -43,11 +43,54 @@ export const HeroSection: React.FC = () => {
             )}
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mb-6 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mb-5 leading-relaxed">
             {language === 'hi'
               ? 'सूरत में पुराना फोन बेचें तुरंत नकद में, ₹199 में घर बैठे रिपेयर (बिल में एडजस्टेड), सर्टिफाइड सेकंड-हैंड फोन डील्स और सस्ता बाज़ार P2P मोबाइल मंडी।'
               : 'Sell old phones for instant cash, get doorstep repair at ₹199, buy certified refurbished phones, or trade directly on SastaBazaar in Surat.'}
           </p>
+
+          {/* PREMIUM LIVE REPAIR & DIRECT PROBLEM SUPPORT BANNER */}
+          <div className="max-w-4xl mx-auto mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/20 border border-red-400/40 relative overflow-hidden text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black tracking-wide uppercase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
+                  <span>सूरत डोरस्टेप रिपेयर • मात्र ₹199 विज़िट टोकन</span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                  फोन में कोई भी समस्या हो? 30 मिनट में घर बैठे ठीक कराएं!
+                </h3>
+                <p className="text-xs text-rose-100 leading-relaxed max-w-xl">
+                  डिस्प्ले टूटा हो, बैटरी ड्रेन, कैमरा सेंसर ब्लर या चार्जिंग समस्या — 100% ओरिजिनल पार्ट्स, 90 दिन वारंटी व नो-फिक्स नो-फी (₹99 तुरंत रिफंड) गारंटी।
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('repair');
+                    document.getElementById('repair-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-red-600 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Wrench className="w-4 h-4 text-red-600" />
+                  <span>रिपेयर बुक करें</span>
+                </button>
+
+                <a
+                  href={`https://wa.me/919372802044?text=${encodeURIComponent(
+                    'नमस्ते Sastafone Surat! मेरे फोन में समस्या है, मुझे रिपेयरिंग/बाय-बैक के लिए सीधे बात करनी है।'
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-white font-bold text-xs sm:text-sm border border-white/20 shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>💬 सीधे कनेक्ट करें</span>
+                </a>
+              </div>
+            </div>
+          </div>
 
           {/* 4 Main Interactive Service Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl mx-auto text-left">

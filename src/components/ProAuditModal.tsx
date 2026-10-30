@@ -87,10 +87,11 @@ export const ProAuditModal: React.FC = () => {
   );
 
   const [auditorName, setAuditorName] = useState(
-    selectedAuditOrder?.proAudit?.auditorName || 'संजय प्रजापति (सूरत टेक लीड #1)'
+    selectedAuditOrder?.proAudit?.auditorName || 'संजय प्रजापति (सस्ताफोन ओनर व सर्टिफाइड टेक लीड)'
   );
 
-  if (!isProAuditModalOpen || !selectedAuditOrder) return null;
+  // Pro-Audit is strictly accessible by Admin (Shopkeeper / Owner Technician)
+  if (!isProAuditModalOpen || !selectedAuditOrder || user.role !== 'admin') return null;
 
   const handleToggleTouchPoint = (index: number) => {
     setTouchGrid(prev => {

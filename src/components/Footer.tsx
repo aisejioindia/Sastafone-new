@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { SastafoneLogo } from './SastafoneLogo';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
 import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones, Lock } from 'lucide-react';
 
@@ -72,16 +73,8 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-slate-800">
           {/* Col 1: Brand & Surat Focus */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-amber-500 flex items-center justify-center text-white font-black text-sm">
-                S📱
-              </div>
-              <span className="text-lg font-black text-white tracking-tight">
-                Sasta<span className="text-blue-400">phone</span>
-              </span>
-              <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded font-mono">
-                सूरत
-              </span>
+            <div>
+              <SastafoneLogo variant="dark" size="sm" showSubtitle={false} />
             </div>
 
             <p className="text-slate-400 leading-relaxed text-xs">

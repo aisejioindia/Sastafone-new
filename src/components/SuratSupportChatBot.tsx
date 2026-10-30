@@ -15,7 +15,6 @@ import {
   ChevronDown,
   RotateCcw,
   ExternalLink,
-  Settings,
   CheckCircle2,
   AlertCircle,
   ThumbsUp,
@@ -84,7 +83,7 @@ const FAQ_DROPDOWN_OPTIONS = [
 export const SuratSupportChatBot: React.FC = () => {
   const { selectedLocality, setActiveTab, orders } = useApp();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveChatTab] = useState<'chat' | 'email_ticket' | 'settings'>('chat');
+  const [activeTab, setActiveChatTab] = useState<'chat' | 'email_ticket'>('chat');
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [selectedFaq, setSelectedFaq] = useState('');
@@ -96,11 +95,8 @@ export const SuratSupportChatBot: React.FC = () => {
   const [emailMessage, setEmailMessage] = useState('');
   const [emailSentSuccess, setEmailSentSuccess] = useState(false);
 
-  // OpenRouter Custom API Key (optional user-provided or env)
-  const [openRouterKey, setOpenRouterKey] = useState<string>(() => {
-    return localStorage.getItem('sastafone_openrouter_key') || '';
-  });
-  const [keySavedBadge, setKeySavedBadge] = useState(false);
+  // OpenRouter Custom API Key (built-in configuration)
+  const openRouterKey = ((import.meta as any).env?.VITE_OPENROUTER_API_KEY as string) || localStorage.getItem('sastafone_openrouter_key') || 'sk-C6UfRDd2royoDuFCUHkaBdPYwIUvDVmCFDSiqiDiNRuB8cxw';
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -164,27 +160,54 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
         })
       });
 
-      // If OpenRouter rejects (e.g. key is direct OpenAI or custom), try OpenAI endpoint
+      // If OpenRouter rejects (e.g. key is Moonshot Kimi, direct OpenAI, or custom), try Moonshot Kimi then OpenAI
       if (!response.ok && (response.status === 401 || response.status === 404)) {
+        // Try Moonshot AI (Kimi AI)
         try {
-          response = await fetch('https://api.openai.com/v1/chat/completions', {
+          const kimiRes = await fetch('https://api.moonshot.cn/v1/chat/completions', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${keyToUse}`,
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              model: 'gpt-4o-mini',
+              model: 'moonshot-v1-8k',
               messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
               ],
-              temperature: 0.7,
-              max_tokens: 600
+              temperature: 0.7
             })
           });
-        } catch (e2) {
-          // ignore fallback
+          if (kimiRes.ok) {
+            response = kimiRes;
+          }
+        } catch (eKimi) {
+          // ignore and proceed to OpenAI
+        }
+
+        // If not Kimi, try standard OpenAI
+        if (!response.ok) {
+          try {
+            response = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${keyToUse}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 600
+              })
+            });
+          } catch (e2) {
+            // ignore fallback
+          }
         }
       }
 
@@ -334,15 +357,6 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
         }
       ]);
     }, 1800);
-  };
-
-  const handleSaveOpenRouterKey = (e: React.FormEvent) => {
-    e.preventDefault();
-    localStorage.setItem('sastafone_openrouter_key', openRouterKey.trim());
-    setKeySavedBadge(true);
-    setTimeout(() => setKeySavedBadge(false), 2000);
-  };
-
   const handleClearChat = () => {
     setMessages([
       {
@@ -355,104 +369,118 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
   };
 
   return (
-    <aside aria-label="Surat AI Support Desk" className="fixed bottom-5 right-4 sm:right-6 z-40">
+    <>
       {/* Floating Launcher Button */}
       {!isOpen && (
-        <div className="flex items-center gap-2 group">
-          {/* Tooltip on desktop */}
-          <div className="hidden sm:flex flex-col items-end bg-slate-950/95 text-white text-xs py-2 px-3.5 rounded-2xl shadow-xl border border-blue-500/30 backdrop-blur-md opacity-95 group-hover:opacity-100 transition-all duration-200">
-            <div className="flex items-center gap-1.5 font-black text-amber-400">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
-              <span>सूरत AI सपोर्ट डेस्क (24x7)</span>
+        <aside aria-label="Surat AI Support Desk" className="fixed bottom-5 right-4 sm:right-6 z-40">
+          <div className="flex items-center gap-2 group">
+            {/* Tooltip on desktop */}
+            <div className="hidden sm:flex flex-col items-end bg-slate-950/95 text-white text-xs py-2 px-3.5 rounded-2xl shadow-xl border border-blue-500/30 backdrop-blur-md opacity-95 group-hover:opacity-100 transition-all duration-200">
+              <div className="flex items-center gap-1.5 font-black text-amber-400">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
+                <span>सूरत AI सपोर्ट डेस्क (24x7)</span>
+              </div>
+              <span className="text-[11px] text-slate-300">
+                लाइव चैट • ईमेल <strong className="text-blue-300">sastafone@sastafone.in</strong>
+              </span>
             </div>
-            <span className="text-[11px] text-slate-300">
-              लाइव चैट • ईमेल <strong className="text-blue-300">sastafone@sastafone.in</strong>
-            </span>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-amber-500 hover:from-blue-500 hover:to-amber-400 text-white flex items-center justify-center shadow-xl shadow-blue-600/35 hover:scale-110 active:scale-95 transition-all duration-200 relative cursor-pointer"
-            title="सस्ताफोन सूरत AI सपोर्ट डेस्क खोलें"
-          >
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white animate-ping" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white" />
-            <Bot className="w-7 h-7 text-white" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="w-14 h-14 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white flex items-center justify-center shadow-xl shadow-red-600/35 hover:scale-110 active:scale-95 transition-all duration-200 relative cursor-pointer border border-red-400/30"
+              title="सस्ताफोन सूरत AI सपोर्ट डेस्क खोलें"
+            >
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white animate-ping" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white" />
+              <Bot className="w-7 h-7 text-white" />
+            </button>
+          </div>
+        </aside>
       )}
 
-      {/* Expanded Interactive Chat Modal */}
+      {/* Expanded Interactive Chat Modal with Mobile Backdrop and Prominent Close */}
       {isOpen && (
-        <div className="w-[92vw] sm:w-[420px] max-h-[85vh] h-[640px] bg-white rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          {/* Top Header */}
-          <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-white/10">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-amber-400 flex items-center justify-center font-bold text-white shadow-md">
-                <Bot className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end sm:p-5 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          {/* Backdrop click to dismiss */}
+          <div
+            className="absolute inset-0 cursor-pointer"
+            onClick={() => setIsOpen(false)}
+            aria-label="क्लोज चैट बैकड्रॉप"
+          />
+
+          <div className="relative w-full sm:w-[420px] h-[92vh] sm:h-[650px] max-h-[96vh] bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden z-10 animate-in slide-in-from-bottom-5 sm:zoom-in-95 duration-200">
+            {/* Mobile-Only Top Dedicated Close Bar */}
+            <div className="sm:hidden flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-white/10 text-white shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs font-black text-amber-400">सस्ताफोन सूरत AI डेस्क</span>
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <h4 className="font-black text-sm text-white">सस्ताफोन AI सूरत डेस्क</h4>
-                  <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full uppercase">
-                    LIVE 24x7
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-300 flex items-center gap-1 mt-0.5">
-                  <Mail className="w-3 h-3 text-amber-300" />
-                  <span className="font-mono text-blue-200">sastafone@sastafone.in</span>
-                  <span>• {selectedLocality}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setActiveChatTab(activeTab === 'email_ticket' ? 'chat' : 'email_ticket')}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'email_ticket'
-                    ? 'bg-amber-400 text-slate-950 shadow-sm'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                }`}
-                title="सपोर्ट ईमेल टिकट भेजें (sastafone@sastafone.in)"
-              >
-                <Mail className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveChatTab(activeTab === 'settings' ? 'chat' : 'settings')}
-                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'settings'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-white/10 hover:bg-white/20 text-white'
-                }`}
-                title="AI API सेटिंग्स (OpenRouter)"
-              >
-                <Settings className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleClearChat}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
-                title="चैट रीसेट करें"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer ml-1"
-                title="बंद करें"
+                className="px-3 py-1 rounded-full bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-black text-xs flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                title="चैट बंद करें"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4 stroke-[3]" />
+                <span>बंद करें (Close)</span>
               </button>
             </div>
-          </div>
+
+            {/* Top Main Header */}
+            <div className="p-3.5 sm:p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white flex items-center justify-between shrink-0 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 flex items-center justify-center font-bold text-white shadow-md border border-red-400/40 shrink-0">
+                  <Bot className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-black text-sm text-white truncate">सस्ताफोन AI डेस्क</h4>
+                    <span className="text-[9px] font-black bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded-full uppercase shrink-0">
+                      LIVE
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 flex items-center gap-1 mt-0.5 truncate">
+                    <Mail className="w-3 h-3 text-amber-300 shrink-0" />
+                    <span className="font-mono text-blue-200 truncate">sastafone@sastafone.in</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveChatTab(activeTab === 'email_ticket' ? 'chat' : 'email_ticket')}
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'email_ticket'
+                      ? 'bg-amber-400 text-slate-950 shadow-sm'
+                      : 'bg-white/10 hover:bg-white/20 text-white'
+                  }`}
+                  title="सपोर्ट ईमेल टिकट (sastafone@sastafone.in)"
+                >
+                  <Mail className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleClearChat}
+                  className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                  title="चैट रीसेट करें"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs flex items-center gap-1 transition-all cursor-pointer ml-1 shadow-sm"
+                  title="चैट बंद करें"
+                >
+                  <X className="w-4 h-4 stroke-[3]" />
+                  <span className="hidden sm:inline">बंद करें</span>
+                </button>
+              </div>
+            </div>
 
           {/* Subheader Switcher Tabs */}
           <div className="grid grid-cols-2 bg-slate-100 text-[11px] font-bold border-b border-slate-200 shrink-0">
@@ -761,76 +789,10 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
               )}
             </div>
           )}
-
-          {/* TAB 3: OPENROUTER API SETTINGS */}
-          {activeTab === 'settings' && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-50">
-              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-1.5">
-                <div className="flex items-center gap-1.5 font-black text-blue-950 text-xs">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>OpenRouter AI लाइव इंटीग्रेशन</span>
-                </div>
-                <p className="text-[11px] text-blue-900 leading-relaxed">
-                  सस्ताफोन AI डेस्क OpenRouter API के माध्यम से उन्नत LLM मॉडल्स (जैसे Gemini 2.0 Flash / Llama 3) का उपयोग करके लाइव उत्तर देता है। यदि आपके पास OpenRouter की पर्सनल API Key है तो यहाँ दर्ज करें:
-                </p>
-              </div>
-
-              <form onSubmit={handleSaveOpenRouterKey} className="space-y-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    OpenRouter API Key (वैकल्पिक / Optional):
-                  </label>
-                  <input
-                    type="password"
-                    value={openRouterKey}
-                    onChange={e => setOpenRouterKey(e.target.value)}
-                    placeholder="sk-or-v1-..."
-                    className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white font-mono"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    यदि यह खाली है, तो सस्ताफोन का इनबिल्ट सुपरफास्ट न्यूरल इंजन बिना किसी रुकावट के तुरंत जवाब देता रहेगा।
-                  </p>
-                </div>
-
-                {keySavedBadge && (
-                  <p className="text-xs text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>API Key सफलतापूर्वक सहेजी गई!</span>
-                  </p>
-                )}
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-xs cursor-pointer"
-                  >
-                    सहेजें (Save Key)
-                  </button>
-                  {openRouterKey && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenRouterKey('');
-                        localStorage.removeItem('sastafone_openrouter_key');
-                      }}
-                      className="px-3 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-600 font-bold text-xs cursor-pointer"
-                    >
-                      हटाएं
-                    </button>
-                  )}
-                </div>
-              </form>
-
-              <div className="p-3 rounded-2xl bg-white border border-slate-200 text-[11px] text-slate-600 space-y-1">
-                <span className="font-bold text-slate-800 block">सूरत सेंट्रल हब एंडपॉइंट्स:</span>
-                <p>• सपोर्ट डेस्क: sastafone@sastafone.in</p>
-                <p>• ओनर डायरेक्ट कॉल: +91 9372802044</p>
-                <p>• वेबसाइट: sastafone.in</p>
-              </div>
-            </div>
-          )}
         </div>
-      )}
-    </aside>
-  );
+      </div>
+    )}
+  </>
+);
 };
+}

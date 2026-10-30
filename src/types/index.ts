@@ -187,6 +187,15 @@ export interface OrderItem {
   paymentCollected?: boolean;
   phoneHandedOver?: boolean;
   proAudit?: ProAuditVerification;
+  // Customer requirement, phone photos, doubts & invoice return
+  customerRequirement?: string;
+  customerDoubtResolved?: string;
+  phonePhotos?: string[];
+  repairProblems?: string[];
+  invoiceSentToCustomer?: boolean;
+  invoiceNumber?: string;
+  customOfferNote?: string;
+  cloudSyncStatus?: 'synced' | 'local';
 }
 
 export interface ProAuditVerification {

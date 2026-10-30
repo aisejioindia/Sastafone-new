@@ -4,84 +4,132 @@
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
-  <!-- Homepage -->
+  <!-- 1. Homepage - Sastaphone Surat Official Portal -->
   <url>
-    <loc>https://sastaphone.com/</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
-  <!-- Sell Old Mobile Phone Surat -->
+  <!-- 2. Sell Old Mobile Phone Surat - Instant Cash & Doorstep Valuation -->
   <url>
-    <loc>https://sastaphone.com/#sell-section</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?service=sell</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- Dead & Scrap Mobile Buyback Surat -->
+  <!-- 3. Buy Certified Second Hand Refurbished Phones Surat (6 Months Warranty) -->
   <url>
-    <loc>https://sastaphone.com/#dead-phone-section</loc>
-    <lastmod>2026-10-28</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
-  <!-- Buy Certified Refurbished Phones Surat -->
-  <url>
-    <loc>https://sastaphone.com/#buy-section</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?service=buy</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- Doorstep Mobile Repair Surat (₹199 Visit Token) -->
+  <!-- 4. Doorstep Mobile Repair Surat - 30 Min Lab & Home Fix (₹199 Token) -->
   <url>
-    <loc>https://sastaphone.com/#repair-section</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?service=repair</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- SastaBazaar P2P Mobile Mandi Surat (₹99 Direct Ad) -->
+  <!-- 5. SastaBazaar P2P Mobile Mandi Surat (Direct Customer-to-Customer, 0% Brokerage) -->
   <url>
-    <loc>https://sastaphone.com/#bazaar-section</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?service=bazaar</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.85</priority>
   </url>
 
-  <!-- Surat Customer Reviews & GMB Ratings -->
+  <!-- 6. Dead & Broken Scrap Phone Buyback Surat (₹600 - ₹1,600 / KG) -->
   <url>
-    <loc>https://sastaphone.com/#happy-customers</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?service=dead-phone</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.85</priority>
   </url>
 
-  <!-- Surat Locality SEO Hubs -->
+  <!-- 7. Surat Customer Reviews & Testimonials (4.9 Stars Rating) -->
   <url>
-    <loc>https://sastaphone.com/#surat-adajan</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?section=reviews</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- 8. Surat City Localities Fast Doorstep Coverage -->
+  <url>
+    <loc>https://sastaphone.in/?locality=adajan</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=vesu</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=varachha</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=katargam</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=pal</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=ring-road</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=citylight</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sastaphone.com/#surat-vesu</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?locality=piplod</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sastaphone.com/#surat-varachha</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?locality=rander</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://sastaphone.com/#surat-katargam</loc>
-    <lastmod>2026-10-28</lastmod>
+    <loc>https://sastaphone.in/?locality=udhna</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=dindoli</loc>
+    <lastmod>2026-10-30</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sastaphone.in/?locality=althan</loc>
+    <lastmod>2026-10-30</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

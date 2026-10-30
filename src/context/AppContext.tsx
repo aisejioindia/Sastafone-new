@@ -84,6 +84,13 @@ interface AppContextType {
   setOrderAdminQuote: (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => void;
   confirmOrderPaymentAndHandover: (orderId: string, isPaid: boolean, isHandedOver: boolean) => void;
   saveOrderProAudit: (orderId: string, audit: import('../types').ProAuditVerification) => void;
+  sendInvoiceAndOfferToCustomer: (
+    orderId: string,
+    offerAmount: number,
+    discountPct: number,
+    doubtNotice: string,
+    invoiceNumber?: string
+  ) => void;
 }
 
 const initialSellSelection: SellSelection = {
@@ -111,14 +118,26 @@ const initialSampleOrders: OrderItem[] = [
     customerPhone: '9825123456',
     date: 'Today, 11:45 AM',
     timeSlot: 'Today, 12:00 PM - 1:00 PM',
-    technicianName: 'Sanjay Prajapati (Surat Tech Lead)',
+    technicianName: 'Sanjay Prajapati (सस्ताफोन ओनर व सर्टिफाइड टेक लीड)',
     technicianPhone: '9372802044',
     visitCharge: 199,
     paymentMethod: 'UPI / Doorstep',
     paymentStatus: 'paid',
     originalEstimateMin: 699,
     originalEstimateMax: 1899,
-    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा (Visit Free)।'
+    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा (Visit Free)।',
+    customerRequirement: 'कैमरा 10x ज़ूम व नाइट मोड में अत्यधिक ब्लर हो रहा है। ग्राहक का सवाल: क्या ओरिजिनल 200MP सेंसर रिप्लेस होगा या ग्लास री-अलाइनमेंट?',
+    customerDoubtResolved: 'सूरत BGA लैब डायग्नोस्टिक: केवल टॉप सफायर लेंस ग्लास व OIS मोटर री-अलाइनमेंट आवश्यक। 12% स्पेशल ऑफ के साथ ₹1,600 का फाइनल बिल व 6 माह वारंटी जारी।',
+    phonePhotos: [
+      'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=600&auto=format&fit=crop&q=80'
+    ],
+    finalQuoteAmount: 1600,
+    discountOfferedPct: 12,
+    invoiceSentToCustomer: true,
+    invoiceNumber: 'STP-INV-2026-9941',
+    paymentQrGenerated: true,
+    cloudSyncStatus: 'synced'
   },
   {
     id: 'ord-101',
@@ -135,9 +154,16 @@ const initialSampleOrders: OrderItem[] = [
     customerPhone: '9825012345',
     date: 'Today, 2:30 PM',
     timeSlot: '2:00 PM - 4:00 PM',
-    technicianName: 'Sanjay Prajapati (Sastaphone Hub Lead)',
-    technicianPhone: 'ऑफ़िशियल हब',
-    videoUploaded: true
+    technicianName: 'Sanjay Prajapati (सस्ताफोन हब ओनर)',
+    technicianPhone: '9372802044',
+    videoUploaded: true,
+    customerRequirement: 'ग्राहक को तत्काल कैश/UPI चाहिए। बिल व ओरिजिनल केबल बॉक्स के साथ है। बैटरी हेल्थ 88% है।',
+    customerDoubtResolved: 'सूरत हब अप्रूवल: 32-पॉइंट टेस्ट पास होने पर ₹32,400 का ऑन-स्पॉट UPI ट्रांसफर होगा।',
+    phonePhotos: [
+      'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80'
+    ],
+    cloudSyncStatus: 'synced'
   },
   {
     id: 'ord-102',
@@ -154,12 +180,18 @@ const initialSampleOrders: OrderItem[] = [
     customerPhone: '9879098765',
     date: 'Today, 10:15 AM',
     timeSlot: '11:00 AM - 12:00 PM',
-    technicianName: 'Sanjay Prajapati (Sastaphone Doorstep Lead)',
-    technicianPhone: 'ऑफ़िशियल हब',
+    technicianName: 'Sanjay Prajapati (सस्ताफोन डोरस्टेप लीड)',
+    technicianPhone: '9372802044',
     visitCharge: 199,
     paymentMethod: 'सुरक्षित डिजिटल भुगतान (Sastaphone Network)',
     paymentStatus: 'paid',
-    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा। यदि फोन नहीं बन सका तो ₹99 रिफंड होगा।'
+    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा। यदि फोन नहीं बन सका तो ₹99 रिफंड होगा।',
+    customerRequirement: 'स्क्रीन पर वर्टिकल ग्रीन लाइन आ रही है, टच कभी-कभी फ्रीज होता है।',
+    customerDoubtResolved: 'ओरिजिनल 120Hz AMOLED डिस्प्ले पैनल टेस्टेड व तैयार। 10% डिस्काउंट दिया गया।',
+    phonePhotos: [
+      'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&auto=format&fit=crop&q=80'
+    ],
+    cloudSyncStatus: 'synced'
   }
 ];
 
@@ -386,6 +418,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           proAudit: audit,
           status: 'in_inspection',
           statusHindi: audit.auditPassed ? 'हार्डवेयर प्रो-ऑडिट 100% पास' : 'ऑडिट जांच में इश्यू मिला'
+        };
+      }
+      return o;
+    }));
+  };
+
+  const sendInvoiceAndOfferToCustomer = (
+    orderId: string,
+    offerAmount: number,
+    discountPct: number,
+    doubtNotice: string,
+    invoiceNumber?: string
+  ) => {
+    const invNum = invoiceNumber || `STP-INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          finalQuoteAmount: offerAmount,
+          discountOfferedPct: discountPct,
+          customerDoubtResolved: doubtNotice,
+          invoiceSentToCustomer: true,
+          invoiceNumber: invNum,
+          paymentQrGenerated: true,
+          status: 'in_progress',
+          statusHindi: `ऑफर ₹${offerAmount.toLocaleString('en-IN')} व रसीद जारी • ग्राहक डैशबोर्ड पर उपलब्ध`,
+          cloudSyncStatus: 'synced',
+          adminApprovedAt: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
         };
       }
       return o;
@@ -748,7 +808,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateOrder,
         setOrderAdminQuote,
         confirmOrderPaymentAndHandover,
-        saveOrderProAudit
+        saveOrderProAudit,
+        sendInvoiceAndOfferToCustomer
       }}
     >
       {children}
