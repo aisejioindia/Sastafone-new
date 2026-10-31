@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 
-# Canonical Sitemaps for Sastaphone Surat
-Sitemap: https://sastaphone.in/sitemap.xml
+# Canonical Sitemap for Sastafone Surat
 Sitemap: https://sastafone.in/sitemap.xml
