@@ -143,7 +143,7 @@ export const HappyCustomersSection: React.FC = () => {
   };
 
   const handleShareReview = (review: CustomerReview) => {
-    const textToShare = `🌟 Sastaphone Surat Customer Review:\n"${review.reviewText}"\n- ${review.customerName} (${review.locality})\n⭐ Rating: ${review.rating}/5 stars for ${review.phoneModel} (${review.serviceDetail})\nSastaphone Surat (sastaphone.in) 100% Verified 🇮🇳`;
+    const textToShare = `🌟 Sastafone Surat Customer Review:\n"${review.reviewText}"\n- ${review.customerName} (${review.locality})\n⭐ Rating: ${review.rating}/5 stars for ${review.phoneModel} (${review.serviceDetail})\nSastafone Surat (sastafone.in) 100% Verified 🇮🇳`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(textToShare)}`;
     window.open(whatsappUrl, '_blank');
     setCopiedShareId(review.id);
@@ -203,7 +203,7 @@ export const HappyCustomersSection: React.FC = () => {
         <div className="text-center max-w-3xl mx-auto space-y-3 mb-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-black shadow-2xs">
             <Award className="w-3.5 h-3.5 text-blue-600" />
-            <span>🇮🇳 सस्ताफोन सूरत (sastaphone.in) • 100% सत्यापित ग्राहक समीक्षाएं</span>
+            <span>🇮🇳 सस्ताफोन सूरत (sastafone.in) • 100% सत्यापित ग्राहक समीक्षाएं</span>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">

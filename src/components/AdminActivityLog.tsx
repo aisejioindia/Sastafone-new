@@ -20,21 +20,21 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../utils/valuation';
 
-export type ActivityActionType = 'all' | 'status_update' | 'payment_change' | 'inventory_adjust' | 'note_saved' | 'security_auth';
+export type ActivityActionType = 'all' | 'status_update' | 'payment_change' | 'inventory_adjust' | 'note_saved' | 'security_auth' | 'audit_action';
 
 export interface AdminActivityLogItem {
   id: string;
   timestamp: string;
   timeFormatted: string;
   dateFormatted: string;
-  actionType: 'status_update' | 'payment_change' | 'inventory_adjust' | 'note_saved' | 'security_auth';
+  actionType: 'status_update' | 'payment_change' | 'inventory_adjust' | 'note_saved' | 'security_auth' | 'audit_action';
   categoryLabel: string;
   title: string;
   description: string;
   actor: string;
   badgeBg: string;
   badgeText: string;
-  iconType: 'status' | 'payment' | 'inventory' | 'note' | 'security';
+  iconType: 'status' | 'payment' | 'inventory' | 'note' | 'security' | 'shield';
   metadata?: {
     orderId?: string;
     orderNumber?: string;
@@ -91,6 +91,7 @@ export const AdminActivityLog: React.FC<AdminActivityLogProps> = ({
       case 'note':
         return <FileText className="w-4 h-4 text-purple-600" />;
       case 'security':
+      case 'shield':
         return <ShieldCheck className="w-4 h-4 text-amber-600" />;
       default:
         return <Clock className="w-4 h-4 text-slate-500" />;

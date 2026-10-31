@@ -23,7 +23,7 @@ export const LegalModals: React.FC = () => {
                 {legalModal === 'privacy' && (language === 'hi' ? 'गोपनीयता नीति (Privacy Policy)' : 'Privacy Policy')}
                 {legalModal === 'cookies' && (language === 'hi' ? 'कुकीज़ नीति (Cookies Policy)' : 'Cookies Policy')}
               </h3>
-              <p className="text-xs text-slate-400">Sastaphone Surat • Official Certified Portal (sastaphone.in)</p>
+              <p className="text-xs text-slate-400">Sastafone Surat • Official Certified Portal (sastafone.in)</p>
             </div>
           </div>
           <button
@@ -44,7 +44,7 @@ export const LegalModals: React.FC = () => {
                 सस्ताफोन सूरत अधिकृत वैधानिक व सेवा सूचना (Official Operating Terms):
               </p>
               <p>
-                Sastaphone (सस्ताफोन) एवं <strong>sastaphone.in</strong> डोमेन अधिकृत रूप से सूरत में सेकंड हैंड मोबाइल खरीद-बिक्री, 30-मिनट होम रिपेयर सेवा एवं P2P सस्ता बाज़ार हेतु पंजीकृत है। सूरत के सभी ऑर्डर्स और पेमेंट्स इसी प्रमाणित फ्रेमवर्क द्वारा सुरक्षित रूप से प्रोसेस होते हैं।
+                Sastafone (सस्ताफोन) एवं <strong>sastafone.in</strong> डोमेन अधिकृत रूप से सूरत में सेकंड हैंड मोबाइल खरीद-बिक्री, 30-मिनट होम रिपेयर सेवा एवं P2P सस्ता बाज़ार हेतु पंजीकृत है। सूरत के सभी ऑर्डर्स और पेमेंट्स इसी प्रमाणित फ्रेमवर्क द्वारा सुरक्षित रूप से प्रोसेस होते हैं।
               </p>
             </div>
           </div>
@@ -139,7 +139,7 @@ export const LegalModals: React.FC = () => {
         <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
           <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>sastaphone.in सूरत अधिकृत</span>
+            <span>sastafone.in सूरत अधिकृत</span>
           </span>
           <button
             onClick={() => setLegalModal(null)}

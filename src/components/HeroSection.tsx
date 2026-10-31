@@ -12,7 +12,7 @@ export const HeroSection: React.FC = () => {
         <div className="max-w-3xl mx-auto text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 text-emerald-900 text-[11px] font-black shadow-2xs">
-              <span>🇮🇳 सस्ताफोन सूरत (sastaphone.in) • 100% प्रामाणिक व विश्वसनीय सेवा</span>
+              <span>🇮🇳 सस्ताफोन सूरत (sastafone.in) • 100% प्रामाणिक व विश्वसनीय सेवा</span>
             </div>
 
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-200 shadow-xs">

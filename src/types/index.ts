@@ -217,6 +217,22 @@ export interface ProAuditVerification {
   auditPassed: boolean;
   auditTimestamp: string;
   auditorName: string;
+  // Extended intake & requirement checklist fields
+  auditType?: 'repair' | 'sell' | 'buy';
+  screwSealIntact?: boolean;
+  bodyConditionCheck?: 'flawless' | 'minor_scratches' | 'dents' | 'bent';
+  wifiBluetoothCheck?: boolean;
+  networkSimCheck?: boolean;
+  buttonsCheck?: boolean;
+  boxChargerVerified?: boolean;
+  ceirAntiTheftVerified?: boolean;
+  oemDisplayVerified?: boolean;
+  qcHologramSealAttached?: boolean;
+  ultrasonicCleaned?: boolean;
+  selectedServices?: { name: string; price: number; category?: string }[];
+  warrantyMonths?: number;
+  warrantyType?: string;
+  whatsappMessageSentAt?: string;
 }
 
 export interface ChatMessage {

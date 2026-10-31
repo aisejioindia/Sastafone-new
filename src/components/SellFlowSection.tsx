@@ -791,8 +791,8 @@ export const SellFlowSection: React.FC = () => {
                   <span>💬</span>
                   <span>
                     {language === 'hi'
-                      ? 'WhatsApp पर तुरंत कन्फर्म करें (9372802044)'
-                      : 'WhatsApp Direct (9372802044)'}
+                      ? 'WhatsApp पर तुरंत कन्फर्म करें (सूरत डेस्क)'
+                      : 'WhatsApp Direct (Surat Official Desk)'}
                   </span>
                 </a>
               </div>

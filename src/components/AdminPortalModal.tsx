@@ -51,6 +51,7 @@ import {
 import confetti from 'canvas-confetti';
 import { AdminAnalyticsCharts } from './AdminAnalyticsCharts';
 import { AdminActivityLog, AdminActivityLogItem } from './AdminActivityLog';
+import { TechnicianProAuditIntake } from './TechnicianProAuditIntake';
 
 export type StatusCategory = 'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -83,6 +84,7 @@ export const AdminPortalModal: React.FC = () => {
     setIsProAuditModalOpen,
     setSelectedAuditOrder,
     updateOrder,
+    saveOrderProAudit,
     sendInvoiceAndOfferToCustomer
   } = useApp();
 
@@ -372,8 +374,10 @@ export const AdminPortalModal: React.FC = () => {
 
     const inputEmail = adminEmailInput.trim().toLowerCase();
     const inputPass = adminPasswordInput.trim();
+    const isEmailValid = inputEmail === 'support@sastafone.in' || inputEmail === AUTH_ADMIN_EMAIL;
 
-    if (inputEmail === AUTH_ADMIN_EMAIL && inputPass === AUTH_ADMIN_PASSWORD) {
+    if (isEmailValid && inputPass === AUTH_ADMIN_PASSWORD) {
+      const activeAdminEmail = inputEmail;
       const secureToken = `SEC-OWNER-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       setIsOwnerAuthenticated(true);
       setAdminSessionToken(secureToken);
@@ -382,7 +386,7 @@ export const AdminPortalModal: React.FC = () => {
       setLockoutUntil(null);
       setLoginError('');
       setAdminPasswordInput('');
-      loginAsAdmin(AUTH_ADMIN_EMAIL);
+      loginAsAdmin(activeAdminEmail);
       confetti({ particleCount: 75, spread: 70 });
 
       // Log Security Authentication
@@ -390,7 +394,7 @@ export const AdminPortalModal: React.FC = () => {
         'security_auth',
         'सुरक्षा ऑथेंटिकेशन',
         'ओनर वाल्ट लॉगिन सत्यापित',
-        `अधिकृत ईमेल ${AUTH_ADMIN_EMAIL} से मास्टर टोकन ${secureToken.substring(0, 15)}... जारी।`,
+        `अधिकृत ईमेल ${activeAdminEmail} से मास्टर टोकन ${secureToken.substring(0, 15)}... जारी।`,
         'security',
         'bg-amber-100 text-amber-800 border-amber-200',
         'Security Vault'
@@ -402,10 +406,10 @@ export const AdminPortalModal: React.FC = () => {
         setLockoutUntil(Date.now() + 45000);
         setLoginError('अत्यधिक गलत प्रयास! सुरक्षा कारणों से एडमिन पोर्टल 45 सेकंड के लिए लॉक कर दिया गया है।');
       } else {
-        if (inputEmail !== AUTH_ADMIN_EMAIL && inputPass !== AUTH_ADMIN_PASSWORD) {
+        if (!isEmailValid && inputPass !== AUTH_ADMIN_PASSWORD) {
           setLoginError(`अमान्य क्रेडेंशियल! केवल अधिकृत ईमेल व सही पासवर्ड मान्य है। (शेष प्रयास: ${4 - nextFailed})`);
-        } else if (inputEmail !== AUTH_ADMIN_EMAIL) {
-          setLoginError(`गलत एडमिन ID! केवल अधिकृत sastafone@sastafone.in ही मान्य है। (शेष प्रयास: ${4 - nextFailed})`);
+        } else if (!isEmailValid) {
+          setLoginError(`गलत एडमिन ID! केवल अधिकृत support@sastafone.in या sastafone@sastafone.in ही मान्य है। (शेष प्रयास: ${4 - nextFailed})`);
         } else {
           setLoginError(`गलत पासवर्ड! केवल सही मास्टर पासवर्ड दर्ज करने पर ही पोर्टल खुलेगा। (शेष प्रयास: ${4 - nextFailed})`);
         }
@@ -925,11 +929,30 @@ export const AdminPortalModal: React.FC = () => {
                 </button>
               </div>
 
-              <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
-                <span className="hidden sm:inline">सूरत हब:</span>
-                <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                  रिंग रोड / पाल / अडाजण हब
-                </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetOrder = orders.find(o => o.type === 'repair') || orders[0];
+                    if (targetOrder) {
+                      handleLaunchProAudit(targetOrder);
+                    } else {
+                      setIsProAuditModalOpen(true);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                  title="सख्त 32-पॉइंट हार्डवेयर ऑडिट गाइड (केवल एडमिन)"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-300" />
+                  <span>🛡️ Technician Pro-Audit</span>
+                </button>
+
+                <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
+                  <span>हब:</span>
+                  <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                    रिंग रोड / पाल हब
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1321,6 +1344,49 @@ export const AdminPortalModal: React.FC = () => {
                             </div>
                           </div>
 
+                          {/* 1. ADVANCED TECHNICIAN PRO-AUDIT & RECEIVING INTAKE ENGINE */}
+                          <TechnicianProAuditIntake
+                            order={order}
+                            onSaveAudit={(orderId, audit) => {
+                              saveOrderProAudit(orderId, audit);
+                              logActivity(
+                                'audit_action',
+                                'हार्डवेयर ऑडिट',
+                                `${order.title} Pro-Audit पास`,
+                                `IMEI ${audit.imei} सत्यापित। 9-पॉइंट टच, LCI व कैमरा टेस्टेड।`,
+                                'shield',
+                                'bg-blue-100 text-blue-800 border-blue-200',
+                                'Pro-Audit',
+                                { orderId, orderNumber: order.orderNumber, itemName: order.title }
+                              );
+                            }}
+                            onUpdateQuote={(orderId, amount, discountPct, notes) => {
+                              setOrderAdminQuote(orderId, amount, discountPct, notes);
+                              logActivity(
+                                'payment_change',
+                                'कोट व डिस्काउंट',
+                                `${order.title} फाइनल कोट ₹${amount}`,
+                                `सूरत प्राइस लिस्ट अनुसार ₹${amount} बिल सेट व QR तैयार।`,
+                                'payment',
+                                'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                'Quote & Offer',
+                                { orderId, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                            onActivityLog={(title, desc, amount) => {
+                              logActivity(
+                                'audit_action',
+                                'Pro-Audit व इनवॉइस',
+                                title,
+                                desc,
+                                'shield',
+                                'bg-indigo-100 text-indigo-800 border-indigo-200',
+                                'Intake Audit',
+                                { orderId: order.id, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                          />
+
                           {/* Customer Doubt Resolution & Hub Advice */}
                           <div className="p-3.5 rounded-2xl bg-teal-50/70 border border-teal-200/90 space-y-2 mb-3">
                             <div className="flex items-center justify-between">
@@ -1706,7 +1772,7 @@ export const AdminPortalModal: React.FC = () => {
 
                                 <a
                                   href={`https://wa.me/91${order.customerPhone}?text=${encodeURIComponent(
-                                    `नमस्ते ${order.customerName}! आपके ${order.title} का काम पूरा हो गया है। आपका स्पेशल डिस्काउंटेड बिल ₹${currentQuote} है। कृपया पेमेंट करके फोन प्राप्त करें। Sastaphone Surat: 9372802044`
+                                    `नमस्ते ${order.customerName}! आपके ${order.title} का काम पूरा हो गया है। आपका स्पेशल डिस्काउंटेड बिल ₹${currentQuote} है (${currentQuote < 1000 ? '3 महीने वारंटी' : '6 महीने फुल वारंटी'})। UPI ID: 9372802044@okbizaxis. Sastaphone Surat 24x7 Helpdesk (sastafone.in)`
                                   )}`}
                                   target="_blank"
                                   rel="noreferrer"
@@ -1796,7 +1862,7 @@ export const AdminPortalModal: React.FC = () => {
                                 </a>
                                 <a
                                   href={`https://wa.me/91${order.customerPhone}?text=${encodeURIComponent(
-                                    `नमस्ते ${order.customerName}! आपके फोन ${order.title} का बाय-बैक पिकअप कन्फर्म करने के लिए संपर्क कर रहे हैं। Sastaphone Surat: 9372802044`
+                                    `नमस्ते ${order.customerName}! आपके फोन ${order.title} का बाय-बैक पिकअप कन्फर्म करने के लिए संपर्क कर रहे हैं। Sastaphone Surat 24x7 Helpdesk (sastafone.in)`
                                   )}`}
                                   target="_blank"
                                   rel="noreferrer"
@@ -1863,6 +1929,49 @@ export const AdminPortalModal: React.FC = () => {
                               ))}
                             </div>
                           </div>
+
+                          {/* TECHNICIAN PRO-AUDIT & BUYBACK VALUATION INTAKE */}
+                          <TechnicianProAuditIntake
+                            order={order}
+                            onSaveAudit={(orderId, audit) => {
+                              saveOrderProAudit(orderId, audit);
+                              logActivity(
+                                'audit_action',
+                                'बाय-बैक प्रो-ऑडिट',
+                                `${order.title} बाय-बैक सत्यापन`,
+                                `CEIR पोर्टल व बिल-बॉक्स सत्यापित। A+ ग्रेड बॉडी।`,
+                                'shield',
+                                'bg-amber-100 text-amber-800 border-amber-200',
+                                'Sell Audit',
+                                { orderId, orderNumber: order.orderNumber, itemName: order.title }
+                              );
+                            }}
+                            onUpdateQuote={(orderId, amount, discountPct, notes) => {
+                              setOrderAdminQuote(orderId, amount, discountPct, notes);
+                              logActivity(
+                                'payment_change',
+                                'बाय-बैक ऑफर',
+                                `${order.title} फाइनल बाय-बैक मूल्य ₹${amount}`,
+                                `सत्यापित बाय-बैक वाउचर तैयार।`,
+                                'payment',
+                                'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                'BuyBack Quote',
+                                { orderId, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                            onActivityLog={(title, desc, amount) => {
+                              logActivity(
+                                'audit_action',
+                                'बाय-बैक Pro-Audit',
+                                title,
+                                desc,
+                                'shield',
+                                'bg-indigo-100 text-indigo-800 border-indigo-200',
+                                'Sell Intake',
+                                { orderId: order.id, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                          />
 
                           {/* Status Tracker */}
                           <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
@@ -1992,6 +2101,49 @@ export const AdminPortalModal: React.FC = () => {
                               {formatINR(order.amount)}
                             </span>
                           </div>
+
+                          {/* CERTIFIED PRE-DELIVERY DISPATCH PRO-AUDIT */}
+                          <TechnicianProAuditIntake
+                            order={order}
+                            onSaveAudit={(orderId, audit) => {
+                              saveOrderProAudit(orderId, audit);
+                              logActivity(
+                                'audit_action',
+                                'सर्टिफाइड प्रो-ऑडिट',
+                                `${order.title} 32-पॉइंट Q.C. पास`,
+                                `सर्टिफाइड सील व वारंटी कार्ड अटैच्ड। 100% टेस्टेड।`,
+                                'shield',
+                                'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                'Certified Audit',
+                                { orderId, orderNumber: order.orderNumber, itemName: order.title }
+                              );
+                            }}
+                            onUpdateQuote={(orderId, amount, discountPct, notes) => {
+                              setOrderAdminQuote(orderId, amount, discountPct, notes);
+                              logActivity(
+                                'payment_change',
+                                'सर्टिफाइड इनवॉइस',
+                                `${order.title} इनवॉइस ₹${amount}`,
+                                `सर्टिफाइड इनवॉइस व वारंटी बिल तैयार।`,
+                                'payment',
+                                'bg-blue-100 text-blue-800 border-blue-200',
+                                'Buy Invoice',
+                                { orderId, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                            onActivityLog={(title, desc, amount) => {
+                              logActivity(
+                                'audit_action',
+                                'सर्टिफाइड Pro-Audit',
+                                title,
+                                desc,
+                                'shield',
+                                'bg-indigo-100 text-indigo-800 border-indigo-200',
+                                'Buy Q.C.',
+                                { orderId: order.id, orderNumber: order.orderNumber, amount, itemName: order.title }
+                              );
+                            }}
+                          />
 
                           {/* Status Tracker */}
                           <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">

@@ -31,8 +31,8 @@ export const Header: React.FC = () => {
             </span>
             <span className="hidden sm:inline">
               {language === 'hi'
-                ? '🇮🇳 Sastaphone Surat (sastaphone.in) • सूरत में 2 घंटे में डोरस्टेप फोन पिकअप व होम रिपेयर'
-                : '🇮🇳 Sastaphone Surat (sastaphone.in) • Fastest Doorstep Phone Pickup & Repair in Surat'}
+                ? '🇮🇳 Sastafone Surat (sastafone.in) • सूरत में 2 घंटे में डोरस्टेप फोन पिकअप व होम रिपेयर'
+                : '🇮🇳 Sastafone Surat (sastafone.in) • Fastest Doorstep Phone Pickup & Repair in Surat'}
             </span>
             <span className="sm:hidden">
               {language === 'hi' ? '🇮🇳 सस्ताफोन सूरत • 2 घंटे में डोरस्टेप सर्विस' : '🇮🇳 Sastaphone Surat Doorstep'}

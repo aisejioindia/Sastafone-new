@@ -174,10 +174,10 @@ export const SuratLocalSeoSection: React.FC = () => {
           </div>
           <div>
             <h4>Sastaphone Surat Official Google My Business Entity Data</h4>
-            <p>Business Name: Sastaphone Surat (सस्ताफोन) • Surat Certified Mobile Hub (sastaphone.in)</p>
+            <p>Business Name: Sastafone Surat (सस्ताफोन) • Surat Certified Mobile Hub (sastafone.in)</p>
             <p>Physical Hubs: Ring Road, Athwa Gate & Adajan Central Super Lab, Surat, Gujarat 395001</p>
             <p>Service Coverage: Adajan, Vesu, Pal, Varachha, Katargam, Citylight, Piplod, Ghod Dod Road, Athwa, Rander, Udhna, Dindoli, Althan, VIP Road, Begampura, Surat</p>
-            <p>Helpline: +91 9372802044 | Open Daily 9:00 AM – 9:30 PM</p>
+            <p>Helpline: आधिकारिक सूरत WhatsApp हेल्पडेस्क (24x7) | Open Daily 9:00 AM – 9:30 PM</p>
           </div>
         </div>
       </div>

@@ -75,8 +75,8 @@ const FAQ_DROPDOWN_OPTIONS = [
   },
   {
     id: 'opt-owner-deal',
-    label: '🤝 सीधे ओनर से बात - WhatsApp या ईमेल sastafone@sastafone.in पर संपर्क',
-    prompt: 'मुझे सीधे दुकान मालिक / ओनर से अपनी फाइनल डील कन्फर्म करनी है। मैं कैसे संपर्क करूँ?'
+    label: '📧 डायरेक्ट ईमेल सपोर्ट - support@sastafone.in पर लिखित सवाल व समाधान',
+    prompt: 'मुझे सीधे support@sastafone.in पर अपना प्रश्न पूछना है या डील कन्फर्म करनी है। मैं डायरेक्ट ईमेल कैसे भेजूँ?'
   }
 ];
 
@@ -129,7 +129,7 @@ export const SuratSupportChatBot: React.FC = () => {
     try {
       const systemPrompt = `You are the official AI Support Executive for "Sastaphone Surat" (website: sastafone.in).
 Location: Surat, Gujarat (Hubs: Ring Road, Adajan, Pal, Vesu, Katargam, Varachha, etc.).
-Owner Contact: +91 9372802044. Official Email: sastafone@sastafone.in.
+Official Support Email: support@sastafone.in (Now Active & Primary).
 Services & Core Rules:
 1. Sell Phone: Live AI valuation (5K low-end, 8K mid-range, 15K high-end logic), 2-hour doorstep pickup with instant UPI/Cash payment.
 2. Repair @ Home: ₹199 doorstep inspection token (fully adjusted into final repair bill). If unrepairable, ₹99 instant refund guaranteed.
@@ -137,7 +137,7 @@ Services & Core Rules:
 4. Certified Used Phones: 32-point Pro-Audit tested, 6-month replacement warranty, free Surat doorstep delivery.
 5. Dead/Scrap Phones: ₹600 - ₹1,600 / KG weight-based valuation.
 6. SastaBazaar: P2P classifieds, ₹99 Buyer Unlock Pass for 10 verified seller contacts, zero commission.
-7. Deal Closing Rule: Advise user to close the final deal directly on WhatsApp with the owner (+91 9372802044) or email sastafone@sastafone.in.
+7. Q&A & Support Email Rule: Always guide the user to ask questions or confirm deals directly via email to support@sastafone.in or submit via the in-app Direct Email form.
 Respond in clear, friendly, and authoritative Hindi (with English technical terms where helpful). Keep answers structured and actionable.`;
 
       // Try OpenRouter endpoint first
@@ -232,11 +232,11 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
     const q = query.toLowerCase();
 
     if (q.includes('बेचना') || q.includes('sell') || q.includes('buyback') || q.includes('भाव') || q.includes('दाम')) {
-      return `📱 **सस्ताफोन सूरत पर पुराना फोन बेचने की पूरी जानकारी:**\n\n1. **लाइव AI इंस्टेंट वैल्यूएशन:** हमारी वेबसाइट पर अपना ब्रांड व मॉडल चुनें। स्क्रीन, बैटरी और बॉडी कंडीशन के आधार पर 100% पारदर्शी भाव स्क्रीन पर दिखेगा।\n2. **2 घंटे में डोरस्टेप पिकअप:** सूरत के किसी भी इलाके (${selectedLocality || 'अडाजण, रिंग रोड, पाल, वेसू'}) में हमारा टेक्नीशियन 2 घंटे में आपके पते पर आकर फोन चेक करेगा।\n3. **ऑन-द-स्पॉट पेमेंट:** फोन हाथ में लेते ही बैंक ट्रांसफर या UPI (GPay/PhonePe/Paytm) से तुरंत पूरा पैसा खाते में!\n\n💡 **विशेषता:** 100% सुरक्षित डेटा वाइप व सरकारी ID डिलीवरी रसीद।\n\nक्या आप अभी अपना फोन बेचना चाहते हैं? नीचे दिए गए बटन से सीधे ओनर से WhatsApp पर डील फाइनल करें!`;
+      return `📱 **सस्ताफोन सूरत पर पुराना फोन बेचने की पूरी जानकारी:**\n\n1. **लाइव AI इंस्टेंट वैल्यूएशन:** हमारी वेबसाइट पर अपना ब्रांड व मॉडल चुनें। स्क्रीन, बैटरी और बॉडी कंडीशन के आधार पर 100% पारदर्शी भाव स्क्रीन पर दिखेगा।\n2. **2 घंटे में डोरस्टेप पिकअप:** सूरत के किसी भी इलाके (${selectedLocality || 'अडाजण, रिंग रोड, पाल, वेसू'}) में हमारा टेक्नीशियन 2 घंटे में आपके पते पर आकर फोन चेक करेगा।\n3. **ऑन-द-स्पॉट पेमेंट:** फोन हाथ में लेते ही बैंक ट्रांसफर या UPI (GPay/PhonePe/Paytm) से तुरंत पूरा पैसा खाते में!\n\n💡 **विशेषता:** 100% सुरक्षित डेटा वाइप व सरकारी ID डिलीवरी रसीद।\n\nक्या आप अभी अपना फोन बेचना चाहते हैं? नीचे दिए गए बटन से सीधे **support@sastafone.in** पर डायरेक्ट सवाल भेजें या इन-ऐप ईमेल फॉर्म सबमिट करें!`;
     }
 
     if (q.includes('रिपेयर') || q.includes('repair') || q.includes('टोकन') || q.includes('₹199') || q.includes('खराब') || q.includes('स्क्रीन') || q.includes('डिस्प्ले') || q.includes('कैमरा') || q.includes('बैटरी')) {
-      return `🔧 **सस्ताफोन घर बैठे मोबाइल रिपेयरिंग व लैब वारंटी:**\n\n1. **₹199 विज़िट टोकन नियम:** जब टेक्नीशियन आपके घर आकर फोन चेक करता है, तो ₹199 टोकन फाइनल रिपेयरिंग बिल में 100% एडजस्ट (माइनस) हो जाता है (विज़िट बिल्कुल फ्री)! \n2. **₹99 रिफंड गारंटी:** यदि मदरबोर्ड या पार्ट खराबी के कारण फोन रिपेयर नहीं हो सका, तो ₹99 तुरंत आपके खाते में वापस रिफंड होगा।\n3. **10%-12% स्पेशल ऑफ:** BGA लैब द्वारा सैमसंग S24 Ultra, iPhone आदि पर अधिकतम रेट (जैसे ₹1,899) पर 12% ऑफ देकर ₹1,600 जैसा बेस्ट रेट दिया जाता है।\n4. **6 महीने की रिप्लेसमेंट वारंटी:** ओरिजिनल पार्ट्स व जीएसटी इनवॉइस गारंटी।\n\nसीधे ओनर से रिपेयरिंग स्लॉट बुक करने के लिए नीचे WhatsApp बटन दबाएं!`;
+      return `🔧 **सस्ताफोन घर बैठे मोबाइल रिपेयरिंग व लैब वारंटी:**\n\n1. **₹199 विज़िट टोकन नियम:** जब टेक्नीशियन आपके घर आकर फोन चेक करता है, तो ₹199 टोकन फाइनल रिपेयरिंग बिल में 100% एडजस्ट (माइनस) हो जाता है (विज़िट बिल्कुल फ्री)! \n2. **₹99 रिफंड गारंटी:** यदि मदरबोर्ड या पार्ट खराबी के कारण फोन रिपेयर नहीं हो सका, तो ₹99 तुरंत आपके खाते में वापस रिफंड होगा।\n3. **10%-12% स्पेशल ऑफ:** BGA लैब द्वारा सैमसंग S24 Ultra, iPhone आदि पर अधिकतम रेट (जैसे ₹1,899) पर 12% ऑफ देकर ₹1,600 जैसा बेस्ट रेट दिया जाता है।\n4. **6 महीने की रिप्लेसमेंट वारंटी:** ओरिजिनल पार्ट्स व जीएसटी इनवॉइस गारंटी।\n\nसीधे सहायता व स्लॉट के लिए नीचे दिए गए बटन से **support@sastafone.in** पर ईमेल भेजें!`;
     }
 
     if (q.includes('सर्टिफाइड') || q.includes('खरीदना') || q.includes('buy') || q.includes('सेकंड हैंड') || q.includes('used phone')) {
@@ -256,11 +256,11 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
     }
 
     if (q.includes('ओनर') || q.includes('owner') || q.includes('मालिक') || q.includes('संजय') || q.includes('संपर्क') || q.includes('contact') || q.includes('email') || q.includes('ईमेल')) {
-      return `🤝 **सस्ताफोन सूरत अधिकृत संपर्क सूत्र:**\n\n• **आधिकारिक ईमेल:** **sastafone@sastafone.in**\n• **ओनर व हब हेड हेल्पलाइन:** **+91 ${SASTAPHONE_PHONE}** (Sanjay Prajapati)\n• **सेंट्रल हब:** रिंग रोड व अडाजण सेंट्रल मोबाइल लैब, सूरत, गुजरात\n• **वेबसाइट:** sastafone.in (100% प्रामाणिक)\n\nडील पक्की करने के लिए नीचे दिए गए WhatsApp बटन पर तुरंत चैट शुरू करें!`;
+      return `🤝 **सस्ताफोन सूरत अधिकृत संपर्क सूत्र:**\n\n• **आधिकारिक सपोर्ट ईमेल:** **support@sastafone.in** (एक्टिव)\n• **सूरत अधिकृत ओनर:** **संजय प्रजापति (सर्टिफाइड टेक लीड)**\n• **सेंट्रल हब:** रिंग रोड व अडाजण सेंट्रल मोबाइल लैब, सूरत, गुजरात\n• **वेबसाइट:** sastafone.in (100% प्रामाणिक)\n\nसवाल पूछने या लिखित समाधान के लिए नीचे दिए गए डायरेक्ट ईमेल बटन पर क्लिक करें!`;
     }
 
     // Default intelligent response
-    return `नमस्ते! आपके प्रश्न "${query}" के संबंध में:\n\nसस्ताफोन सूरत (sastaphone.in) पर हम **पुराना फोन खरीदने/बेचने, 30 मिनट में घर पर रिपेयर करने (₹199 टोकन / ₹99 रिफंड गारंटी), 12% छूट व 6 महीने वारंटी** की संपूर्ण गारंटी देते हैं।\n\nआप सीधे हमारी सपोर्ट टीम को **sastafone@sastafone.in** पर लिख सकते हैं या नीचे दिए गए बटन से सीधे ओनर से WhatsApp पर डील फाइनल कर सकते हैं!`;
+    return `नमस्ते! आपके प्रश्न "${query}" के संबंध में:\n\nसस्ताफोन सूरत (sastafone.in) पर हम **पुराना फोन खरीदने/बेचने, 30 मिनट में घर पर रिपेयर करने (₹199 टोकन / ₹99 रिफंड गारंटी), 12% छूट व 6 महीने वारंटी** की संपूर्ण गारंटी देते हैं।\n\nआप सीधे हमारी सपोर्ट टीम को **support@sastafone.in** पर डायरेक्ट ईमेल भेज सकते हैं या नीचे दिए गए फॉर्म से तुरंत सवाल सबमिट कर सकते हैं!`;
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -325,17 +325,25 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
     }
   };
 
+  const handleOpenEmailFormWithPrompt = (topic: string, details?: string) => {
+    setEmailSubject(`[सूरत Q&A] ${topic}`);
+    setEmailMessage(
+      `विषय: ${topic}\n\nविवरण:\n${details || ''}\n\nसूरत क्षेत्र: ${selectedLocality}\n\nकृपया इस विषय में सहायता व मार्गदर्शन प्रदान करें।`
+    );
+    setActiveChatTab('email_ticket');
+  };
+
   const handleSendEmailTicket = (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailMessage.trim()) return;
 
-    // Prepare mailto link to sastafone@sastafone.in
-    const subject = encodeURIComponent(emailSubject || `Sastaphone Support Desk Ticket: ${emailName || 'Surat User'}`);
+    // Prepare mailto link to active support@sastafone.in
+    const subject = encodeURIComponent(emailSubject || `Sastaphone Surat Q&A Ticket: ${emailName || 'Surat Resident'}`);
     const body = encodeURIComponent(
-      `नमस्ते Sastaphone Surat टीम!\n\nनाम: ${emailName || 'N/A'}\nफोन: ${emailPhone || 'N/A'}\nसूरत क्षेत्र: ${selectedLocality}\n\nसमस्या / संदेश:\n${emailMessage}\n\n---\nSent via Sastaphone Surat AI Live Support Desk (sastafone.in)`
+      `नमस्ते Sastaphone Surat सपोर्ट टीम!\n\nनाम: ${emailName || 'N/A'}\nफोन: ${emailPhone || 'N/A'}\nसूरत क्षेत्र: ${selectedLocality}\n\nप्रश्न / समस्या विवरण:\n${emailMessage}\n\n---\nSent via Sastaphone Surat Direct Q&A Support (support@sastafone.in)`
     );
 
-    window.open(`mailto:sastafone@sastafone.in?subject=${subject}&body=${body}`, '_blank');
+    window.open(`mailto:support@sastafone.in?subject=${subject}&body=${body}`, '_blank');
     setEmailSentSuccess(true);
     confetti({ particleCount: 50, spread: 60 });
     setTimeout(() => {
@@ -346,12 +354,12 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
         {
           id: `bot-${Date.now()}`,
           sender: 'bot',
-          text: `✓ आपका ईमेल **sastafone@sastafone.in** पर ड्राफ्ट कर दिया गया है! हमारी सूरत सपोर्ट टीम आपसे जल्द संपर्क करेगी।\n\nतत्काल उत्तर के लिए आप नीचे सीधे WhatsApp पर भी जुड़ सकते हैं।`,
+          text: `✓ आपका सवाल **support@sastafone.in** पर सफलता से तैयार कर दिया गया है! हमारी सूरत सपोर्ट टीम 2 घंटे के भीतर आपसे संपर्क करेगी।\n\nविषय: ${emailSubject || 'Q&A सहायता'}`,
           timestamp: 'अभी',
-          actionType: 'deal',
+          actionType: 'email',
           dealDetails: {
             topic: emailSubject || 'Support Inquiry',
-            suggestedWaText: `नमस्ते Sastaphone Surat! मैंने sastafone@sastafone.in पर ईमेल भेजा है (${emailName || 'कस्टमर'}). कृपया चेक करें।`,
+            suggestedWaText: `ईमेल भेजा गया: ${emailSubject}`,
             emailSubject: emailSubject || 'Support Desk Inquiry'
           }
         }
@@ -444,7 +452,7 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                   </div>
                   <p className="text-[10px] text-slate-300 flex items-center gap-1 mt-0.5 truncate">
                     <Mail className="w-3 h-3 text-amber-300 shrink-0" />
-                    <span className="font-mono text-blue-200 truncate">sastafone@sastafone.in</span>
+                    <span className="font-mono text-blue-200 truncate">support@sastafone.in</span>
                   </p>
                 </div>
               </div>
@@ -458,7 +466,7 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                       ? 'bg-amber-400 text-slate-950 shadow-sm'
                       : 'bg-white/10 hover:bg-white/20 text-white'
                   }`}
-                  title="सपोर्ट ईमेल टिकट (sastafone@sastafone.in)"
+                  title="सपोर्ट ईमेल टिकट (support@sastafone.in)"
                 >
                   <Mail className="w-4 h-4" />
                 </button>
@@ -604,43 +612,48 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                       >
                         {msg.text}
 
-                        {/* Deal closing buttons at bottom of bot answers (WhatsApp placed at the end as requested) */}
+                        {/* DIRECT EMAIL Q&A RESOLUTION BUTTONS (REPLACED WHATSAPP REDIRECT AS REQUESTED BY USER) */}
                         {msg.actionType === 'deal' && msg.dealDetails && (
                           <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-2">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
-                              सीधे अधिकृत ओनर से संपर्क व फाइनल डील:
-                            </span>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-blue-900 uppercase tracking-wider flex items-center gap-1">
+                                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                <span>डायरेक्ट ईमेल सहायता (support@sastafone.in):</span>
+                              </span>
+                              <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                                एक्टिव ईमेल
+                              </span>
+                            </div>
 
                             <div className="flex flex-col gap-1.5">
-                              {/* 1. Official Email to sastafone@sastafone.in */}
+                              {/* 1. Direct Mailto Compose to support@sastafone.in */}
                               <a
-                                href={`mailto:sastafone@sastafone.in?subject=${encodeURIComponent(
+                                href={`mailto:support@sastafone.in?subject=${encodeURIComponent(
                                   msg.dealDetails.emailSubject
-                                )}&body=${encodeURIComponent(msg.dealDetails.suggestedWaText)}`}
-                                className="w-full py-1.5 px-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-bold flex items-center justify-between transition-colors border border-slate-200"
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <Mail className="w-3.5 h-3.5 text-blue-600" />
-                                  <span>sastafone@sastafone.in पर लिखित ईमेल भेजें</span>
-                                </span>
-                                <ExternalLink className="w-3 h-3 text-slate-400" />
-                              </a>
-
-                              {/* 2. Direct WhatsApp to Owner (WhatsApp placed at the end for finalizing the deal) */}
-                              <a
-                                href={`https://wa.me/91${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                                  msg.dealDetails.suggestedWaText
+                                )}&body=${encodeURIComponent(
+                                  `नमस्ते Sastaphone Surat सपोर्ट टीम!\n\nमेरा प्रश्न / विषय: ${msg.dealDetails.topic}\n\nविवरण:\n${msg.dealDetails.suggestedWaText}\n\nसूरत क्षेत्र: ${selectedLocality}\n\n---\nSent via Sastaphone Surat Direct Q&A Support (support@sastafone.in)`
                                 )}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black flex items-center justify-between shadow-xs transition-all cursor-pointer group"
+                                className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-black flex items-center justify-between shadow-xs transition-all cursor-pointer group"
                               >
                                 <span className="flex items-center gap-1.5">
-                                  <MessageCircle className="w-4 h-4 fill-white" />
-                                  <span>ओनर से WhatsApp पर फाइनल डील पक्की करें</span>
+                                  <Mail className="w-4 h-4 fill-white text-blue-600" />
+                                  <span>support@sastafone.in पर डायरेक्ट सवाल भेजें</span>
                                 </span>
                                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                               </a>
+
+                              {/* 2. In-App Direct Q&A Form Ticket */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEmailFormWithPrompt(msg.dealDetails!.topic, msg.dealDetails!.suggestedWaText)}
+                                className="w-full py-1.5 px-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-950 text-[11px] font-bold flex items-center justify-between transition-colors border border-amber-300 cursor-pointer"
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <Send className="w-3.5 h-3.5 text-amber-700" />
+                                  <span>✍️ सीधे इन-ऐप ईमेल फॉर्म से सवाल दर्ज करें</span>
+                                </span>
+                                <span className="text-[10px] text-amber-700 font-bold">फॉर्म खोलें →</span>
+                              </button>
                             </div>
                           </div>
                         )}
@@ -695,7 +708,7 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                 </form>
 
                 <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1.5 px-1">
-                  <span>सपोर्ट: sastafone@sastafone.in</span>
+                  <span>सपोर्ट: support@sastafone.in</span>
                   <span className="flex items-center gap-1 text-emerald-600 font-bold">
                     <ShieldCheck className="w-3 h-3" />
                     100% सुरक्षित सूरत हब
@@ -705,16 +718,21 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
             </div>
           )}
 
-          {/* TAB 2: OFFICIAL EMAIL TICKET TO sastafone@sastafone.in */}
+          {/* TAB 2: OFFICIAL EMAIL TICKET TO support@sastafone.in */}
           {activeTab === 'email_ticket' && (
             <div className="flex-1 overflow-y-auto p-4 space-y-3.5 text-xs bg-slate-50">
-              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
-                <div className="flex items-center gap-1.5 font-black text-amber-950 text-xs">
-                  <Mail className="w-4 h-4 text-amber-700" />
-                  <span>आधिकारिक सपोर्ट ईमेल: sastafone@sastafone.in</span>
+              <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-black text-blue-950 text-xs">
+                    <Mail className="w-4 h-4 text-blue-700" />
+                    <span>आधिकारिक सपोर्ट ईमेल: support@sastafone.in</span>
+                  </div>
+                  <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                    ✓ एक्टिव ईमेल
+                  </span>
                 </div>
-                <p className="text-[11px] text-amber-900 leading-relaxed">
-                  लिखित में कोटेशन, इनवॉइस कॉपी, कॉर्पोरेट फोन सेलिंग या शिकायत के लिए सीधे आधिकारिक ईमेल पर संदेश भेजें:
+                <p className="text-[11px] text-blue-900 leading-relaxed">
+                  सीधे आधिकारिक ईमेल <strong className="font-mono text-blue-800">support@sastafone.in</strong> पर अपना सवाल, रिपेयरिंग विवरण, इनवॉइस या बाय-बैक पूछताछ दर्ज करें:
                 </p>
               </div>
 
@@ -723,9 +741,9 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                   <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto text-xl shadow-md">
                     ✓
                   </div>
-                  <h5 className="font-black text-emerald-950 text-sm">ईमेल ड्राफ्ट तैयार हुआ!</h5>
+                  <h5 className="font-black text-emerald-950 text-sm">ईमेल सफलतापूर्वक तैयार हुआ!</h5>
                   <p className="text-xs text-emerald-800">
-                    आपका ईमेल <strong>sastafone@sastafone.in</strong> के लिए खोल दिया गया है। हमारी टीम 2 घंटे के भीतर जवाब देगी।
+                    आपका ईमेल <strong>support@sastafone.in</strong> के लिए खोल दिया गया है। हमारी टीम 2 घंटे के भीतर जवाब देगी।
                   </p>
                 </div>
               ) : (
@@ -738,7 +756,7 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                       value={emailName}
                       onChange={e => setEmailName(e.target.value)}
                       placeholder="उदा. राहुल पटेल"
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
                     />
                   </div>
 
@@ -750,42 +768,42 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                       value={emailPhone}
                       onChange={e => setEmailPhone(e.target.value)}
                       placeholder="9825012345"
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white font-mono"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white font-mono text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">विषय (Subject):</label>
+                    <label className="font-bold text-slate-700 block mb-1">विषय (Subject / Q&A टॉपिक):</label>
                     <input
                       type="text"
                       required
                       value={emailSubject}
                       onChange={e => setEmailSubject(e.target.value)}
                       placeholder="उदा. पुराना iPhone 13 बेचना है / S24 कैमरा रिपेयर"
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900"
                     />
                   </div>
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">
-                      समस्या या विस्तृत संदेश (Problem Details):
+                      सवाल या विस्तृत समस्या (Question Details):
                     </label>
                     <textarea
                       rows={4}
                       required
                       value={emailMessage}
                       onChange={e => setEmailMessage(e.target.value)}
-                      placeholder="फोन मॉडल, खराबी, सूरत का पता या आवश्यक जानकारी विस्तार से लिखें..."
-                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white leading-relaxed"
+                      placeholder="फोन मॉडल, खराबी, सूरत का पता या आवश्यक सवाल विस्तार से लिखें..."
+                      className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 leading-relaxed"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Mail className="w-4 h-4" />
-                    <span>sastafone@sastafone.in पर ईमेल भेजें</span>
+                    <span>support@sastafone.in पर डायरेक्ट सवाल भेजें</span>
                   </button>
                 </form>
               )}

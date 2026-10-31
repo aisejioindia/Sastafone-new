@@ -26,15 +26,15 @@ export const Footer: React.FC = () => {
             <div className="space-y-2 max-w-2xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/30">
                 <Flag className="w-3.5 h-3.5 text-amber-400" />
-                <span>सूरत का 100% प्रामाणिक व अधिकृत मोबाइल हब (sastaphone.in)</span>
+                <span>सूरत का 100% प्रामाणिक व अधिकृत मोबाइल हब (sastafone.in)</span>
               </div>
 
               <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                <span>सस्ताफोन सूरत (Sastaphone.in) - अटूट भरोसा व पारदर्शिता</span>
+                <span>सस्ताफोन सूरत (Sastafone.in) - अटूट भरोसा व पारदर्शिता</span>
               </h3>
 
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                <strong className="text-white">sastaphone.in</strong> सूरत वासियों के लिए पुराना मोबाइल बेचने, 6 माह वारंटी वाले सर्टिफाइड फोन खरीदने, 30 मिनट में घर बैठे ओरिजिनल रिपेयर करवाने एवं डेड/स्क्रैप फोन के उच्चतम दाम पाने का आधिकारिक डिजिटल प्लेटफॉर्म है। निष्पक्ष डील्स, 100% डेटा प्राइवेसी और सुरक्षित लेनदेन का सच्चा भरोसा।
+                <strong className="text-white">sastafone.in</strong> सूरत वासियों के लिए पुराना मोबाइल बेचने, 6 माह वारंटी वाले सर्टिफाइड फोन खरीदने, 30 मिनट में घर बैठे ओरिजिनल रिपेयर करवाने एवं डेड/स्क्रैप फोन के उच्चतम दाम पाने का आधिकारिक डिजिटल प्लेटफॉर्म है। निष्पक्ष डील्स, 100% डेटा प्राइवेसी और सुरक्षित लेनदेन का सच्चा भरोसा।
               </p>
 
               <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
@@ -45,7 +45,7 @@ export const Footer: React.FC = () => {
                   className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
-                  <span>सूरत WhatsApp हेल्पलाइन (+91 {WHATSAPP_NUMBER})</span>
+                  <span>सूरत 24x7 WhatsApp हेल्पलाइन (डायरेक्ट चैट)</span>
                 </a>
 
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
@@ -86,7 +86,7 @@ export const Footer: React.FC = () => {
                 Official Entity:
               </span>
               <p className="text-slate-300 font-semibold">
-                Sastaphone Surat • Authorized Mobile Hub (sastaphone.in)
+                Sastafone Surat • Authorized Mobile Hub (sastafone.in)
               </p>
               <p className="text-[10px] text-slate-500">
                 रिंग रोड व अडाजण सेंट्रल मोबाइल लैब, सूरत, गुजरात
@@ -208,7 +208,7 @@ export const Footer: React.FC = () => {
                 <span>सूरत कस्टमर केयर</span>
               </div>
               <p className="text-[11px] text-slate-400">
-                आधिकारिक ईमेल: <span className="text-blue-300">support@sastaphone.in</span>
+                आधिकारिक ईमेल: <a href="mailto:support@sastafone.in" className="text-blue-300 hover:underline font-mono">support@sastafone.in</a>
               </p>
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे सहायता चाहिए।`}
@@ -232,7 +232,7 @@ export const Footer: React.FC = () => {
         <div className="mt-8 pt-4 pb-2 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
           <div className="flex items-center gap-2 text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>सूरत सेंट्रल हब सर्वर लाइव • sastaphone.in अधिकृत डिजिटल हब</span>
+            <span>सूरत सेंट्रल हब सर्वर लाइव • sastafone.in अधिकृत डिजिटल हब</span>
           </div>
 
           <button
@@ -246,14 +246,14 @@ export const Footer: React.FC = () => {
             title="सस्ताफोन अधिकृत ओनर व एडमिन पोर्टल लॉगिन"
           >
             <Lock className="w-3.5 h-3.5 text-amber-400" />
-            <span>{user.role === 'admin' ? '🛡️ एडमिन कंट्रोल रूम (ओनर एक्टिव)' : '🔐 एडमिन मोड (sastaphone.in)'}</span>
+            <span>{user.role === 'admin' ? '🛡️ एडमिन कंट्रोल रूम (ओनर एक्टिव)' : '🔐 एडमिन मोड (sastafone.in)'}</span>
           </button>
         </div>
 
         {/* Bottom Bar & Legal Links */}
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>
-            © {new Date().getFullYear()} Sastaphone Surat (sastaphone.in). All rights reserved. सूरत का नंबर 1 विश्वसनीय मोबाइल प्लेटफॉर्म।
+            © {new Date().getFullYear()} Sastafone Surat (sastafone.in). All rights reserved. सूरत का नंबर 1 विश्वसनीय मोबाइल प्लेटफॉर्म।
           </p>
 
           <div className="flex flex-wrap items-center gap-4">

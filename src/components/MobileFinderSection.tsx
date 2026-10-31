@@ -614,7 +614,7 @@ export const MobileFinderSection: React.FC = () => {
                     कोई मॉडल इस फ़िल्टर में नहीं मिला
                   </h4>
                   <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                    कृपया बजट बढ़ाएं या अन्य फ़िल्टर रीसेट करें। आप हमारे सूरत हेल्पलाइन (9372802044) पर भी संपर्क कर सकते हैं।
+                    कृपया बजट बढ़ाएं या अन्य फ़िल्टर रीसेट करें। आप हमारे सूरत WhatsApp हेल्पडेस्क पर भी सीधे संपर्क कर सकते हैं।
                   </p>
                   <button
                     onClick={handleReset}
