@@ -466,12 +466,12 @@ export const AdminPortalModal: React.FC = () => {
       logActivity(
         'inventory_adjust',
         'स्पेयर पार्ट्स स्टॉक',
-        `पार्ट स्टॉक एडजस्टमेंट: ${target.partName} (${delta > 0 ? '+' : ''}${delta})`,
-        `${target.partName} (${target.compatibleModels}) स्टॉक ${target.stock} से बदलकर ${newStock} कंपोनेंट हुआ।`,
+        `पार्ट स्टॉक एडजस्टमेंट: ${target.name} (${delta > 0 ? '+' : ''}${delta})`,
+        `${target.name} (${target.compatibleWith}) स्टॉक ${target.stock} से बदलकर ${newStock} कंपोनेंट हुआ।`,
         'inventory',
         'bg-amber-100 text-amber-800 border-amber-200',
         'Part Adjusted',
-        { itemName: target.partName, delta, newStock }
+        { itemName: target.name, delta, newStock }
       );
     }
   };

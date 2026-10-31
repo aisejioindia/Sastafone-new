@@ -357,6 +357,8 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
         }
       ]);
     }, 1800);
+  };
+
   const handleClearChat = () => {
     setMessages([
       {
@@ -795,4 +797,3 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
   </>
 );
 };
-}
