@@ -15,7 +15,9 @@ export const Header: React.FC = () => {
     setIsDashboardOpen,
     activeTab,
     setActiveTab,
-    setIsBrandCentersModalOpen
+    setIsBrandCentersModalOpen,
+    user,
+    setIsAuthModalOpen
   } = useApp();
 
   const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
@@ -99,11 +101,11 @@ export const Header: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Service Switcher (Desktop) */}
-        <nav className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 gap-0.5">
+        {/* Center Service Switcher (Desktop) - 3 Core Services: Sell, Repair, SastaBazaar (With Buy inside) */}
+        <nav className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 gap-1">
           <button
             onClick={() => setActiveTab('sell')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'sell'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -114,21 +116,8 @@ export const Header: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('buy')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'buy'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>{language === 'hi' ? 'सर्टिफाइड खरीदें' : 'Buy Phone'}</span>
-            <span className="bg-amber-400 text-slate-900 text-[9px] px-1 rounded-full font-black">डील्स</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('repair')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'repair'
                 ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -139,34 +128,23 @@ export const Header: React.FC = () => {
             <span className="bg-blue-100 text-blue-900 text-[9px] px-1 rounded font-bold">₹199</span>
           </button>
 
-          {/* New SastaBazaar Direct Tab */}
+          {/* SastaBazaar Tab - Includes Buy (सर्टिफाइड व डील्स) Inside */}
           <button
             onClick={() => setActiveTab('bazaar')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'bazaar'
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'bazaar' || activeTab === 'buy'
                 ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm'
                 : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
             <Tag className="w-3.5 h-3.5 text-amber-500" />
-            <span>सस्ता बाज़ार</span>
-            <span className="bg-emerald-500 text-white text-[9px] px-1 rounded-full font-black">₹99</span>
+            <span>{language === 'hi' ? 'सस्ता बाज़ार (फोन खरीदें व डील्स)' : 'SastaBazaar (Buy Deals)'}</span>
+            <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">₹99 / डील्स</span>
           </button>
-
         </nav>
 
         {/* Right Action Buttons */}
         <div className="flex items-center gap-2">
-          <a
-            href={generateWhatsAppLink('general', { locality: selectedLocality })}
-            target="_blank"
-            rel="noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs hover:shadow-emerald-500/20 transition-all"
-            title="Sastaphone सूरत 24x7 सपोर्ट डेस्क"
-          >
-            <MessageCircle className="w-4 h-4 fill-white" />
-            <span>सूरत हेल्पलाइन</span>
-          </a>
 
           <button
             onClick={() => {
@@ -182,54 +160,59 @@ export const Header: React.FC = () => {
             <span>रिव्यू (4.9★)</span>
           </button>
 
-          <button
-            onClick={() => setIsDashboardOpen(true)}
-            className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer"
-          >
-            <User className="w-4 h-4" />
-            <span className="hidden md:inline">{language === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}</span>
-            {activeOrdersCount > 0 && (
-              <span className="bg-orange-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                {activeOrdersCount}
-              </span>
-            )}
-          </button>
+          {!user.isLoggedIn ? (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+              title="100% मुफ़्त लॉगिन • कोई SMS शुल्क नहीं"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>मुफ़्त लॉगिन</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsDashboardOpen(true)}
+              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer"
+            >
+              <User className="w-4 h-4" />
+              <span className="hidden md:inline">{user.name ? user.name.split(' ')[0] : 'डैशबोर्ड'}</span>
+              {activeOrdersCount > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                  {activeOrdersCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Mobile Subnav for 4 core services */}
-      <div className="lg:hidden border-t border-slate-200 bg-white grid grid-cols-4 text-center text-xs font-bold py-1 px-1.5 gap-1">
+      {/* Mobile Subnav for 3 core services: Sell, Repair, SastaBazaar (Buy) */}
+      <div className="lg:hidden border-t border-slate-200 bg-white grid grid-cols-3 text-center text-xs font-bold py-1 px-1.5 gap-1">
         <button
           onClick={() => setActiveTab('sell')}
-          className={`py-1.5 rounded-lg transition-all text-[11px] ${
+          className={`py-1.5 rounded-lg transition-all text-xs font-bold ${
             activeTab === 'sell' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          📱 बेचें
-        </button>
-        <button
-          onClick={() => setActiveTab('buy')}
-          className={`py-1.5 rounded-lg transition-all text-[11px] ${
-            activeTab === 'buy' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          🛒 खरीदें
+          📱 फोन बेचें
         </button>
         <button
           onClick={() => setActiveTab('repair')}
-          className={`py-1.5 rounded-lg transition-all text-[11px] ${
+          className={`py-1.5 rounded-lg transition-all text-xs font-bold ${
             activeTab === 'repair' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          🔧 रिपेयर
+          🔧 रिपेयर ₹199
         </button>
         <button
           onClick={() => setActiveTab('bazaar')}
-          className={`py-1.5 rounded-lg transition-all text-[11px] font-black ${
-            activeTab === 'bazaar' ? 'bg-amber-500 text-slate-950' : 'text-amber-700 bg-amber-50'
+          className={`py-1.5 rounded-lg transition-all text-xs font-black ${
+            activeTab === 'bazaar' || activeTab === 'buy'
+              ? 'bg-amber-500 text-slate-950 shadow-xs'
+              : 'text-amber-800 bg-amber-50'
           }`}
         >
-          🏷️ सस्ता बाज़ार
+          🏷️ सस्ता बाज़ार (खरीदें)
         </button>
       </div>
     </header>

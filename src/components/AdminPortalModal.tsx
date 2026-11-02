@@ -93,7 +93,7 @@ export const AdminPortalModal: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  const AUTH_ADMIN_EMAIL = 'sastafone@sastafone.in';
+  const AUTH_ADMIN_EMAIL = 'support@sastafone.in';
   const AUTH_ADMIN_PASSWORD = 'Siya@1413';
 
   // DEDICATED PASSWORD-PROTECTED AUTHENTICATION LAYER (SECURE STATE)
@@ -115,7 +115,7 @@ export const AdminPortalModal: React.FC = () => {
       categoryLabel: 'कोट व डिस्काउंट',
       title: 'Samsung S24 Ultra फाइनल कोट ₹1,600 सेट किया',
       description: 'कैमरा OIS मोटर व लेंस री-अलाइनमेंट हेतु ₹1,899 से 12% स्पेशल ऑफ देकर ₹1,600 का फाइनल बिल व डायनेमिक QR तैयार किया।',
-      actor: 'sastafone@sastafone.in (ओनर)',
+      actor: 'support@sastafone.in (ओनर)',
       badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       badgeText: 'Quote & Offer',
       iconType: 'payment',
@@ -135,7 +135,7 @@ export const AdminPortalModal: React.FC = () => {
       categoryLabel: 'स्टेटस अपडेट',
       title: 'OnePlus 10R रिपेयरिंग जॉब "प्रगति पर" मार्क हुआ',
       description: 'अडाजण हब से टेक्नीशियन रवाना। ₹199 विज़िट टोकन वेरिफाइड।',
-      actor: 'sastafone@sastafone.in (ओनर)',
+      actor: 'support@sastafone.in (ओनर)',
       badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
       badgeText: 'Status Update',
       iconType: 'status',
@@ -155,7 +155,7 @@ export const AdminPortalModal: React.FC = () => {
       categoryLabel: 'स्टॉक ऑडिट',
       title: 'iPhone 15 Pro Max स्टॉक 4 यूनिट्स वेरिफाइड',
       description: 'सूरत सेंट्रल हब में 32-पॉइंट लैब क्वालिटी टेस्ट पास A+ ग्रेड स्टॉक की पुष्टि।',
-      actor: 'sastafone@sastafone.in (ओनर)',
+      actor: 'support@sastafone.in (ओनर)',
       badgeBg: 'bg-indigo-100 text-indigo-800 border-indigo-200',
       badgeText: 'Inventory',
       iconType: 'inventory',
@@ -172,8 +172,8 @@ export const AdminPortalModal: React.FC = () => {
       actionType: 'security_auth',
       categoryLabel: 'सुरक्षा ऑथेंटिकेशन',
       title: 'सस्ताफोन मास्टर वाल्ट ऑथेंटिकेशन',
-      description: 'sastafone@sastafone.in द्वारा 256-बिट मास्टर की से एडमिन सत्र प्रारंभ।',
-      actor: 'sastafone@sastafone.in (ओनर)',
+      description: 'support@sastafone.in द्वारा 256-बिट मास्टर की से एडमिन सत्र प्रारंभ।',
+      actor: 'support@sastafone.in (ओनर)',
       badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
       badgeText: 'Security Auth',
       iconType: 'security'
@@ -200,7 +200,7 @@ export const AdminPortalModal: React.FC = () => {
       categoryLabel,
       title,
       description,
-      actor: 'sastafone@sastafone.in (ओनर)',
+      actor: user.email ? `${user.email} (ओनर)` : 'support@sastafone.in (ओनर)',
       badgeBg,
       badgeText,
       iconType,
@@ -674,7 +674,7 @@ export const AdminPortalModal: React.FC = () => {
                 सस्ताफोन एडमिन व ओनर कंट्रोल रूम
               </h3>
               <p className="text-[11px] text-slate-300">
-                लॉगिन: <strong>{isOwnerSessionAuthorized ? (user.email || 'sastafone@sastafone.in') : 'अनलॉगिन (सुरक्षित)'}</strong> • रोल: {isOwnerSessionAuthorized ? 'ओनर / सुपर एडमिन ✓' : 'लॉगिन पासवर्ड अपेक्षित'}
+                लॉगिन: <strong>{isOwnerSessionAuthorized ? (user.email || 'support@sastafone.in') : 'अनलॉगिन (सुरक्षित)'}</strong> • रोल: {isOwnerSessionAuthorized ? 'ओनर / सुपर एडमिन ✓' : 'लॉगिन पासवर्ड अपेक्षित'}
               </p>
             </div>
           </div>
@@ -738,7 +738,7 @@ export const AdminPortalModal: React.FC = () => {
                     if (loginError) setLoginError('');
                   }}
                   className="w-full p-2.5 rounded-xl border border-slate-300 text-xs bg-slate-50 font-medium focus:outline-none focus:border-blue-600"
-                  placeholder="sastafone@sastafone.in"
+                  placeholder="support@sastafone.in"
                 />
               </div>
 
@@ -1260,7 +1260,7 @@ export const AdminPortalModal: React.FC = () => {
                           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-900 text-white text-[11px] mb-3 border border-slate-700">
                             <div className="flex items-center gap-2">
                               <Database className="w-3.5 h-3.5 text-amber-400" />
-                              <span className="font-bold">Firebase Cloud DB Record:</span>
+                              <span className="font-bold">सत्यापित क्लाउड रिकॉर्ड:</span>
                               <span className="text-emerald-400 font-semibold flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 {order.cloudSyncStatus === 'synced' ? 'लाइव सिंक (Active)' : 'सिंक्ड (ID: ' + order.id + ')'}
@@ -1343,6 +1343,35 @@ export const AdminPortalModal: React.FC = () => {
                               ))}
                             </div>
                           </div>
+
+                          {/* Uploaded Bill / Ownership Proof & Anti-theft Badge */}
+                          {order.billPhotoUrl && (
+                            <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2.5">
+                                <img
+                                  src={order.billPhotoUrl}
+                                  alt="Bill Proof"
+                                  onClick={() => setPreviewPhotoUrl(order.billPhotoUrl!)}
+                                  className="w-12 h-12 object-cover rounded-lg border border-emerald-300 cursor-pointer shadow-2xs hover:scale-105 transition-transform"
+                                />
+                                <div>
+                                  <span className="text-xs font-bold text-emerald-950 block">
+                                    🧾 ग्राहक द्वारा अपलोड किया गया बिल (स्वामित्व प्रमाण)
+                                  </span>
+                                  <span className="text-[10px] text-emerald-800">
+                                    एंटी-थेफ्ट स्थिति: {order.ownershipDeclared ? '✓ वैध घोषित (चोरी का नहीं)' : 'समीक्षाधीन'} • IMEI: {order.imeiNumber || 'ऑन-साइट जांच'}
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewPhotoUrl(order.billPhotoUrl!)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer transition-colors"
+                              >
+                                बिल देखें
+                              </button>
+                            </div>
+                          )}
 
                           {/* 1. ADVANCED TECHNICIAN PRO-AUDIT & RECEIVING INTAKE ENGINE */}
                           <TechnicianProAuditIntake
@@ -1878,7 +1907,7 @@ export const AdminPortalModal: React.FC = () => {
                           <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900 text-white text-[11px]">
                             <div className="flex items-center gap-2">
                               <Database className="w-3.5 h-3.5 text-emerald-400" />
-                              <span className="font-bold">Firebase Buy-Back Record:</span>
+                              <span className="font-bold">सत्यापित बाय-बैक रिकॉर्ड:</span>
                               <span className="text-emerald-400 font-semibold flex items-center gap-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 {order.cloudSyncStatus === 'synced' ? 'लाइव सिंक (Active)' : 'सिंक्ड (ID: ' + order.id + ')'}

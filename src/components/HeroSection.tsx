@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Smartphone, ShoppingBag, Wrench, ShieldCheck, Zap, Truck, CheckCircle2, Tag, Building2, SlidersHorizontal } from 'lucide-react';
+import { Smartphone, ShoppingBag, Wrench, ShieldCheck, Zap, Truck, CheckCircle2, Tag, Building2, SlidersHorizontal, Mail } from 'lucide-react';
 
 export const HeroSection: React.FC = () => {
   const { language, activeTab, setActiveTab, selectedLocality, setIsLocationModalOpen, setIsBrandCentersModalOpen } = useApp();
@@ -79,14 +79,16 @@ export const HeroSection: React.FC = () => {
                 </button>
 
                 <a
-                  href={`https://wa.me/919372802044?text=${encodeURIComponent(
-                    'नमस्ते Sastafone Surat! मेरे फोन में समस्या है, मुझे रिपेयरिंग/बाय-बैक के लिए सीधे बात करनी है।'
+                  href={`mailto:support@sastafone.in?subject=${encodeURIComponent(
+                    'Sastafone Surat Q&A: मोबाइल रिपेयर या बाय-बैक पूछताछ'
+                  )}&body=${encodeURIComponent(
+                    `नमस्ते Sastafone Surat!\n\nमेरा प्रश्न / समस्या विवरण:\n- फोन मॉडल:\n- समस्या / आवश्यकता:\n- सूरत क्षेत्र: ${selectedLocality}\n\n---\nDirect Q&A via support@sastafone.in`
                   )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-950 text-white font-bold text-xs sm:text-sm border border-white/20 shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm border border-blue-400/40 shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                  title="support@sastafone.in पर डायरेक्ट सवाल पूछें"
                 >
-                  <span>💬 सीधे कनेक्ट करें</span>
+                  <Mail className="w-4 h-4" />
+                  <span>📧 डायरेक्ट सवाल पूछें (support@sastafone.in)</span>
                 </a>
               </div>
             </div>

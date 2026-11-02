@@ -5,10 +5,10 @@ import {
   PHONE_MODELS,
   REPAIR_ISSUES,
   RAZORPAY_REPAIR_VISIT_LINK,
-  SASTAPHONE_SUPER_LABS,
-  CUSTOMER_REPAIR_REVIEWS
+  SASTAPHONE_PHONE,
+  WHATSAPP_NUMBER
 } from '../data/mockData';
-import { Brand, PhoneModel, RepairIssue, CustomerRepairReview } from '../types';
+import { Brand, PhoneModel, RepairIssue, ConditionGrade } from '../types';
 import { formatINR, generateWhatsAppLink } from '../utils/valuation';
 import {
   Wrench,
@@ -21,29 +21,20 @@ import {
   Truck,
   CreditCard,
   QrCode,
-  Wallet,
   ArrowRight,
-  RotateCcw,
-  ExternalLink,
-  Building2,
-  Cpu,
-  Video,
-  Star,
-  Share2,
-  ThumbsUp,
-  MapPin,
+  Upload,
+  Camera,
+  FileCheck,
   AlertTriangle,
-  ShieldAlert,
-  CheckSquare,
-  Square,
-  FileText,
-  Receipt,
-  BadgePercent,
+  Lock,
+  PhoneCall,
   Check,
-  Award
+  ShieldAlert,
+  Smartphone,
+  Eye,
+  X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { BrandLogo } from './BrandLogo';
 
 export const RepairServiceSection: React.FC = () => {
   const {
@@ -53,1676 +44,894 @@ export const RepairServiceSection: React.FC = () => {
     orders,
     setIsDashboardOpen,
     user,
-    setIsBrandCentersModalOpen,
-    setIsReviewModalOpen: openGlobalReviewModal,
-    setPrefillReviewOrder,
-    openPaymentModal,
-    setIsProAuditModalOpen,
-    setSelectedAuditOrder,
-    setIsAdminModalOpen
+    requireAuth,
+    setIsAuthModalOpen
   } = useApp();
 
+  // Mode: Catalog Model vs Custom Model Form
+  const [useCustomModel, setUseCustomModel] = useState(false);
   const [selectedBrand, setSelectedBrand] = useState<Brand>(BRANDS[0]);
-  const [selectedModel, setSelectedModel] = useState<PhoneModel>(PHONE_MODELS[0]);
+  const [selectedModel, setSelectedModel] = useState<PhoneModel>(PHONE_MODELS[0] || {
+    id: 'samsung-galaxy-s24',
+    brandId: 'samsung',
+    name: 'Samsung Galaxy S24 5G',
+    baseValuation: 55000,
+    imageUrl: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
+    category: 'flagship',
+    variants: [{ ram: '8 GB', storage: '128 GB', priceModifier: 0 }],
+    colors: [{ name: 'Black', hex: '#000000' }]
+  });
+
+  // Custom Model Form state
+  const [customBrandName, setCustomBrandName] = useState('Samsung');
+  const [customModelName, setCustomModelName] = useState('');
+  const [customRam, setCustomRam] = useState('8 GB');
+  const [customStorage, setCustomStorage] = useState('128 GB');
+  const [customIs5G, setCustomIs5G] = useState(true);
+  const [customColor, setCustomColor] = useState('Phantom Black');
+  const [customCondition, setCustomCondition] = useState<ConditionGrade>('good');
+
+  // Multi-Select Repair Issues
   const [selectedIssues, setSelectedIssues] = useState<RepairIssue[]>([REPAIR_ISSUES[0]]);
-  const [hasAcceptedFraudTerms, setHasAcceptedFraudTerms] = useState(false);
-  const [fraudTermsError, setFraudTermsError] = useState(false);
-  const [showBillBreakdown, setShowBillBreakdown] = useState(false);
+
+  // Ownership & Anti-theft Details
+  const [imeiNumber, setImeiNumber] = useState('');
+  const [billPhotoUrl, setBillPhotoUrl] = useState<string>('');
+  const [isOwnershipConfirmed, setIsOwnershipConfirmed] = useState(false);
+  const [isTimeNoticeAccepted, setIsTimeNoticeAccepted] = useState(true);
+
+  // Doorstep Pickup & Contact Details
+  const [customerName, setCustomerName] = useState(user.name || '');
+  const [customerPhone, setCustomerPhone] = useState(user.phone || '');
+  const [pickupAddress, setPickupAddress] = useState(user.address || '');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('Today (Within 30-45 Mins)');
-  const [addressInput, setAddressInput] = useState(user.address || `Near Main Road, ${selectedLocality}`);
-  const [customerNameInput, setCustomerNameInput] = useState(user.name || 'Surat Resident');
-  const [customerPhoneInput, setCustomerPhoneInput] = useState(user.phone || '9372802044');
+  const [paymentOption, setPaymentOption] = useState<'advance_upi' | 'razorpay' | 'doorstep'>('advance_upi');
 
-  // Multi-Issue & Pricing Calculations
-  const hasStrictDiagnostic = selectedIssues.some(i => i.isStrictDiagnostic);
-  const isMakeoverSelected = selectedIssues.some(i => i.isMakeoverCombo);
-  const makeoverCombo = REPAIR_ISSUES.find(i => i.isMakeoverCombo) || REPAIR_ISSUES[0];
+  // Submission & UI States
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookedOrder, setBookedOrder] = useState<any | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
+  // Sync user details if changed
+  React.useEffect(() => {
+    if (user.isLoggedIn) {
+      if (!customerName && user.name) setCustomerName(user.name);
+      if (!customerPhone && user.phone) setCustomerPhone(user.phone);
+      if (!pickupAddress && user.address) setPickupAddress(user.address);
+    }
+  }, [user]);
+
+  // Handle Multi-Select Issue Toggle
   const toggleIssue = (issue: RepairIssue) => {
-    if (issue.isMakeoverCombo) {
-      if (isMakeoverSelected) {
-        // Unselect makeover, fall back to screen
-        setSelectedIssues([REPAIR_ISSUES[1]]);
-      } else {
-        // Select makeover combo exclusively
-        setSelectedIssues([issue]);
+    const exists = selectedIssues.some(i => i.id === issue.id);
+    if (exists) {
+      if (selectedIssues.length === 1) {
+        setFormError('कम से कम 1 समस्या चुनना आवश्यक है');
+        return;
       }
-      return;
-    }
-
-    // If regular issue clicked while makeover was active, switch to regular selection
-    const baseList = isMakeoverSelected ? [] : selectedIssues;
-    const isAlreadySelected = baseList.some(i => i.id === issue.id);
-
-    if (isAlreadySelected) {
-      if (baseList.length === 1) {
-        return; // कम से कम 1 समस्या चुनी होनी चाहिए
-      }
-      setSelectedIssues(baseList.filter(i => i.id !== issue.id));
+      setSelectedIssues(selectedIssues.filter(i => i.id !== issue.id));
     } else {
-      setSelectedIssues([...baseList, issue]);
+      setSelectedIssues([...selectedIssues, issue]);
+    }
+    setFormError(null);
+  };
+
+  // Pricing calculations
+  const totalMinPrice = selectedIssues.reduce((acc, curr) => acc + curr.minPrice, 0);
+  const totalMaxPrice = selectedIssues.reduce((acc, curr) => acc + curr.maxPrice, 0);
+
+  // Warranty rule: < 1000 => 3 months warranty, >= 1000 => 6 months warranty
+  const warrantyPeriod = totalMinPrice < 1000 ? '3 महीने (₹1k से नीचे)' : '6 महीने (₹1k+ पर 6 माह वारंटी)';
+
+  // Mock upload bill photo
+  const handleBillUploadSimulate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fakeUrl = URL.createObjectURL(file);
+      setBillPhotoUrl(fakeUrl);
+    } else {
+      // Sample bill preview
+      setBillPhotoUrl('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80');
     }
   };
 
-  const selectMakeoverCombo = () => {
-    if (makeoverCombo) {
-      setSelectedIssues([makeoverCombo]);
-    }
-  };
-
-  const rawMinTotal = selectedIssues.reduce((sum, item) => sum + item.minPrice, 0);
-  const rawMaxTotal = selectedIssues.reduce((sum, item) => sum + item.maxPrice, 0);
-
-  // Combo Discount Logic:
-  // यदि 'मेरा फोन नया जैसा बनाओ' मेगा कॉम्बो है, तो वह पहले से ही कॉम्बो रेट में है।
-  // यदि अलग-अलग 2 समस्याएं हैं: 10% छूट
-  // यदि अलग-अलग 3+ समस्याएं हैं: 15% छूट
-  const comboDiscountPct = isMakeoverSelected ? 0 : selectedIssues.length >= 3 ? 0.15 : selectedIssues.length === 2 ? 0.10 : 0;
-  const comboDiscountMin = Math.round(rawMinTotal * comboDiscountPct);
-  const comboDiscountMax = Math.round(rawMaxTotal * comboDiscountPct);
-
-  const estimatedMinTotal = Math.max(199, rawMinTotal - comboDiscountMin);
-  const estimatedMaxTotal = Math.max(199, rawMaxTotal - comboDiscountMax);
-
-  const issuesSummaryHindi = selectedIssues.map(i => i.hindiName).join(' + ');
-  const issuesSummaryEng = selectedIssues.map(i => i.name).join(' + ');
-  const primaryIssue = selectedIssues[0] || REPAIR_ISSUES[0];
-
-  // Helper to detect complex laboratory issues (Motherboard BGA, Water damage, Screen lamination, Combo)
-  const isComplexIssueSelected = selectedIssues.some(i =>
-    i.category === 'board' ||
-    i.id === 'motherboard-chipset' ||
-    i.id === 'water-damage' ||
-    i.id === 'unidentified-sudden-dead' ||
-    i.id === 'broken-screen' ||
-    i.isMakeoverCombo
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<'details' | 'payment'>('details');
-  const [paymentOption, setPaymentOption] = useState<'razorpay_direct' | 'upi_instant' | 'pay_at_doorstep'>('razorpay_direct');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [isSuccessBooked, setIsSuccessBooked] = useState(false);
-
-  // Customer Review Submission State
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [reviewName, setReviewName] = useState(user.name || 'Happy Surat Customer');
-  const [reviewComment, setReviewComment] = useState('');
-  const [reviewRating, setReviewRating] = useState(5);
-  const [reviewsList, setReviewsList] = useState<CustomerRepairReview[]>(CUSTOMER_REPAIR_REVIEWS);
-  const [isCustomRepairModalOpen, setIsCustomRepairModalOpen] = useState(false);
-  const [customRepairBrand, setCustomRepairBrand] = useState('Realme');
-  const [customRepairModelName, setCustomRepairModelName] = useState('');
-  const [customRepairSpecs, setCustomRepairSpecs] = useState('8GB RAM / 128GB (5G)');
-  const [isCustomRepairModelActive, setIsCustomRepairModelActive] = useState(false);
-
-  const brandModels = PHONE_MODELS.filter(m => m.brandId === selectedBrand.id);
-
-  const handleBrandChange = (brand: Brand) => {
-    setSelectedBrand(brand);
-    setIsCustomRepairModelActive(false);
-    const models = PHONE_MODELS.filter(m => m.brandId === brand.id);
-    if (models.length > 0) {
-      setSelectedModel(models[0]);
-    }
-  };
-
-  const handleApplyCustomRepairModel = (e: React.FormEvent) => {
+  // Final Submission to Sastafone Team
+  const handleSubmitToTeam = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customRepairModelName.trim()) return;
-    const customPhone: PhoneModel = {
-      id: `custom-repair-${Date.now()}`,
-      brandId: customRepairBrand.toLowerCase(),
-      name: `${customRepairBrand} ${customRepairModelName} ${customRepairSpecs ? `(${customRepairSpecs})` : ''}`,
-      baseValuation: 20000,
-      imageUrl: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400&auto=format&fit=crop&q=80',
-      variants: [{ storage: '128GB', priceModifier: 0 }],
-      colors: [{ name: 'Default', hex: '#334155' }],
-      category: 'midrange'
-    };
-    setSelectedModel(customPhone);
-    setIsCustomRepairModelActive(true);
-    setIsCustomRepairModalOpen(false);
-  };
 
-  const handleOpenAppointmentPayment = () => {
-    if (hasStrictDiagnostic && !hasAcceptedFraudTerms) {
-      setFraudTermsError(true);
+    // 1. Enforce Login first
+    if (!user.isLoggedIn) {
+      requireAuth('मोबाइल रिपेयरिंग आवेदन सबमिट करने के लिए कृपया पहले लॉगिन करें।', () => {
+        // Callback after login
+      });
       return;
     }
-    setFraudTermsError(false);
-    setIsModalOpen(false);
 
-    const titleIssueText = selectedIssues.length > 1
-      ? `${selectedIssues.length} समस्याएं (${selectedIssues[0].hindiName} + अन्य)`
-      : selectedIssues[0].hindiName;
+    // 2. Validate custom model if toggled
+    const phoneTitle = useCustomModel
+      ? `${customBrandName} ${customModelName || 'Custom Model'} ${customIs5G ? '(5G)' : '(4G)'}`
+      : selectedModel.name;
 
-    openPaymentModal({
-      type: 'appointment_199',
-      title: `${selectedModel.name} - ${titleIssueText}`,
-      titleHindi: `घर पर रिपेयर अपॉइंटमेंट (₹199 विज़िट टोकन)`,
-      amount: 199,
-      description: `${issuesSummaryEng} • ₹199 विज़िट टोकन (₹99 रिफंडेबल)`,
-      descriptionHindi: `₹199 विज़िट टोकन: फोन रिपेयर होने पर फाइनल बिल में माइनस होगा। यदि फोन नहीं बन सका तो ₹99 तुरंत रिफंड होगा।`,
-      refundNote: `फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा। यदि फोन ठीक नहीं हो सका तो ₹99 तुरंत रिफंड किया जाएगा।`,
-      repairDetails: {
-        modelName: selectedModel.name,
-        issueName: `${titleIssueText} (${formatINR(estimatedMinTotal)} - ${formatINR(estimatedMaxTotal)})`,
-        locality: selectedLocality,
-        address: addressInput || `${selectedLocality}, Surat`,
-        timeSlot: selectedTimeSlot,
-        customerName: customerNameInput || user.name || 'Surat Resident',
-        customerPhone: customerPhoneInput || user.phone || '9825012345'
-      }
-    });
-  };
-
-  const handleProceedToPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (hasStrictDiagnostic && !hasAcceptedFraudTerms) {
-      setFraudTermsError(true);
+    if (useCustomModel && !customModelName.trim()) {
+      setFormError('कृपया अपने फ़ोन का मॉडल नाम दर्ज करें (e.g. Redmi Note 13 Pro+ / Vivo V29)');
       return;
     }
-    setFraudTermsError(false);
-    handleOpenAppointmentPayment();
-  };
 
-  const handleConfirmAndPay = () => {
-    if (hasStrictDiagnostic && !hasAcceptedFraudTerms) {
-      setFraudTermsError(true);
-      setBookingStep('details');
+    if (selectedIssues.length === 0) {
+      setFormError('कृपया कम से कम 1 समस्या चुनें');
       return;
     }
-    setIsProcessingPayment(true);
+
+    // 3. Ownership / Anti-theft validation
+    if (!isOwnershipConfirmed) {
+      setFormError('कृपया पुष्टि करें कि यह फ़ोन आपका वैध स्वामित्व है और चोरी का नहीं है।');
+      return;
+    }
+
+    if (!customerPhone.trim() || customerPhone.replace(/\D/g, '').length < 10) {
+      setFormError('कृपया 10-अंकों का वैध मोबाइल नंबर दर्ज करें');
+      return;
+    }
+
+    setFormError(null);
+    setIsSubmitting(true);
+
+    const issuesSummary = selectedIssues.map(i => i.hindiName).join(', ');
 
     setTimeout(() => {
-      setIsProcessingPayment(false);
-
-      const titleIssueText = selectedIssues.length > 1
-        ? `${selectedIssues.length} समस्याएं (${selectedIssues[0].hindiName} + अन्य)`
-        : selectedIssues[0].hindiName;
-
-      addOrder({
+      const newOrder = addOrder({
         type: 'repair',
-        title: `${selectedModel.name} - ${titleIssueText}`,
-        subtitle: `${issuesSummaryHindi} • वारंटी: ${estimatedMinTotal < 1000 ? '3 महीने (₹1k से नीचे)' : '6 महीने (₹1k+)'} • अनुमानित बिल: ${formatINR(estimatedMinTotal)} - ${formatINR(estimatedMaxTotal)} • ₹199 विज़िट टोकन`,
-        amount: 199,
+        title: `${phoneTitle} - ${selectedIssues.length} समस्याएं`,
+        subtitle: `${issuesSummary} • अनुमानित बिल: ${formatINR(totalMinPrice)} - ${formatINR(totalMaxPrice)} • वारंटी: ${warrantyPeriod}`,
+        amount: 199, // ₹199 advance inspection token
         status: 'technician_assigned',
-        statusHindi: 'टेक्नीशियन होम विज़िट के लिए असाइन हुआ',
+        statusHindi: '₹199 QC टोकन कन्फर्म • टेक लैब समीक्षा में',
         locality: selectedLocality,
-        fullAddress: addressInput || `${selectedLocality}, Surat`,
-        customerName: customerNameInput || 'Customer',
-        customerPhone: customerPhoneInput || '9825012345',
+        fullAddress: pickupAddress || `${selectedLocality}, Surat`,
+        customerName: customerName || user.name || 'Surat Resident',
+        customerPhone: customerPhone || user.phone || '9372802044',
         timeSlot: selectedTimeSlot,
-        technicianName: 'Sanjay Prajapati (Sastaphone Doorstep Lead)',
-        technicianPhone: 'ऑफ़िशियल हब',
+        technicianName: 'संजय प्रजापति (सस्ताफोन सर्टिफाइड टेक लीड)',
+        technicianPhone: '9372802044',
         visitCharge: 199,
-        paymentMethod:
-          paymentOption === 'razorpay_direct'
-            ? 'सस्ताफोन पे (Sastaphone Pay 100% सिक्योर)'
-            : paymentOption === 'upi_instant'
-            ? 'ऑनलाइन UPI (GPay / PhonePe / Paytm)'
-            : 'Pay at Doorstep (Cash/UPI)',
-        paymentStatus: paymentOption === 'pay_at_doorstep' ? 'pay_on_visit' : 'paid',
-        refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में माइनस होगा। फोन रिपेयर न होने पर ₹99 तुरंत रिफंड होगा।'
+        paymentMethod: paymentOption === 'doorstep' ? 'Pay at Doorstep (Cash/UPI)' : 'UPI Digital Advance (₹199)',
+        paymentStatus: paymentOption === 'doorstep' ? 'pay_on_visit' : 'paid',
+        refundPolicyNote: 'फोन रिपेयर होने पर यह ₹199 फाइनल बिल में एडजस्ट होगा।',
+        customerRequirement: `समस्याएं: ${issuesSummary}. कस्टमर रंग: ${useCustomModel ? customColor : 'Standard'}. IMEI: ${imeiNumber || 'ऑन-पिकअप वेरीफाई'}.`,
+        customerDoubtResolved: `सूरत लैब धैर्य सूचना स्वीकृत: जटिल हार्डवेयर कार्य में मानक समय लगेगा। बिल ₹1k से नीचे 3 माह, ऊपर 6 माह वारंटी दी जाएगी।`,
+        repairProblems: selectedIssues.map(i => i.hindiName),
+        billPhotoUrl: billPhotoUrl || undefined,
+        ownershipDeclared: isOwnershipConfirmed,
+        antiTheftVerified: true,
+        imeiNumber: imeiNumber || undefined,
+        advanceTokenAmount: 199,
+        customModelDetails: {
+          brand: useCustomModel ? customBrandName : selectedBrand.name,
+          model: useCustomModel ? customModelName : selectedModel.name,
+          ram: useCustomModel ? customRam : '8 GB',
+          storage: useCustomModel ? customStorage : '128 GB',
+          is5G: useCustomModel ? customIs5G : selectedModel.is5G,
+          color: useCustomModel ? customColor : 'Standard',
+          condition: useCustomModel ? customCondition : 'good'
+        }
       });
 
-      confetti({
-        particleCount: 90,
-        spread: 65,
-        origin: { y: 0.6 }
-      });
-
-      setIsSuccessBooked(true);
-      setTimeout(() => {
-        setIsModalOpen(false);
-        setIsSuccessBooked(false);
-        setBookingStep('details');
-        setIsDashboardOpen(true);
-      }, 1600);
-    }, 1200);
-  };
-
-  const handleSubmitReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newRev: CustomerRepairReview = {
-      id: 'rev-' + Date.now(),
-      customerName: reviewName,
-      locality: selectedLocality,
-      phoneModel: selectedModel.name,
-      issueFixed: issuesSummaryHindi,
-      rating: reviewRating,
-      comment: reviewComment || 'फोन बहुत बढ़िया से रिपेयर हुआ। समय पर सर्विस मिली!',
-      date: 'Just now',
-      verifiedRepair: true
-    };
-    setReviewsList([newRev, ...reviewsList]);
-    setIsReviewModalOpen(false);
-    confetti({ particleCount: 60, spread: 50 });
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      setIsSubmitting(false);
+      setBookedOrder(newOrder);
+    }, 900);
   };
 
   return (
-    <section id="repair-section" className="py-8 bg-slate-50 border-b border-slate-200">
-      <div className="container mx-auto px-4 max-w-5xl">
-        {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-black mb-2">
-            <Wrench className="w-3.5 h-3.5 text-blue-600" />
-            <span>घर बैठे मोबाइल रिपेयरिंग (Doorstep in 30 Mins)</span>
-          </div>
-          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            सूरत में अपने घर पर 30 मिनट में रिपेयर करवाएं
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
-            स्क्रीन क्रैक, बैटरी ड्रेन, हीटिंग व हैंगिंग प्रॉब्लम का लाइव समाधान। केवल ₹199 में होम विज़िट बुक करें (रिपेयरिंग पर यह ₹199 बिल में एडजस्ट होगा)।
-          </p>
+    <section id="repair-section" className="py-8 bg-slate-100/70 border-b border-slate-200">
+      <div className="container mx-auto px-4 max-w-4xl">
+        {/* App-like Header Banner */}
+        <div className="bg-white rounded-3xl p-5 sm:p-7 shadow-sm border border-slate-200/90 mb-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
 
-          {/* Visit Fee & Razorpay Badge */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <a
-              href={RAZORPAY_REPAIR_VISIT_LINK}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 p-2 px-3.5 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-800 text-white text-xs font-bold shadow-md hover:scale-105 transition-all"
-            >
-              <CreditCard className="w-4 h-4 text-amber-400" />
-              <span>Razorpay गेटवे से ₹199 बुक करें (Official Link)</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-
-            <button
-              onClick={() => setIsBrandCentersModalOpen(true)}
-              className="inline-flex items-center gap-1.5 p-2 px-3 rounded-2xl bg-white border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs hover:bg-slate-50 transition-all cursor-pointer"
-            >
-              <Building2 className="w-3.5 h-3.5 text-blue-600" />
-              <span>सूरत के आधिकारिक ब्रांड सर्विस सेंटर देखें</span>
-            </button>
-          </div>
-        </div>
-
-        {/* 1. Brand & Model Picker */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs mb-6">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
-            1. अपना फोन ब्रांड चुनें (Samsung, Moto, Vivo, Oppo, Tecno, Realme, Xiaomi, OnePlus, iQOO, Apple, CMF, Lava आदि):
-          </h3>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-thin">
-            {BRANDS.map(brand => {
-              const isSelected = selectedBrand.id === brand.id;
-              return (
-                <button
-                  key={brand.id}
-                  onClick={() => handleBrandChange(brand)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap border transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-                    isSelected
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200'
-                  }`}
-                >
-                  <BrandLogo brandId={brand.id} size="sm" inverted={isSelected} />
-                  <span>{brand.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 pt-3 border-t border-slate-100">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-              मॉडल (September 2026 तक के लेटेस्ट मॉडल्स):
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {brandModels.map(model => {
-                const isSelected = selectedModel.id === model.id && !isCustomRepairModelActive;
-                return (
-                  <button
-                    key={model.id}
-                    onClick={() => {
-                      setIsCustomRepairModelActive(false);
-                      setSelectedModel(model);
-                    }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                    }`}
-                  >
-                    {model.name}
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => setIsCustomRepairModalOpen(true)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                  isCustomRepairModelActive
-                    ? 'bg-amber-400 text-slate-950 border-amber-500 font-black'
-                    : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300'
-                }`}
-              >
-                <span>✍️</span>
-                <span>
-                  {isCustomRepairModelActive
-                    ? `✓ कस्टम मॉडल: ${selectedModel.name}`
-                    : '+ अन्य / अनलिस्टेड मॉडल दर्ज करें'}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Problem Selector (Multi-Selection Enabled + Strict Anti-Fraud Diagnostic) */}
-        <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-slate-900">
-                  2. फोन की समस्या (प्रॉब्लम) चुनें:
-                </h3>
-                <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  मल्टी-सिलेक्ट उपलब्ध
-                </span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-800 text-xs font-black mb-2">
+                <Wrench className="w-3.5 h-3.5 text-red-600" />
+                <span>सस्ताफोन अधिकृत डोरस्टेप रिपेयर ऐप (Surat Super Lab)</span>
               </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">
-                जितनी भी समस्याएं हैं उन सभी पर टिक करें — एक साथ रिपेयर पर 15% तक कॉम्बो छूट और पारदर्शी बिल मिलेगा।
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                ग्राहक रिपेयरिंग आवेदन व कोटेशन इंजन
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                घर बैठे 30 मिनट में फ़ोन की जांच व रिपेयर। मात्र ₹199 एडवांस QC टोकन (फाइनल बिल में माइनस)।
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <span className="text-xs font-black bg-slate-900 text-white px-3 py-1 rounded-full shadow-2xs">
-                {selectedIssues.length} चुनी गई समस्या{selectedIssues.length > 1 ? 'एं' : ''}
+            <div className="flex flex-col sm:items-end gap-1">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                सूरत एक्सप्रेस लैब
               </span>
-              {selectedIssues.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedIssues([REPAIR_ISSUES[0]])}
-                  className="text-[11px] font-bold text-slate-500 hover:text-slate-800 underline cursor-pointer"
-                >
-                  रीसेट
-                </button>
-              )}
+              <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>एंटी-थेफ्ट व बिल वेरिफिकेशन प्रोटेक्टेड</span>
+              </span>
             </div>
           </div>
-
-          {/* VIP Showcase Banner: मेरा फोन बिल्कुल नया जैसा बनाओ (6-इन-1 मेगा मेकओवर कॉम्बो) */}
-          <div className={`mb-5 p-4 sm:p-5 rounded-3xl border-2 transition-all relative overflow-hidden ${
-            isMakeoverSelected
-              ? 'bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-blue-500/15 border-amber-500 shadow-lg ring-2 ring-amber-400/40'
-              : 'bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white border-amber-400/30 shadow-md'
-          }`}>
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-2 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 text-[11px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
-                    <span>🌟 सुपर-पॉपुलर कॉम्बो</span>
-                  </span>
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
-                    isMakeoverSelected
-                      ? 'bg-amber-100 text-amber-900 border-amber-300'
-                      : 'bg-white/10 text-amber-200 border-white/20'
-                  }`}>
-                    शो-रूम कंडीशन • 6 पार्ट्स व सर्विसेज एक साथ
-                  </span>
-                </div>
-
-                <h4 className={`text-base sm:text-lg font-black tracking-tight ${
-                  isMakeoverSelected ? 'text-slate-950' : 'text-white'
-                }`}>
-                  🌟 मेरा फोन बिल्कुल नया जैसा बनाओ (ऑल-इन-वन मेगा मेकओवर कॉम्बो)
-                </h4>
-
-                <p className={`text-xs leading-relaxed ${
-                  isMakeoverSelected ? 'text-slate-700' : 'text-slate-300'
-                }`}>
-                  अगर आपका फोन पुराना, टूटा या सुस्त हो गया है, तो अलग-अलग कराने की बजाय यह पूरा कम्प्लीट पैकेज चुनें:
-                </p>
-
-                {/* 6 Included Items Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-[11px]">
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>1. नया डिस्प्ले व टच स्क्रीन</span>
-                  </div>
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>2. नई 100% ओरिजिनल बैटरी</span>
-                  </div>
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>3. नया बैक पैनल / बॉडी कवर</span>
-                  </div>
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>4. नया कैमरा लेंस ग्लास</span>
-                  </div>
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>5. 9D प्रीमियम टेम्पर्ड ग्लास</span>
-                  </div>
-                  <div className={`p-2 rounded-xl flex items-center gap-1.5 font-bold ${
-                    isMakeoverSelected ? 'bg-white text-slate-900 border border-amber-200 shadow-2xs' : 'bg-white/10 text-white'
-                  }`}>
-                    <span className="text-emerald-400">✓</span>
-                    <span>6. डीप क्लीनिंग व थर्मल सर्विस</span>
-                  </div>
-                </div>
-
-                {/* Price Comparison */}
-                <div className={`pt-1 flex flex-wrap items-center gap-2 sm:gap-4 text-xs ${
-                  isMakeoverSelected ? 'text-slate-800' : 'text-slate-200'
-                }`}>
-                  <span className="line-through text-slate-400 text-[11px]">
-                    अलग-अलग कुल: ₹3,394 - ₹7,894
-                  </span>
-                  <span className="font-black text-amber-500 text-sm bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                    कॉम्बो डील: केवल {formatINR(makeoverCombo.minPrice)} - {formatINR(makeoverCombo.maxPrice)}
-                  </span>
-                  <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    🎉 सीधी ₹1,500 से ₹3,400 की बचत!
-                  </span>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex flex-col gap-2 w-full lg:w-auto">
-                <button
-                  type="button"
-                  onClick={selectMakeoverCombo}
-                  className={`py-3 px-5 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
-                    isMakeoverSelected
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400'
-                      : 'bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 hover:scale-102'
-                  }`}
-                >
-                  <span>{isMakeoverSelected ? '✓ मेकओवर कॉम्बो चुना हुआ है' : '🌟 यह पूरा कॉम्बो चुनें (₹2,499 से शुरू)'}</span>
-                </button>
-                <p className={`text-[10px] text-center ${isMakeoverSelected ? 'text-slate-500' : 'text-slate-400'}`}>
-                  सूरत में 45-60 मिनट में होम विज़िट पर कम्प्लीट मेकओवर
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              {isMakeoverSelected
-                ? 'या अलग-अलग पार्ट्स चुनने के लिए नीचे से सिलेक्ट करें:'
-                : 'अलग-अलग पार्ट्स या स्पेसिफिक खराबी चुनें:'}
-            </h4>
-            <span className="text-[11px] text-slate-400">
-              प्रत्येक पार्ट का अलग-अलग पारदर्शी रेट
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {REPAIR_ISSUES.map(issue => {
-              const isSelected = selectedIssues.some(i => i.id === issue.id);
-              const isStrict = issue.isStrictDiagnostic;
-              const isCombo = issue.isMakeoverCombo;
-
-              return (
-                <div
-                  key={issue.id}
-                  onClick={() => toggleIssue(issue)}
-                  role="button"
-                  tabIndex={0}
-                  className={`p-3.5 rounded-2xl border text-left cursor-pointer transition-all flex flex-col justify-between relative select-none ${
-                    isCombo
-                      ? isSelected
-                        ? 'bg-gradient-to-br from-amber-50 to-emerald-50 border-amber-500 ring-2 ring-amber-500/40 shadow-md col-span-1 sm:col-span-2'
-                        : 'bg-amber-50/40 hover:bg-amber-50/70 border-amber-300 hover:border-amber-400 col-span-1 sm:col-span-2'
-                      : isStrict
-                      ? isSelected
-                        ? 'bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/30 shadow-md'
-                        : 'bg-rose-50/40 hover:bg-rose-50/70 border-rose-200 hover:border-rose-300'
-                      : isSelected
-                      ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-                      : 'bg-slate-50/70 hover:bg-white border-slate-200'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shadow-2xs ${
-                          isCombo
-                            ? 'bg-gradient-to-br from-amber-500 to-yellow-500 text-slate-950 font-black'
-                            : isStrict
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : isSelected
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white text-blue-600 border border-slate-200'
-                        }`}>
-                          {isCombo
-                            ? '🌟'
-                            : isStrict
-                            ? '⚠️'
-                            : issue.category === 'screen'
-                            ? '📱'
-                            : issue.category === 'battery'
-                            ? '🔋'
-                            : issue.category === 'body'
-                            ? '🔲'
-                            : issue.category === 'camera'
-                            ? '📷'
-                            : issue.category === 'protection'
-                            ? '🛡️'
-                            : issue.category === 'service'
-                            ? '✨'
-                            : issue.category === 'charging'
-                            ? '⚡'
-                            : issue.category === 'audio'
-                            ? '🔊'
-                            : issue.category === 'network'
-                            ? '📶'
-                            : '🔧'}
-                        </span>
-                        {issue.popular && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            isCombo ? 'bg-amber-200 text-amber-950 font-black' : 'bg-amber-100 text-amber-900'
-                          }`}>
-                            {isCombo ? 'ALL-IN-ONE' : 'POPULAR'}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Checkbox indicator */}
-                      <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                        isSelected
-                          ? isCombo
-                            ? 'bg-amber-600 text-white'
-                            : isStrict
-                            ? 'bg-amber-600 text-white'
-                            : 'bg-blue-600 text-white'
-                          : 'border-2 border-slate-300 bg-white'
-                      }`}>
-                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </div>
-                    </div>
-
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <h4 className={`font-bold text-xs sm:text-sm leading-snug ${
-                        isCombo ? 'text-amber-950 font-black' : isStrict ? 'text-amber-950 font-black' : isSelected ? 'text-blue-950 font-black' : 'text-slate-900'
-                      }`}>
-                        {issue.hindiName}
-                      </h4>
-                    </div>
-
-                    <p className="text-[10px] text-slate-500 line-clamp-1">{issue.name}</p>
-                    <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">{issue.description}</p>
-
-                    {/* If Makeover Combo, show the 6 items inside the card too */}
-                    {isCombo && issue.comboItems && (
-                      <div className="mt-2.5 p-2 rounded-xl bg-amber-100/60 border border-amber-200 space-y-1 text-[10px] text-amber-950 font-medium">
-                        <p className="font-bold text-[11px] text-amber-900">📦 कॉम्बो में शामिल 6 सर्विसेज:</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                          {issue.comboItems.map((item, i) => (
-                            <span key={i} className="flex items-center gap-1">
-                              <span className="text-emerald-600">✓</span>
-                              <span className="truncate">{item}</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-slate-200/80 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block font-semibold">
-                          {isCombo ? 'कॉम्बो पैकेज चार्ज' : 'अलग से अनुमानित चार्ज'}
-                        </span>
-                        <span className={`text-xs font-black ${isCombo ? 'text-amber-900 font-black text-sm' : isStrict ? 'text-amber-800' : 'text-blue-700'}`}>
-                          {formatINR(issue.minPrice)} - {formatINR(issue.maxPrice)}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                        {issue.estimatedTime}
-                      </span>
-                    </div>
-
-                    {/* Dynamic 3-Month (<1k) vs 6-Month (1k+) Warranty Badge */}
-                    <div className="flex items-center justify-between text-[10px] pt-1 border-t border-dashed border-slate-200">
-                      <span className="flex items-center gap-1 font-bold text-slate-600">
-                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                        <span>वारंटी:</span>
-                      </span>
-                      {issue.minPrice < 1000 ? (
-                        <span className="bg-amber-100 text-amber-900 font-black px-1.5 py-0.5 rounded text-[10px] border border-amber-300/60">
-                          🛡️ 3 महीने वारंटी (₹1k से कम)
-                        </span>
-                      ) : (
-                        <span className="bg-emerald-100 text-emerald-900 font-black px-1.5 py-0.5 rounded text-[10px] border border-emerald-300/60">
-                          🛡️ 6 महीने फुल वारंटी (₹1k+)
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Combo Savings Notice */}
-          <div className="mt-4 p-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                <BadgePercent className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-900">
-                  {comboDiscountPct > 0 ? (
-                    <span className="text-emerald-700">
-                      🎉 {Math.round(comboDiscountPct * 100)}% कॉम्बो मल्टी-प्रॉब्लम छूट लागू ({selectedIssues.length} समस्याएं चुनी गईं)
-                    </span>
-                  ) : (
-                    <span>मल्टी-प्रॉब्लम कॉम्बो डिस्काउंट उपलब्ध</span>
-                  )}
-                </p>
-                <p className="text-[11px] text-slate-600">
-                  एक ही बार फोन खुलने पर लेबर व टेस्टिंग चार्ज कम हो जाता है (2 समस्याओं पर 10%, 3+ पर 15% छूट)।
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowBillBreakdown(!showBillBreakdown)}
-              className="text-xs font-bold text-blue-700 bg-white hover:bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200 transition-colors flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
-            >
-              <Receipt className="w-3.5 h-3.5" />
-              <span>{showBillBreakdown ? 'विस्तृत बिल छुपाएं' : 'लाइव आइटम बिल देखें'}</span>
-            </button>
-          </div>
-
-          {/* Strict Anti-Fraud / "पता नहीं क्या हुआ / अचानक बंद फोन" Protection Protocol Box */}
-          {hasStrictDiagnostic && (
-            <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-amber-50/90 border-2 border-amber-400 text-slate-900 space-y-3 animate-in fade-in duration-200 shadow-sm">
-              <div className="flex items-start gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <ShieldAlert className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="font-black text-sm text-amber-950 flex items-center gap-2">
-                    <span>⚠️ 'पता नहीं क्या हुआ / अचानक बंद फोन' - सख्त शॉपकीपर व टेक्नीशियन सुरक्षा नियम</span>
-                    <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
-                      Anti-Fraud Guard
-                    </span>
-                  </h4>
-                  <p className="text-[11px] text-amber-800 mt-0.5">
-                    सूरत मोबाइल टेक्नीशियन सुरक्षा व ईमानदार ग्राहक पॉलिसी (समय की बर्बादी व झूठे आरोपों से बचाव)
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white/90 p-3.5 rounded-xl border border-amber-200 text-xs text-slate-700 space-y-2">
-                <p className="leading-relaxed">
-                  काफी बार ग्राहक फोन पानी में गिरने (लिक्विड डैमेज), पहले किसी लोकल दुकान पर खुला होने, या शॉर्ट सर्किट की बात छुपाकर <em>"पता नहीं क्या हुआ, बस अचानक बंद हो गया... आप देख लो मुझे बता देना कितना खर्चा होगा"</em> कहते हैं और बाद में शॉपकीपर पर पुरानी खराबी का दोष मढ़ते हैं या बिना काम कराए समय खराब करते हैं। इसके लिए हमारे सख्त नियम हैं:
-                </p>
-
-                <ul className="space-y-1.5 text-[11px] list-disc list-inside text-slate-800">
-                  <li>
-                    <strong>1. हाई-टेक माइक्रोस्कोप व थर्मल वीडियो जांच:</strong> फोन खोलने से पहले और खोलते ही मदरबोर्ड की स्थिति, पानी के जंग (ऑक्सीडेशन), और पहले से जली/छेड़ी गई आईसी का डिजिटल फोटो/वीडियो रिकॉर्ड लिया जाएगा। पहले की छिपी खराबी के लिए टेक्नीशियन जिम्मेदार नहीं होगा।
-                  </li>
-                  <li>
-                    <strong>2. एडवांस ₹199 टोकन (टाइम-पास सुरक्षा):</strong> केवल फॉल्ट पूछकर समय बर्बाद करने से रोकने के लिए ₹199 टोकन अनिवार्य है। <strong>यदि आप फोन बनवाते हैं, तो यह ₹199 आपके फाइनल बिल में 100% एडजस्ट (माफ) हो जाएगा (यानी जांच मुफ़्त)!</strong>
-                  </li>
-                  <li>
-                    <strong>3. डेटा व ईएमएमसी सेफ्टी रिस्क:</strong> अचानक बंद या मदरबोर्ड शॉर्ट फोन में इंटरनल मेमोरी करप्ट होने का जोखिम रहता है। डेटा बैकअप की जिम्मेदारी ग्राहक की स्वयं की होगी।
-                  </li>
-                </ul>
-              </div>
-
-              {/* Mandatory Customer Digital Undertaking Checkbox */}
-              <label
-                className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                  hasAcceptedFraudTerms
-                    ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs ring-1 ring-emerald-400'
-                    : fraudTermsError
-                    ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-400 text-rose-950'
-                    : 'bg-white border-amber-300 text-slate-900 hover:border-amber-400'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={hasAcceptedFraudTerms}
-                  onChange={e => {
-                    setHasAcceptedFraudTerms(e.target.checked);
-                    if (e.target.checked) setFraudTermsError(false);
-                  }}
-                  className="mt-0.5 w-4 h-4 text-emerald-600 rounded shrink-0 cursor-pointer"
-                />
-                <span className="text-xs font-bold leading-snug">
-                  ✓ मैं प्रमाणित करता/करती हूँ कि मैंने फोन में कोई पूर्व वाटर (पानी) डैमेज या अन्य दुकान की छेड़छाड़ नहीं छिपाई है और मैं ₹199 डायग्नोस्टिक व नो-डेटा-लॉस सुरक्षा शर्तों से पूर्णतः सहमत हूँ।
-                </span>
-              </label>
-
-              {fraudTermsError && !hasAcceptedFraudTerms && (
-                <p className="text-xs text-rose-700 font-bold flex items-center gap-1.5 animate-bounce">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                  <span>आगे बढ़ने से पहले कृपया ऊपर दी गई अंडरटेकिंग को स्वीकार (चेक) करें।</span>
-                </p>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* 3. AI Demo Price Card & Itemized Bill Breakdown */}
-        <div className="bg-gradient-to-r from-blue-700 via-indigo-800 to-blue-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            <div className="lg:col-span-7 space-y-4">
-              <div>
-                <div className="inline-flex items-center gap-1.5 bg-amber-400 text-slate-950 text-xs font-black px-2.5 py-0.5 rounded-full mb-2">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>AI डायनेमिक मल्टी-प्रॉब्लम एस्टीमेटर</span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black">
-                  {selectedModel.name}
-                </h3>
-                <p className="text-xs text-blue-100 mt-0.5">
-                  चयनित: <strong>{selectedIssues.length} समस्याएं</strong> ({issuesSummaryHindi})
-                </p>
+        {/* If Booked Successfully, Show App Confirmation Card */}
+        {bookedOrder ? (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-300 animate-in zoom-in-95 duration-200 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+              ऑर्डर नंबर: {bookedOrder.orderNumber}
+            </span>
+
+            <h3 className="text-2xl font-black text-slate-900 mt-3">
+              रिपेयरिंग आवेदन सस्ताफोन टीम को सबमिट हो गया!
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-lg mx-auto">
+              सर्टिफाइड टेक्नीशियन <span className="font-bold text-slate-900">संजय प्रजापति</span> को आपका आवेदन भेज दिया गया है। एडमिन डैशबोर्ड पर आपकी लाइव जॉब-शीट तैयार है।
+            </p>
+
+            {/* Quick Summary Box */}
+            <div className="my-5 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left max-w-md mx-auto space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">डिवाइस:</span>
+                <span className="font-bold text-slate-900">{bookedOrder.title}</span>
               </div>
-
-              {/* Selected Problems Badges */}
-              <div className="flex flex-wrap gap-1.5">
-                {selectedIssues.map(issue => (
-                  <span
-                    key={issue.id}
-                    className="text-[11px] font-bold bg-white/15 border border-white/25 px-2.5 py-1 rounded-xl flex items-center gap-1"
-                  >
-                    <span>✓</span>
-                    <span>{issue.hindiName}</span>
-                    <span className="text-amber-300 font-mono text-[10px]">
-                      ({formatINR(issue.minPrice)})
-                    </span>
-                  </span>
-                ))}
+              <div className="flex justify-between">
+                <span className="text-slate-500">समस्याएं:</span>
+                <span className="font-bold text-slate-900">{bookedOrder.repairProblems?.join(', ')}</span>
               </div>
-
-              {/* Live Itemized Bill Calculation Box */}
-              <div className="p-4 rounded-2xl bg-white/10 border border-white/20 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-white/15 font-bold">
-                  <span className="text-blue-100 flex items-center gap-1.5">
-                    <Receipt className="w-4 h-4 text-amber-300" />
-                    <span>आइटमवाइज़ रिपेयर बिल ब्रेकडाउन</span>
-                  </span>
-                  <span className="text-[11px] text-amber-300 font-semibold">
-                    सूरत डोरस्टेप व लैब रेट
-                  </span>
-                </div>
-
-                {/* Line items for each selected problem or Makeover Combo */}
-                {isMakeoverSelected ? (
-                  <div className="space-y-2">
-                    <div className="p-2.5 rounded-xl bg-amber-400/15 border border-amber-300/30 text-amber-200">
-                      <p className="font-bold text-xs text-amber-300 flex items-center gap-1.5 mb-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                        <span>6-in-1 कम्प्लीट मेकओवर पैकेज (सभी 6 शामिल):</span>
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-blue-100">
-                        <div className="flex items-center justify-between">
-                          <span>1. नया डिस्प्ले व टच स्क्रीन</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>2. नई 100% ओरिजिनल बैटरी</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>3. नया बैक पैनल / बॉडी कवर</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>4. नया कैमरा लेंस ग्लास</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>5. 9D प्रीमियम टेम्पर्ड ग्लास</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span>6. डीप क्लीनिंग व थर्मल सर्विस</span>
-                          <span className="text-emerald-400 font-bold">✓ शामिल</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-1 flex items-center justify-between text-blue-200 text-[11px]">
-                      <span>अलग-अलग पार्ट्स का कुल मूल्य:</span>
-                      <span className="line-through text-slate-300 font-mono">₹3,394 - ₹7,894</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-emerald-300 font-bold text-xs bg-emerald-500/20 p-2 rounded-xl border border-emerald-400/30">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                        <span>मेकओवर कॉम्बो महा-बचत:</span>
-                      </span>
-                      <span>- ₹895 से ₹3,395 तक की सीधी छूट</span>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                      {selectedIssues.map((issue, idx) => (
-                        <div key={issue.id} className="flex items-center justify-between text-blue-100 text-[11px]">
-                          <span className="truncate pr-2">
-                            {idx + 1}. {issue.hindiName}
-                          </span>
-                          <span className="font-mono text-white shrink-0">
-                            {formatINR(issue.minPrice)} - {formatINR(issue.maxPrice)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Subtotal */}
-                    <div className="pt-2 border-t border-white/15 flex items-center justify-between text-blue-200 text-xs">
-                      <span>पार्ट्स व कंपोनेंट सबटोटल:</span>
-                      <span className="font-bold text-white">
-                        {formatINR(rawMinTotal)} - {formatINR(rawMaxTotal)}
-                      </span>
-                    </div>
-
-                    {/* Combo Discount line if 2+ issues */}
-                    {comboDiscountPct > 0 && (
-                      <div className="flex items-center justify-between text-emerald-300 font-bold text-xs bg-emerald-500/20 p-2 rounded-xl border border-emerald-400/30">
-                        <span className="flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>मल्टी-प्रॉब्लम कॉम्बो डिस्काउंट ({Math.round(comboDiscountPct * 100)}%):</span>
-                        </span>
-                        <span>- {formatINR(comboDiscountMin)} से {formatINR(comboDiscountMax)}</span>
-                      </div>
-                    )}
-
-                    {/* Upsell recommendation to Full Makeover if 3+ items selected */}
-                    {selectedIssues.length >= 3 && !isMakeoverSelected && (
-                      <div className="p-2 rounded-xl bg-amber-400/20 border border-amber-300/30 flex items-center justify-between gap-2 text-[11px] text-amber-200">
-                        <span>💡 टिप: 'मेरा फोन नया जैसा बनाओ' कॉम्बो में 6 चीजें ₹2,499 से मिल रही हैं!</span>
-                        <button
-                          type="button"
-                          onClick={selectMakeoverCombo}
-                          className="px-2 py-1 rounded bg-amber-400 text-slate-950 font-black text-[10px] shrink-0 cursor-pointer hover:bg-amber-300"
-                        >
-                          कॉम्बो चुनें
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Doorstep Token */}
-                <div className="flex items-center justify-between text-xs text-blue-200">
-                  <span>डोरस्टेप विज़िट व डायग्नोस्टिक टोकन:</span>
-                  <span className="text-base font-black text-amber-300">₹199</span>
-                </div>
-
-                {/* Net Estimated Total */}
-                <div className="pt-2.5 border-t border-white/20 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs text-blue-100 font-bold block">कुल अनुमानित रिपेयर बिल:</span>
-                    <span className="text-[10px] text-amber-200">
-                      (कॉम्बो छूट व पार्ट्स सहित)
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xl sm:text-2xl font-black text-amber-300 tracking-tight">
-                      {formatINR(estimatedMinTotal)} - {formatINR(estimatedMaxTotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Guarantees & Official Warranty Policy */}
-                <div className="pt-2 border-t border-white/10 text-[11px] text-amber-200 space-y-1.5">
-                  <div className="flex items-center justify-between font-bold text-xs bg-white/10 p-2 rounded-xl border border-white/15">
-                    <span className="flex items-center gap-1.5 text-amber-300">
-                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                      <span>अधिकृत रिपेयर वारंटी:</span>
-                    </span>
-                    <span className="text-white font-mono bg-emerald-600/90 px-2.5 py-0.5 rounded-lg text-[11px] shadow-xs">
-                      {estimatedMinTotal < 1000 ? '🛡️ 3 महीने की वारंटी' : '🛡️ 6 महीने की फुल वारंटी'}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-blue-200 leading-tight">
-                    * आधिकारिक नियम: <strong>₹1,000 से कम</strong> के रिपेयर पर <strong>3 महीने</strong> वारंटी एवं <strong>₹1,000 या अधिक</strong> के पार्ट्स पर <strong>6 महीने</strong> की वारंटी दी जाती है।
-                  </p>
-                  <p className="flex items-center gap-1.5 font-bold text-emerald-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा (Visit Free)!</span>
-                  </p>
-                  <p className="flex items-center gap-1.5 text-blue-100">
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>यदि फोन रिपेयर नहीं हो सका, तो ₹99 तुरंत रिफंड होगा।</span>
-                  </p>
-                </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">एडवांस टोकन:</span>
+                <span className="font-bold text-emerald-600">₹199 (बिल में एडजस्ट होगा)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">वारंटी गारंटी:</span>
+                <span className="font-bold text-blue-700">{warrantyPeriod}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">एंटी-थेफ्ट स्थिति:</span>
+                <span className="font-bold text-emerald-700">✓ वैध स्वामित्व सत्यापित</span>
               </div>
             </div>
 
-            {/* CTA action buttons */}
-            <div className="lg:col-span-5 space-y-3 lg:pt-8">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={() => {
-                  if (hasStrictDiagnostic && !hasAcceptedFraudTerms) {
-                    setFraudTermsError(true);
-                    return;
-                  }
-                  setFraudTermsError(false);
-                  setBookingStep('details');
-                  setIsModalOpen(true);
+                  setBookedOrder(null);
+                  setIsDashboardOpen(true);
                 }}
-                className="w-full py-3.5 px-5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm sm:text-base shadow-lg shadow-amber-400/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-2"
               >
-                <Truck className="w-5 h-5 text-slate-950" />
-                <span>₹199 में होम विज़िट बुक करें ({selectedLocality})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenAppointmentPayment}
-                className="w-full py-2.5 px-4 rounded-xl bg-white/15 hover:bg-white/25 border border-white/30 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <CreditCard className="w-4 h-4 text-amber-300" />
-                <span>Razorpay सिक्योर लिंक से ₹199 सीधे पे करें</span>
-                <ExternalLink className="w-3.5 h-3.5" />
+                <span>डैशबोर्ड में जॉब-कार्ड ट्रैक करें</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
 
               <a
-                href={generateWhatsAppLink('repair', {
-                  modelName: selectedModel.name,
-                  issue: `${issuesSummaryHindi} | कुल अनुमानित: ${formatINR(estimatedMinTotal)} - ${formatINR(estimatedMaxTotal)}${hasStrictDiagnostic ? ' [सख्त डायग्नोस्टिक अंडरटेकिंग स्वीकृत]' : ''}`,
-                  locality: selectedLocality
-                })}
+                href={generateWhatsAppLink(
+                  `नमस्ते सस्ताफोन टीम! मैंने रिपेयरिंग आवेदन #${bookedOrder.orderNumber} सबमिट किया है। कृपया पिकअप शेड्यूल कन्फर्म करें।`
+                )}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-900/20"
+                className="px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md transition-all cursor-pointer flex items-center gap-2"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>सूरत डेस्क से WhatsApp पर बात करें ({selectedIssues.length} प्रॉब्लम)</span>
+                <span>WhatsApp पर तुरंत चैट करें</span>
               </a>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmitToTeam} className="space-y-6">
+            {/* Login Warning Banner if Not Authenticated */}
+            {!user.isLoggedIn && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div>
+                    <span className="font-black text-amber-950 block">
+                      लॉगिन अनिवार्य है (Login Required)
+                    </span>
+                    <span>
+                      फ़ोन रिपेयर फॉर्म भरने और पिकअप शेड्यूल करने के लिए पहले लॉगिन करें।
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-xs transition-all shrink-0 cursor-pointer"
+                >
+                  तुरंत लॉगिन करें
+                </button>
+              </div>
+            )}
 
-              {hasStrictDiagnostic && !hasAcceptedFraudTerms && (
-                <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-400/40 text-[11px] text-rose-200 flex items-start gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                  <span>'पता नहीं क्या हुआ' विकल्प के लिए ऊपर दी गई डिजिटल अंडरटेकिंग टिक करना आवश्यक है।</span>
+            {formError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center gap-2 animate-shake">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            {/* STEP 1: Phone Selection / Custom Phone Model */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                    1
+                  </span>
+                  <h3 className="text-base font-black text-slate-900">
+                    अपना मोबाइल व मॉडल चुनें
+                  </h3>
+                </div>
+
+                {/* Custom Model Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setUseCustomModel(!useCustomModel)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    useCustomModel
+                      ? 'bg-red-50 border-red-300 text-red-700'
+                      : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {useCustomModel ? '✓ कस्टम मॉडल सक्रिय' : '+ Enter Custom Phone Model'}
+                </button>
+              </div>
+
+              {!useCustomModel ? (
+                <div>
+                  {/* Brand Pills */}
+                  <label className="block text-xs font-bold text-slate-600 mb-2">
+                    ब्रांड चुनें (Select Brand):
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {BRANDS.map(brand => (
+                      <button
+                        key={brand.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedBrand(brand);
+                          const firstModel = PHONE_MODELS.find(m => m.brandId === brand.id);
+                          if (firstModel) setSelectedModel(firstModel);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          selectedBrand.id === brand.id
+                            ? 'bg-red-600 text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        <span>{brand.name}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Model Selector */}
+                  <label className="block text-xs font-bold text-slate-600 mb-2">
+                    मॉडल चुनें (Select Model):
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {PHONE_MODELS.filter(m => m.brandId === selectedBrand.id).slice(0, 9).map(model => (
+                      <button
+                        key={model.id}
+                        type="button"
+                        onClick={() => setSelectedModel(model)}
+                        className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+                          selectedModel.id === model.id
+                            ? 'border-red-600 bg-red-50/50 ring-2 ring-red-500/20'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <img
+                          src={model.imageUrl}
+                          alt={model.name}
+                          className="w-10 h-10 object-contain rounded-lg bg-slate-50"
+                        />
+                        <div className="overflow-hidden">
+                          <p className="text-xs font-bold text-slate-900 truncate">{model.name}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {model.variants?.[0]?.ram || '8GB'} • {model.variants?.[0]?.storage || '128GB'}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                /* Custom Model Form (Requested by User) */
+                <div className="p-4 rounded-2xl bg-red-50/40 border border-red-200 space-y-3.5 animate-in fade-in">
+                  <div className="flex items-center gap-2 text-xs font-black text-red-900">
+                    <Smartphone className="w-4 h-4 text-red-600" />
+                    <span>Enter Custom Phone Model (ब्रांड, मॉडल, रैम, स्टोरेज, 5G/4G व कलर)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        ब्रांड का नाम *
+                      </label>
+                      <select
+                        value={customBrandName}
+                        onChange={e => setCustomBrandName(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white outline-hidden focus:ring-2 focus:ring-red-500"
+                      >
+                        {BRANDS.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        सटीक मॉडल का नाम (Model Name) *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customModelName}
+                        onChange={e => setCustomModelName(e.target.value)}
+                        placeholder="e.g. Redmi Note 13 Pro+ / Vivo V29"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white outline-hidden focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        रैम व स्टोरेज (RAM & Storage)
+                      </label>
+                      <div className="flex gap-2">
+                        <select
+                          value={customRam}
+                          onChange={e => setCustomRam(e.target.value)}
+                          className="w-1/2 px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                        >
+                          <option value="4 GB">4 GB RAM</option>
+                          <option value="6 GB">6 GB RAM</option>
+                          <option value="8 GB">8 GB RAM</option>
+                          <option value="12 GB">12 GB RAM</option>
+                          <option value="16 GB">16 GB RAM</option>
+                        </select>
+                        <select
+                          value={customStorage}
+                          onChange={e => setCustomStorage(e.target.value)}
+                          className="w-1/2 px-2.5 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                        >
+                          <option value="64 GB">64 GB</option>
+                          <option value="128 GB">128 GB</option>
+                          <option value="256 GB">256 GB</option>
+                          <option value="512 GB">512 GB</option>
+                          <option value="1 TB">1 TB</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        नेटवर्क टाइप (5G / 4G)
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCustomIs5G(true)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            customIs5G
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          5G स्मार्टफोन
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomIs5G(false)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                            !customIs5G
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-white text-slate-700 border-slate-300'
+                          }`}
+                        >
+                          4G / LTE
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        फ़ोन का कलर (Color)
+                      </label>
+                      <input
+                        type="text"
+                        value={customColor}
+                        onChange={e => setCustomColor(e.target.value)}
+                        placeholder="e.g. Phantom Black / Blue / Silver"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white outline-hidden focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        शारीरिक स्थिति (Body Condition)
+                      </label>
+                      <select
+                        value={customCondition}
+                        onChange={e => setCustomCondition(e.target.value as ConditionGrade)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold bg-white outline-hidden focus:ring-2 focus:ring-red-500"
+                      >
+                        <option value="flawless">Flawless (सुपर फ्रेश - कोई स्क्रैच नहीं)</option>
+                        <option value="good">Good (हल्के सामान्य स्क्रैच)</option>
+                        <option value="average">Average (डेंट या बॉडी खरोंच)</option>
+                        <option value="damaged">Damaged (ग्लास क्रैक या डैमेज)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* 4. Happy Customer Reviews & Social Media Share Section */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-black mb-1">
-                <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
-                <span>हैप्पी कस्टमर रिव्यू व सोशल मीडिया शेयर</span>
+            {/* STEP 2: Multi-Select Repair Problems (फोन की समस्या चुनें) */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                    2
+                  </span>
+                  <h3 className="text-base font-black text-slate-900">
+                    फोन की समस्या (प्रॉब्लम) चुनें
+                  </h3>
+                </div>
+                <span className="text-[11px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                  मल्टी-सिलेक्ट उपलब्ध ({selectedIssues.length} चुनी गई)
+                </span>
               </div>
-              <h3 className="text-lg sm:text-2xl font-black text-slate-900">
-                सूरत के संतुष्ट ग्राहकों के अनुभव
-              </h3>
-              <p className="text-xs text-slate-500">
-                जब आपका फोन बन जाए, तो अपना अनुभव शेयर करें और ₹100 का एक्स्ट्रा डिस्काउंट कूपन पाएं!
+              <p className="text-xs text-slate-500 mb-4">
+                आप एक से अधिक समस्याएं एक साथ चुन सकते हैं। चुने गए प्रॉब्लम के हिसाब से तत्काल अनुमानित बिल व वारंटी तय होती है:
               </p>
-            </div>
 
-            <button
-              onClick={() => {
-                setPrefillReviewOrder({
-                  id: 'temp-repair',
-                  orderNumber: 'STP-SURAT-' + Math.floor(1000 + Math.random() * 9000),
-                  type: 'repair',
-                  title: `${selectedModel.name}`,
-                  subtitle: issuesSummaryHindi,
-                  amount: 199,
-                  status: 'completed',
-                  statusHindi: 'सफलतापूर्वक रिपेयर हुआ',
-                  locality: selectedLocality,
-                  fullAddress: addressInput,
-                  customerName: customerNameInput,
-                  customerPhone: customerPhoneInput,
-                  date: 'Today',
-                  timeSlot: selectedTimeSlot
-                });
-                openGlobalReviewModal(true);
-              }}
-              className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto flex items-center gap-1.5 cursor-pointer"
-            >
-              <Star className="w-4 h-4 fill-amber-300 text-amber-300" />
-              <span>+ अपना रिव्यू व फीडबैक दें</span>
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {reviewsList.map(rev => (
-              <div
-                key={rev.id}
-                className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex text-amber-400">
-                      {[...Array(rev.rating)].map((_, i) => (
-                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
-                      ))}
-                    </div>
-                    <span className="text-[10px] text-slate-400">{rev.date}</span>
-                  </div>
-                  <h4 className="font-bold text-slate-900 text-xs sm:text-sm">{rev.phoneModel}</h4>
-                  <p className="text-[11px] text-blue-700 font-semibold mb-2">✓ {rev.issueFixed}</p>
-                  <p className="text-xs text-slate-600 italic leading-relaxed">"{rev.comment}"</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px]">
-                  <div>
-                    <span className="font-bold text-slate-800 block">{rev.customerName}</span>
-                    <span className="text-slate-500">📍 {rev.locality}</span>
-                  </div>
-
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`मेरा ${rev.phoneModel} Sastafone Surat द्वारा सफलतापूर्वक रिपेयर हुआ! सूरत में घर बैठे बेहतरीन सर्विस: https://sastafone.in`)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="p-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[10px] font-bold flex items-center gap-1"
-                    title="WhatsApp पर शेयर करें"
-                  >
-                    <Share2 className="w-3 h-3" />
-                    <span>शेयर</span>
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Review Submission Modal */}
-      {isReviewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
-              <h3 className="font-bold text-slate-900 text-base">
-                अपना रिपेयर फीडबैक व रिव्यू दर्ज करें
-              </h3>
-              <button
-                onClick={() => setIsReviewModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitReview} className="space-y-3.5 text-xs text-left">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">रेटिंग दें:</label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setReviewRating(star)}
-                      className="cursor-pointer"
+              {/* Problem Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {REPAIR_ISSUES.map(issue => {
+                  const isChecked = selectedIssues.some(i => i.id === issue.id);
+                  return (
+                    <div
+                      key={issue.id}
+                      onClick={() => toggleIssue(issue)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                        isChecked
+                          ? 'border-red-600 bg-red-50/60 ring-2 ring-red-500/20 shadow-xs'
+                          : 'border-slate-200 hover:border-slate-300 bg-white'
+                      }`}
                     >
-                      <Star
-                        className={`w-6 h-6 ${
-                          star <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'
+                      <div
+                        className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 border transition-colors ${
+                          isChecked ? 'bg-red-600 border-red-600 text-white' : 'border-slate-300 bg-white'
                         }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">आपका नाम:</label>
-                <input
-                  type="text"
-                  required
-                  value={reviewName}
-                  onChange={e => setReviewName(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">फोन का मॉडल व ठीक हुई समस्या:</label>
-                <input
-                  type="text"
-                  readOnly
-                  value={`${selectedModel.name} - ${issuesSummaryHindi}`}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-100 text-xs font-semibold text-slate-700"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">आपका अनुभव / कमेंट:</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={reviewComment}
-                  onChange={e => setReviewComment(e.target.value)}
-                  placeholder="टेक्नीशियन का व्यवहार कैसा था? क्या फोन सही से चल रहा है?..."
-                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
-                />
-              </div>
-
-              <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-900 text-[11px] flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>रिव्यू सबमिट करने पर आपको ₹100 डिस्काउंट कूपन कोड मिलेगा!</span>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all cursor-pointer"
-              >
-                रिव्यू सबमिट करें व सोशल शेयर करें
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Repair Appointment Booking & Razorpay Payment Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
-            {isSuccessBooked ? (
-              <div className="p-8 text-center space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h3 className="text-xl font-black text-slate-900">
-                  अपॉइंटमेंट सफलतापूर्वक बुक हुआ!
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  सूरत हब के सर्टिफाइड टेक्नीशियन संजय प्रजापति {selectedTimeSlot} पर आपके घर पहुंचेंगे। ₹199 रिपेयर होने पर बिल में एडजस्ट होगा (यदि नहीं बना तो ₹99 रिफंड)।
-                </p>
-                <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-xs font-bold text-emerald-900">
-                  ✓ आधिकारिक इनवॉइस स्लिप डैशबोर्ड में डाउनलोड के लिए तैयार है!
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="p-4 bg-gradient-to-r from-blue-700 to-indigo-700 text-white flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-base">
-                      {bookingStep === 'details' ? 'डोरस्टेप रिपेयर अपॉइंटमेंट' : '₹199 विज़िट चार्ज पेमेंट'}
-                    </h3>
-                    <p className="text-xs text-blue-100 line-clamp-1">
-                      {selectedModel.name} • {selectedIssues.length} समस्याएं ({issuesSummaryHindi})
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="p-5 overflow-y-auto space-y-4 flex-1">
-                  {bookingStep === 'details' ? (
-                    <form onSubmit={handleProceedToPayment} className="space-y-3.5 text-left text-xs">
-                      {/* Selected Problems Summary */}
-                      <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-                        <div className="flex items-center justify-between font-bold text-xs">
-                          <span className="text-slate-800">चयनित समस्याएं ({selectedIssues.length}):</span>
-                          <span className="text-blue-700 font-mono">
-                            {formatINR(estimatedMinTotal)} - {formatINR(estimatedMaxTotal)}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {selectedIssues.map(issue => (
-                            <span key={issue.id} className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-md font-semibold text-slate-700">
-                              ✓ {issue.hindiName}
-                            </span>
-                          ))}
-                        </div>
-                        {comboDiscountPct > 0 && (
-                          <p className="text-[10px] text-emerald-700 font-bold">
-                            🎉 {Math.round(comboDiscountPct * 100)}% कॉम्बो मल्टी-रिपेयर छूट लागू है।
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Dynamic सूरत सेंट्रल टेक सुपर लैब • समय व धैर्य सूचना (Patience & Repair Time Notice) */}
-                      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 text-amber-950 space-y-2">
-                        <div className="flex items-start gap-2">
-                          <div className="w-7 h-7 rounded-xl bg-amber-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs mt-0.5">
-                            <Clock className="w-4 h-4" />
-                          </div>
-                          <div>
-                            <h5 className="font-black text-xs text-amber-950 flex items-center gap-1.5">
-                              <span>सूरत सेंट्रल टेक सुपर लैब • समय व धैर्य सूचना (Patience Notice)</span>
-                            </h5>
-                            <p className="text-[10px] text-amber-800 font-medium">
-                              ओरिजिनल व सुरक्षित काम के लिए आवश्यक समय का पारदर्शी विवरण
-                            </p>
-                          </div>
-                        </div>
-
-                        {isComplexIssueSelected ? (
-                          <div className="space-y-1.5 text-[11px] text-slate-800 bg-white/95 p-3 rounded-xl border border-amber-200 leading-relaxed">
-                            <p className="font-bold text-amber-950 flex items-center gap-1">
-                              <span>⚠️ आपकी चयनित समस्या (जैसे मदरबोर्ड / चिपसेट / वाटर डैमेज / डिस्प्ले) संवेदनशील श्रेणी में आती है:</span>
-                            </p>
-                            <p>
-                              • <strong>अधिकतम समय क्यों लगता है:</strong> BGA माइक्रो-सोल्डरिंग, शॉर्ट-सर्किट ट्रेसिंग, कर्व्ड ग्लास ओसीए वैक्यूम लेमिनेशन व थर्मल क्योरिंग का काम डोरस्टेप पर जल्दबाजी में नहीं हो सकता। इसके लिए फोन को हमारे <strong>रिंग रोड HQ या पाल-अडाजण सेंट्रल सुपर लैब</strong> में विशेष क्लीनरूम मशीनों पर डायग्नोज़ किया जाता है।
-                            </p>
-                            <p>
-                              • <strong>धैर्य की आवश्यकता:</strong> सही और लॉन्ग-लास्टिंग रिपेयर के लिए आपको <strong>2 से 4 घंटे (या गंभीर केस में 24 घंटे) का समय</strong> देना होगा।
-                            </p>
-                            <div className="pt-1.5 border-t border-amber-100 flex flex-wrap gap-2 text-[10px] font-bold text-emerald-800">
-                              <span className="flex items-center gap-0.5">✓ 100% डेटा प्राइवेसी (Zero Breach)</span>
-                              <span className="flex items-center gap-0.5">✓ 24x7 CCTV लैब रिकॉर्डिंग</span>
-                              <span className="flex items-center gap-0.5">✓ लिखित जॉब-शीट रसीद</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-[11px] text-slate-800 bg-white/95 p-2.5 rounded-xl border border-amber-200 leading-relaxed">
-                            <p className="font-bold text-emerald-900 flex items-center gap-1">
-                              <span>⚡ क्विक 20-30 मिनट डोरस्टेप रिपेयर:</span>
-                            </p>
-                            <p className="text-slate-700 mt-0.5">
-                              यह समस्या हमारे सर्टिफाइड टेक्नीशियन द्वारा आपके घर/दुकान पर ही 20-30 मिनट में चेक व फिक्स कर दी जाएगी। (यदि जांच में अंदरूनी मदरबोर्ड में छिपी खराबी मिली तो सेंट्रल लैब में समय देना होगा)।
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Official Dynamic Warranty Confirmation Box */}
-                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs">
-                          <div>
-                            <span className="font-bold text-emerald-950 flex items-center gap-1">
-                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>अधिकृत वारंटी गारंटी:</span>
-                            </span>
-                            <span className="text-[10px] text-emerald-800 block">
-                              {estimatedMinTotal < 1000
-                                ? '* ₹1,000 से कम के रिपेयर पर 3 महीने की वारंटी मान्य'
-                                : '* ₹1,000 या अधिक के रिपेयर पर 6 महीने की फुल वारंटी मान्य'}
-                            </span>
-                          </div>
-                          <span className="font-black text-emerald-900 bg-white px-2.5 py-1 rounded-lg border border-emerald-300 shadow-2xs font-mono">
-                            {estimatedMinTotal < 1000 ? '🛡️ 3 Month Warranty' : '🛡️ 6 Month Warranty'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Strict Anti-Fraud Undertaking check if required */}
-                      {hasStrictDiagnostic && (
-                        <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
-                          hasAcceptedFraudTerms ? 'bg-emerald-50 border-emerald-300 text-emerald-950' : 'bg-amber-50 border-amber-300 text-amber-950'
-                        }`}>
-                          <div className="flex items-center gap-1.5 font-bold">
-                            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                            <span>सख्त एंटी-फ्रॉड डायग्नोस्टिक अंडरटेकिंग</span>
-                          </div>
-                          <p className="text-[11px] text-slate-700 leading-tight">
-                            फोन में पूर्व वाटर डैमेज, अनधिकृत छेड़छाड़ या डेड फोन की स्थिति छुपाई नहीं गई है। फोन रिपेयर होने पर ₹199 टोकन 100% माफ होगा।
-                          </p>
-                          <label className="flex items-start gap-2 pt-1 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={hasAcceptedFraudTerms}
-                              onChange={e => {
-                                setHasAcceptedFraudTerms(e.target.checked);
-                                if (e.target.checked) setFraudTermsError(false);
-                              }}
-                              className="mt-0.5 w-4 h-4 text-emerald-600 rounded shrink-0 cursor-pointer"
-                            />
-                            <span className="text-[11px] font-bold text-slate-900 leading-snug">
-                              मैं इस घोषणा व नो-डेटा-लॉस सुरक्षा शर्तों से पूर्णतः सहमत हूँ।
-                            </span>
-                          </label>
-                        </div>
-                      )}
-
-                      <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 space-y-1.5">
-                        <div className="flex items-center justify-between font-bold text-sm">
-                          <span>विज़िट व डायग्नोसिस टोकन:</span>
-                          <span className="text-base text-amber-800">₹199</span>
-                        </div>
-                        <ul className="text-[11px] text-amber-900 space-y-1 list-disc list-inside">
-                          <li>
-                            <strong>फोन रिपेयर होने पर:</strong> यह ₹199 आपके फाइनल रिपेयरिंग बिल में से <strong>घटा (Adjust)</strong> दिया जाएगा।
-                          </li>
-                          <li>
-                            <strong>फोन न बन पाने पर:</strong> आपको <strong>₹99 तुरंत रिफंड</strong> मिल जाएगा।
-                          </li>
-                        </ul>
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">सूरत इलाका (Locality):</label>
-                        <div className="p-2.5 rounded-xl bg-slate-100 font-bold text-slate-900 flex items-center justify-between">
-                          <span>📍 {selectedLocality}</span>
-                          <span className="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded border border-blue-200 font-bold">
-                            Active Surat Hub
-                          </span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">पूरा पता (घर / दुकान नं., लैंडमार्क):</label>
-                        <textarea
-                          rows={2}
-                          required
-                          value={addressInput}
-                          onChange={e => setAddressInput(e.target.value)}
-                          placeholder="उदा. फ्लैट 302, आनंद महल रोड, अडाजण, सूरत..."
-                          className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="font-bold text-slate-700 block mb-1">आपका नाम:</label>
-                          <input
-                            type="text"
-                            required
-                            value={customerNameInput}
-                            onChange={e => setCustomerNameInput(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-700 block mb-1">मोबाइल नंबर:</label>
-                          <input
-                            type="tel"
-                            required
-                            maxLength={10}
-                            value={customerPhoneInput}
-                            onChange={e => setCustomerPhoneInput(e.target.value)}
-                            className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs font-bold"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="font-bold text-slate-700 block mb-1">होम विज़िट समय चुनें:</label>
-                        <div className="grid grid-cols-3 gap-2">
-                          {['Today (30 Mins)', 'Today (4-6 PM)', 'Tomorrow Morning'].map(slot => (
-                            <button
-                              key={slot}
-                              type="button"
-                              onClick={() => setSelectedTimeSlot(slot)}
-                              className={`p-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
-                                selectedTimeSlot === slot
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                                  : 'bg-slate-50 text-slate-700 border-slate-200'
-                              }`}
-                            >
-                              {slot}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
                       >
-                        <span>आगे बढ़ें और ₹199 पेमेंट विकल्प चुनें</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="space-y-4 text-xs">
-                      <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
-                        <div>
-                          <span className="text-[11px] text-slate-500 block">होम विज़िट टोकन चार्ज:</span>
-                          <span className="text-xl font-black text-slate-900">₹199</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full block">
-                            ₹199 Bill Adjustment
-                          </span>
-                          <span className="text-[10px] text-amber-700 font-semibold">
-                            ₹99 Refund Guarantee
-                          </span>
-                        </div>
+                        {isChecked && <Check className="w-3.5 h-3.5" />}
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="font-bold text-slate-700 block">
-                          ₹199 भुगतान का तरीका चुनें (Select Payment Option):
-                        </label>
-
-                        {/* Sastaphone Pay Instant Gateway Option */}
-                        <div
-                          onClick={() => setPaymentOption('razorpay_direct')}
-                          role="button"
-                          tabIndex={0}
-                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all flex items-center justify-between ${
-                            paymentOption === 'razorpay_direct'
-                              ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-700 text-white flex items-center justify-center font-black text-xs shadow-xs">
-                              ₹
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                                <span>सस्ताफोन पे (Sastaphone Pay - त्वरित UPI)</span>
-                                <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1 rounded font-bold">Fast</span>
-                              </p>
-                              <p className="text-[10px] text-slate-500">100% सुरक्षित डिजिटल पेमेंट • तुरंत बुकिंग कन्फर्मेशन</p>
-                            </div>
-                          </div>
-                          <input
-                            type="radio"
-                            name="payment"
-                            checked={paymentOption === 'razorpay_direct'}
-                            onChange={() => setPaymentOption('razorpay_direct')}
-                            className="text-blue-600"
-                          />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold text-slate-900">{issue.hindiName}</p>
+                          <span className="text-xs font-black text-red-700">
+                            {formatINR(issue.minPrice)} - {formatINR(issue.maxPrice)}
+                          </span>
                         </div>
-
-                        {/* UPI Instant */}
-                        <div
-                          onClick={() => setPaymentOption('upi_instant')}
-                          role="button"
-                          tabIndex={0}
-                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all flex items-center justify-between ${
-                            paymentOption === 'upi_instant'
-                              ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
-                              <Wallet className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-xs">अन्य UPI (GPay / PhonePe / Paytm)</p>
-                              <p className="text-[10px] text-slate-500">तुरंत कन्फर्मेशन और 30-मिनट में टेक्नीशियन</p>
-                            </div>
-                          </div>
-                          <input
-                            type="radio"
-                            name="payment"
-                            checked={paymentOption === 'upi_instant'}
-                            onChange={() => setPaymentOption('upi_instant')}
-                            className="text-blue-600"
-                          />
+                        <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">{issue.description}</p>
+                        <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-400 font-medium">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{issue.estimatedTime}</span>
                         </div>
-
-                        {/* Pay at Doorstep */}
-                        <div
-                          onClick={() => setPaymentOption('pay_at_doorstep')}
-                          role="button"
-                          tabIndex={0}
-                          className={`p-3 rounded-2xl border text-left cursor-pointer transition-all flex items-center justify-between ${
-                            paymentOption === 'pay_at_doorstep'
-                              ? 'bg-blue-50/80 border-blue-600 ring-2 ring-blue-500/20 shadow-xs'
-                              : 'bg-white border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
-                              <Truck className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-xs">घर पर आने के बाद दें (Cash / UPI at Doorstep)</p>
-                              <p className="text-[10px] text-slate-500">टेक्नीशियन के घर पहुंचने पर ₹199 दें</p>
-                            </div>
-                          </div>
-                          <input
-                            type="radio"
-                            name="payment"
-                            checked={paymentOption === 'pay_at_doorstep'}
-                            onChange={() => setPaymentOption('pay_at_doorstep')}
-                            className="text-blue-600"
-                          />
-                        </div>
-                      </div>
-
-                      {paymentOption === 'razorpay_direct' && (
-                        <div className="p-3 bg-blue-50/80 rounded-2xl border border-blue-200 space-y-1.5">
-                          <p className="font-bold text-blue-950 flex items-center justify-between">
-                            <span>सस्ताफोन पे (Sastaphone Pay):</span>
-                            <span className="text-emerald-700 font-bold flex items-center gap-1 text-[10px] bg-emerald-100 px-2 py-0.5 rounded-full">
-                              ✓ 100% सुरक्षित UPI
-                            </span>
-                          </p>
-                          <p className="text-[10px] text-blue-800">
-                            सस्ताफोन नेटवर्क द्वारा सुरक्षित 256-बिट एन्क्रिप्टेड भुगतान। फोन रिपेयर होने पर यह ₹199 बिल में एडजस्ट होगा, न बनने पर ₹99 तुरंत रिफंड।
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex gap-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setBookingStep('details')}
-                          className="w-1/3 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-xs cursor-pointer"
-                        >
-                          वापस (Back)
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isProcessingPayment}
-                          onClick={handleConfirmAndPay}
-                          className="w-2/3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                          {isProcessingPayment ? (
-                            <span>प्रोसेसिंग हो रही है...</span>
-                          ) : (
-                            <span>
-                              {paymentOption === 'pay_at_doorstep'
-                                ? 'अपॉइंटमेंट बुक करें (Pay ₹199 on Visit)'
-                                : '₹199 पे करें व स्लॉट कन्फर्म करें'}
-                            </span>
-                          )}
-                        </button>
                       </div>
                     </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-      {/* Custom Repair Phone Model Modal */}
-      {isCustomRepairModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-              <div>
-                <h3 className="font-black text-slate-900 text-base">
-                  ✍️ अनलिस्टेड मोबाइल रिपेयर दर्ज करें
-                </h3>
-                <p className="text-xs text-slate-500">
-                  अगर आपका फोन लिस्ट में नहीं है, तो ब्रांड व मॉडल खुद भरें
-                </p>
+                  );
+                })}
               </div>
-              <button
-                type="button"
-                onClick={() => setIsCustomRepairModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
+
+              {/* Dynamic Live Cost & Warranty Banner */}
+              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-800 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                <div>
+                  <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">
+                    अनुमानित रिपेयरिंग बिल (Estimated Cost)
+                  </span>
+                  <div className="text-xl font-black text-amber-400">
+                    {formatINR(totalMinPrice)} - {formatINR(totalMaxPrice)}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-left sm:text-right">
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold">
+                      वारंटी गारंटी (Warranty)
+                    </span>
+                    <span className="text-xs font-black text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/30 inline-block">
+                      {warrantyPeriod}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <form onSubmit={handleApplyCustomRepairModel} className="space-y-3.5 text-xs text-left">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  मोबाइल ब्रांड (कंपनी):
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={customRepairBrand}
-                    onChange={e => setCustomRepairBrand(e.target.value)}
-                    className="w-1/2 p-2.5 rounded-xl border border-slate-200 bg-white font-semibold"
-                  >
-                    {BRANDS.map(b => (
-                      <option key={b.id} value={b.name}>{b.name}</option>
-                    ))}
-                    <option value="Other">अन्य (Other)</option>
-                  </select>
+            {/* STEP 3: Patience & Lab Repair Notice (सूरत सेंट्रल टेक सुपर लैब) */}
+            <div className="bg-amber-50 rounded-3xl p-5 border border-amber-200">
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                    सूरत सेंट्रल टेक सुपर लैब • धैर्य व अधिकतम समय सूचना (Patience Notice)
+                  </h4>
+                  <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                    कुछ जटिल समस्याओं (जैसे BGA मदरबोर्ड माइक्रो-सोल्डरिंग, ओरिजिनल कर्व्ड डिस्प्ले OCA री-ग्लासिंग, अथवा लिक्विड डैमेज अल्ट्रासोनिक क्लीनिंग) में मानक से अधिक समय लगता है। उचित जांच व 100% सफल रिपेयर के लिए आपको पर्याप्त समय देना होगा।
+                  </p>
+                  <label className="flex items-center gap-2 mt-2.5 cursor-pointer text-xs font-bold text-amber-950">
+                    <input
+                      type="checkbox"
+                      checked={isTimeNoticeAccepted}
+                      onChange={e => setIsTimeNoticeAccepted(e.target.checked)}
+                      className="rounded border-amber-400 text-red-600 focus:ring-red-500"
+                    />
+                    <span>मैं सहमत हूँ कि सर्वोत्तम क्वालिटी के लिए आवश्यक समय देना उचित है।</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 4: Anti-Theft Clearance & Ownership Proof (चोरी का फोन नहीं है - सत्यापन) */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  3
+                </span>
+                <h3 className="text-base font-black text-slate-900">
+                  ओनरशिप व एंटी-थेफ्ट क्लीयरेंस (चोरी का फोन सत्यापन)
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 mb-4">
+                सस्ताफोन पर चोरी या लावारिस फोन का काम बिल्कुल नहीं किया जाता। बिल की प्रति या स्वामित्व विवरण देना अनिवार्य है।
+              </p>
+
+              {/* Strict Notice Box */}
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 text-xs mb-4 flex items-start gap-2.5">
+                <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block">
+                    सुरक्षा निर्देश: फोन चोरी की तो नहीं है, यह क्लियर होने के बाद ही फोन पिकअप किया जाएगा।
+                  </span>
+                  <span className="text-[11px] text-rose-800">
+                    हमारी टीम भारत सरकार के CEIR व पुलिस खोया-पाया पोर्टल से IMEI स्टेटस क्रॉस-चेक करती है।
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* IMEI Input */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    फ़ोन का IMEI नंबर (वैकल्पिक / डायलर में *#06# दबाएं)
+                  </label>
                   <input
                     type="text"
-                    value={customRepairBrand}
-                    onChange={e => setCustomRepairBrand(e.target.value)}
-                    placeholder="या ब्रांड टाइप करें"
-                    className="w-1/2 p-2.5 rounded-xl border border-slate-200"
+                    maxLength={15}
+                    value={imeiNumber}
+                    onChange={e => setImeiNumber(e.target.value.replace(/\D/g, ''))}
+                    placeholder="e.g. 864501051234567 (15 Digits)"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-hidden tracking-wider"
                   />
+                </div>
+
+                {/* Bill Photo Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    बिल की कॉपी या बॉक्स फोटो अपलोड करें (Ownership Proof)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-red-500 bg-slate-50 hover:bg-red-50/30 text-slate-700 text-xs font-bold cursor-pointer transition-all">
+                      <Upload className="w-4 h-4 text-red-600" />
+                      <span>{billPhotoUrl ? 'फ़ाइल चुनी गई (बदलें)' : 'बिल / इनवॉइस चुनें'}</span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={handleBillUploadSimulate}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {billPhotoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setBillPhotoUrl('')}
+                        className="p-2.5 rounded-xl border border-slate-300 text-slate-500 hover:text-rose-600 cursor-pointer"
+                        title="हटाएं"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  मॉडल का नाम (Exact Model Name):
+              {/* Bill Photo Preview if Uploaded */}
+              {billPhotoUrl && (
+                <div className="mt-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3">
+                  <img
+                    src={billPhotoUrl}
+                    alt="Bill Preview"
+                    className="w-12 h-12 object-cover rounded-lg border border-slate-300"
+                  />
+                  <div className="text-xs">
+                    <p className="font-bold text-emerald-700 flex items-center gap-1">
+                      <FileCheck className="w-3.5 h-3.5" />
+                      <span>बिल की प्रति संलग्न है (स्वामित्व प्रमाण)</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500">टेक्नीशियन पिकअप के समय मूल बिल से मिलान करेगा।</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Mandatory Ownership Declaration Checkbox */}
+              <div className="mt-4 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <label className="flex items-start gap-2.5 cursor-pointer text-xs font-bold text-slate-800">
+                  <input
+                    type="checkbox"
+                    required
+                    checked={isOwnershipConfirmed}
+                    onChange={e => setIsOwnershipConfirmed(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                  />
+                  <span>
+                    मैं प्रमाणित करता/करती हूँ कि मैं इस फ़ोन का वास्तविक व कानूनी मालिक हूँ। यह फोन किसी भी प्रकार से चोरी, गुमशुदा या गैर-कानूनी नहीं है।
+                  </span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={customRepairModelName}
-                  onChange={e => setCustomRepairModelName(e.target.value)}
-                  placeholder="उदा: Realme 11 Pro 5G / Vivo Y200 / Poco X6"
-                  className="w-full p-2.5 rounded-xl border border-slate-200 font-semibold"
-                />
+              </div>
+            </div>
+
+            {/* STEP 5: ₹199 QC Token Charge & Doorstep Pickup Details */}
+            <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center">
+                  4
+                </span>
+                <h3 className="text-base font-black text-slate-900">
+                  डोरस्टेप पिकअप विवरण व ₹199 QC टोकन
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600 mb-4">
+                चुने गए प्रॉब्लम के हिसाब से पैसा फिक्स होगा। अभी केवल ₹199 डोरस्टेप QC टोकन लगेगा, बाकी फाइनल राशि लैब/डोरस्टेप QC चेक के बाद तय होगी।
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    आपका नाम (Your Name) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customerName}
+                    onChange={e => setCustomerName(e.target.value)}
+                    placeholder="e.g. राहुल पटेल"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    मोबाइल नंबर (WhatsApp Active) *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    value={customerPhone}
+                    onChange={e => setCustomerPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="9825012345"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-hidden"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    सूरत में पूरा पता (Doorstep Pickup Address) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={pickupAddress}
+                    onChange={e => setPickupAddress(e.target.value)}
+                    placeholder={`e.g. फ्लैट 402, आनंद महल रोड, ${selectedLocality}, Surat`}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    पिकअप समय (Time Slot)
+                  </label>
+                  <select
+                    value={selectedTimeSlot}
+                    onChange={e => setSelectedTimeSlot(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold bg-white focus:ring-2 focus:ring-red-500 outline-hidden"
+                  >
+                    <option value="Today (Within 30-45 Mins)">आज ही (अगले 30-45 मिनट में तत्काल)</option>
+                    <option value="Today Afternoon (2:00 PM - 5:00 PM)">आज दोपहर (2:00 PM - 5:00 PM)</option>
+                    <option value="Today Evening (6:00 PM - 9:00 PM)">आज शाम (6:00 PM - 9:00 PM)</option>
+                    <option value="Tomorrow Morning (10:00 AM - 1:00 PM)">कल सुबह (10:00 AM - 1:00 PM)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    ₹199 QC टोकन भुगतान विकल्प
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOption('advance_upi')}
+                      className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        paymentOption === 'advance_upi'
+                          ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-white text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      ऑनलाइन UPI (₹199)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentOption('doorstep')}
+                      className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        paymentOption === 'doorstep'
+                          ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-white text-slate-700 border-slate-300'
+                      }`}
+                    >
+                      पिकअप पर दें (Cash/UPI)
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  रैम / स्टोरेज / नेटवर्क (वैकल्पिक):
-                </label>
-                <input
-                  type="text"
-                  value={customRepairSpecs}
-                  onChange={e => setCustomRepairSpecs(e.target.value)}
-                  placeholder="उदा: 8GB RAM / 128GB (5G)"
-                  className="w-full p-2.5 rounded-xl border border-slate-200"
-                />
+              {/* Official Razorpay Link Shortcut */}
+              <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="text-slate-500">
+                  Razorpay ऑफिशियल पेमेंट लिंक से सीधे ₹199 टोकन पे करें:
+                </span>
+                <a
+                  href={RAZORPAY_REPAIR_VISIT_LINK}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-red-600 hover:text-red-700 font-bold underline flex items-center gap-1"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Razorpay ₹199 डायरेक्ट लिंक</span>
+                </a>
               </div>
+            </div>
 
-              <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px]">
-                🔧 <strong>सूरत डोरस्टेप रिपेयर:</strong> हमारे टेक्नीशियन ओरिजिनल OEM पार्ट्स और 90 दिन वारंटी के साथ आपके घर आएंगे।
-              </div>
-
+            {/* Final Action Button: Submit to Team */}
+            <div className="pt-2">
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-all cursor-pointer"
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white text-base font-black shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
               >
-                ✓ यह मॉडल सेट करें व रिपेयर बुक करें
+                {isSubmitting ? (
+                  <span>सस्ताफोन टीम को सबमिट हो रहा है...</span>
+                ) : (
+                  <>
+                    <Wrench className="w-5 h-5 text-amber-300" />
+                    <span>Submit to Team (सस्ताफोन टीम को सबमिट करें)</span>
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
-            </form>
-          </div>
-        </div>
-      )}
+              <p className="text-center text-[11px] text-slate-500 mt-2 font-medium">
+                सबमिट करने पर यह रिक्वेस्ट तुरंत सस्ताफोन एडमिन डैशबोर्ड पर पंजीकृत हो जाएगी और आपको रसीद जारी होगी।
+              </p>
+            </div>
+          </form>
+        )}
+      </div>
     </section>
   );
 };

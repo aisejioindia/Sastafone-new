@@ -36,19 +36,16 @@ export const BRANDS: Brand[] = [
   { id: 'lava', name: 'Lava', logoText: 'LAVA', badgeColor: 'from-red-600 to-rose-800', popular: true },
   { id: 'cmf', name: 'CMF by Nothing', logoText: 'cmf', badgeColor: 'from-orange-600 to-orange-800', popular: true },
   { id: 'honor', name: 'Honor', logoText: 'HONOR', badgeColor: 'from-cyan-600 to-blue-600', popular: true },
-  { id: 'micromax', name: 'Micromax', logoText: 'micro', badgeColor: 'from-amber-600 to-orange-700' },
-  { id: 'alcatel', name: 'Alcatel', logoText: 'ALCATEL', badgeColor: 'from-teal-600 to-cyan-800' },
-  { id: 'huawei', name: 'Huawei', logoText: 'HUAWEI', badgeColor: 'from-rose-600 to-red-800' },
-  { id: 'blackberry', name: 'BlackBerry', logoText: 'BlackBerry', badgeColor: 'from-neutral-900 to-stone-950' },
-  { id: 'asus', name: 'Asus', logoText: 'ASUS', badgeColor: 'from-slate-800 to-sky-900' },
-  { id: 'nubia', name: 'Nubia', logoText: 'nubia', badgeColor: 'from-red-700 to-stone-900' },
-  { id: 'lg', name: 'LG', logoText: 'LG Life\'s Good', badgeColor: 'from-rose-600 to-pink-800' }
 ];
 
 import { COMPREHENSIVE_PHONE_MODELS } from './phonesDatabase';
 
-// 91mobiles comprehensive latest models list covering all 24 brands from user reference
-export const PHONE_MODELS: PhoneModel[] = COMPREHENSIVE_PHONE_MODELS;
+const EXCLUDED_BRAND_IDS = ['alcatel', 'huawei', 'blackberry', 'asus', 'nubia', 'lg'];
+
+// Filtered models list without removed brands
+export const PHONE_MODELS: PhoneModel[] = COMPREHENSIVE_PHONE_MODELS.filter(
+  m => !EXCLUDED_BRAND_IDS.includes(m.brandId)
+);
 
 
 // Surat Official Authorized Brand Service Centers Directory (to make it easy for customers)

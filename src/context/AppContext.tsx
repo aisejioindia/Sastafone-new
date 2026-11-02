@@ -32,6 +32,9 @@ interface AppContextType {
   setIsDashboardOpen: (open: boolean) => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
+  authPromptReason: string | null;
+  setAuthPromptReason: (reason: string | null) => void;
+  requireAuth: (reason: string, callback?: () => void) => boolean;
   activeTab: MainTabType;
   setActiveTab: (tab: MainTabType) => void;
   legalModal: 'terms' | 'privacy' | 'cookies' | 'trademark' | null;
@@ -58,6 +61,11 @@ interface AppContextType {
   // Surat Official Brand Service Centers Modal
   isBrandCentersModalOpen: boolean;
   setIsBrandCentersModalOpen: (open: boolean) => void;
+  // Official Preset Direct Email Support Modal (support@sastafone.in)
+  isEmailSupportModalOpen: boolean;
+  setIsEmailSupportModalOpen: (open: boolean) => void;
+  emailSupportPresetTopic: string | null;
+  openEmailSupportWithPreset: (presetTopic?: string) => void;
   // Happy Customers Reviews & Testimonials
   reviews: CustomerReview[];
   addReview: (newReview: Omit<CustomerReview, 'id' | 'date' | 'likesCount' | 'verified'>) => void;
@@ -210,17 +218,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('sastaphone_user');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.isLoggedIn === 'boolean') {
+          return parsed;
+        }
       } catch (e) {
         // fallback
       }
     }
     return {
       name: 'Surat Resident',
-      phone: '9825012345',
+      phone: '',
       locality: 'Adajan, Surat',
-      address: 'Near Anand Mahal Road, Adajan, Surat',
-      isLoggedIn: true,
+      address: 'Adajan, Surat',
+      isLoggedIn: false,
       activePlan: 'none',
       postsRemaining: 0,
       sellerPostCredits: 0,
@@ -317,6 +328,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authPromptReason, setAuthPromptReason] = useState<string | null>(null);
+  const [pendingAuthCallback, setPendingAuthCallback] = useState<(() => void) | null>(null);
+
+  const requireAuth = (reason: string, callback?: () => void): boolean => {
+    if (user.isLoggedIn) {
+      if (callback) callback();
+      return true;
+    }
+    setAuthPromptReason(reason);
+    if (callback) {
+      setPendingAuthCallback(() => callback);
+    }
+    setIsAuthModalOpen(true);
+    return false;
+  };
+
   const [activeTab, setActiveTab] = useState<MainTabType>('sell');
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'trademark' | null>(null);
 
@@ -344,12 +371,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentModalRequest, setPaymentModalRequest] = useState<PaymentRequest | null>(null);
 
+  // Direct Preset Email Support Modal state (support@sastafone.in)
+  const [isEmailSupportModalOpen, setIsEmailSupportModalOpen] = useState(false);
+  const [emailSupportPresetTopic, setEmailSupportPresetTopic] = useState<string | null>(null);
+
+  const openEmailSupportWithPreset = (presetTopic?: string) => {
+    setEmailSupportPresetTopic(presetTopic || null);
+    setIsEmailSupportModalOpen(true);
+  };
+
   // Admin & Pro-Audit states
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isProAuditModalOpen, setIsProAuditModalOpen] = useState(false);
   const [selectedAuditOrder, setSelectedAuditOrder] = useState<OrderItem | null>(null);
 
-  const loginAsAdmin = (email: string = 'sastafone@sastafone.in') => {
+  const loginAsAdmin = (email: string = 'support@sastafone.in') => {
     setUser(prev => ({
       ...prev,
       name: 'सस्ताफोन ओनर (अधिकृत एडमिन)',
@@ -574,6 +610,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       buyerPlan: buyerPlan
     });
     setIsAuthModalOpen(false);
+    setAuthPromptReason(null);
+    if (pendingAuthCallback) {
+      setTimeout(() => {
+        pendingAuthCallback();
+        setPendingAuthCallback(null);
+      }, 50);
+    }
   };
 
   const logoutUser = () => {
@@ -763,6 +806,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsDashboardOpen,
         isAuthModalOpen,
         setIsAuthModalOpen,
+        authPromptReason,
+        setAuthPromptReason,
+        requireAuth,
         activeTab,
         setActiveTab,
         legalModal,
@@ -796,6 +842,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         paymentModalRequest,
         openPaymentModal,
         closePaymentModal,
+        // Direct Preset Email Support Modal (support@sastafone.in)
+        isEmailSupportModalOpen,
+        setIsEmailSupportModalOpen,
+        emailSupportPresetTopic,
+        openEmailSupportWithPreset,
         // Admin & Pro-Audit
         isAdminModalOpen,
         setIsAdminModalOpen,

@@ -17,12 +17,21 @@ export const SellFlowSection: React.FC = () => {
     resetSellSelection,
     addOrder,
     setIsDashboardOpen,
-    user
+    user,
+    requireAuth,
+    setIsAuthModalOpen
   } = useApp();
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isCustomModelModalOpen, setIsCustomModelModalOpen] = useState(false);
+
+  // Phone Images & Ownership Proof
+  const [frontPhotoUrl, setFrontPhotoUrl] = useState<string>('https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80');
+  const [backPhotoUrl, setBackPhotoUrl] = useState<string>('https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80');
+  const [billPhotoUrl, setBillPhotoUrl] = useState<string>('');
+  const [isOwnershipConfirmed, setIsOwnershipConfirmed] = useState<boolean>(true);
+  const [bookedSellOrder, setBookedSellOrder] = useState<any | null>(null);
 
   // Custom model form state
   const [customBrandName, setCustomBrandName] = useState('Samsung');
@@ -158,21 +167,33 @@ export const SellFlowSection: React.FC = () => {
   const handleConfirmDoorstepBooking = () => {
     if (!sellSelection.model || !sellSelection.brand) return;
 
-    addOrder({
+    if (!user.isLoggedIn) {
+      requireAuth('पुराना फोन बेचने के लिए कृपया पहले लॉगिन करें।', () => {
+        setIsBookingModalOpen(true);
+      });
+      return;
+    }
+
+    const newOrder = addOrder({
       type: 'sell',
       title: `${sellSelection.model.name} (${sellSelection.variant?.storage || 'Standard'})`,
-      subtitle: `${sellSelection.color?.name || ''} • ${CONDITION_CRITERIA[sellSelection.condition || 'good'].label}`,
+      subtitle: `${sellSelection.color?.name || ''} • ${CONDITION_CRITERIA[sellSelection.condition || 'good'].label} • एस्टीमेट: ${formatINR(quote.maxPrice)}`,
       amount: quote.maxPrice,
       status: 'technician_assigned',
-      statusHindi: 'सूरत टेक्नीशियन असाइन हुआ (आज पिकअप)',
+      statusHindi: 'सूरत पिकअप असाइन हुआ • एडमिन जॉब-कार्ड लाइव',
       locality: selectedLocality,
       fullAddress: addressInput || `${selectedLocality}, Surat`,
-      customerName: customerNameInput || 'Customer',
-      customerPhone: customerPhoneInput || '9372802044',
+      customerName: customerNameInput || user.name || 'Surat Resident',
+      customerPhone: customerPhoneInput || user.phone || '9372802044',
       timeSlot: selectedSlot,
-      technicianName: 'Sanjay Prajapati (Surat Hub #1)',
+      technicianName: 'संजय प्रजापति (सस्ताफोन हब ओनर)',
       technicianPhone: '9372802044',
-      videoUploaded: Boolean(sellSelection.verifiedVideo)
+      videoUploaded: Boolean(sellSelection.verifiedVideo),
+      phonePhotos: [frontPhotoUrl, backPhotoUrl].filter(Boolean),
+      billPhotoUrl: billPhotoUrl || undefined,
+      ownershipDeclared: isOwnershipConfirmed,
+      antiTheftVerified: true,
+      customerRequirement: `ब्रांड: ${sellSelection.brand.name}. मॉडल: ${sellSelection.model.name}. स्टोरेज: ${sellSelection.variant?.storage}. स्थिति: ${sellSelection.condition}. ओरिजिनल बॉक्स: ${sellSelection.hasOriginalBox ? 'हाँ' : 'नहीं'}. चार्जर: ${sellSelection.hasOriginalCharger ? 'हाँ' : 'नहीं'}. बिल: ${sellSelection.hasValidBill ? 'हाँ' : 'नहीं'}.`
     });
 
     confetti({
@@ -181,12 +202,8 @@ export const SellFlowSection: React.FC = () => {
       origin: { y: 0.6 }
     });
 
+    setBookedSellOrder(newOrder);
     setIsSuccessBooked(true);
-    setTimeout(() => {
-      setIsBookingModalOpen(false);
-      setIsSuccessBooked(false);
-      setIsDashboardOpen(true);
-    }, 1500);
   };
 
   return (
@@ -811,18 +828,53 @@ export const SellFlowSection: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
             {isSuccessBooked ? (
-              <div className="text-center py-6 space-y-3">
+              <div className="text-center py-5 space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="w-10 h-10" />
                 </div>
-                <h3 className="text-xl font-black text-slate-900">
-                  {language === 'hi' ? 'पिकअप सफलतापूर्वक बुक हुआ!' : 'Surat Pickup Booked!'}
-                </h3>
-                <p className="text-xs text-slate-600">
-                  {language === 'hi'
-                    ? `संजय प्रजापति (सूरत हब #1) तय समय पर ${selectedLocality} में आपके पते पर पहुंचेंगे।`
-                    : `Technician assigned for doorstep inspection & instant cash payout in ${selectedLocality}.`}
-                </p>
+                <div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-bold border border-emerald-200">
+                    ऑर्डर: {bookedSellOrder?.orderNumber || 'STP-SURAT'}
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 mt-2">
+                    फ़ोन सेल आवेदन टीम को सबमिट हो गया!
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-1">
+                    सस्ताफोन एडमिन टीम को आपका डेटा व फ़ोटो प्राप्त हो गए हैं। आप नीचे दिए गए बटन से सीधे टीम को कॉल कर सकते हैं:
+                  </p>
+                </div>
+
+                {/* Direct Action Buttons */}
+                <div className="space-y-2.5 pt-2">
+                  <a
+                    href={`tel:${SASTAPHONE_PHONE}`}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>📞 सस्ताफोन टीम को डायरेक्ट कॉल करें (+91 {SASTAPHONE_PHONE})</span>
+                  </a>
+
+                  <a
+                    href={generateWhatsAppLink(
+                      `नमस्ते सस्ताफोन! मैंने अपना फ़ोन ${sellSelection.model?.name} सेल करने के लिए ऑर्डर #${bookedSellOrder?.orderNumber || ''} सबमिट किया है।`
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span>💬 WhatsApp पर तुरंत बातचीत करें</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      setIsBookingModalOpen(false);
+                      setIsSuccessBooked(false);
+                      setIsDashboardOpen(true);
+                    }}
+                    className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    डैशबोर्ड में ट्रैक करें
+                  </button>
+                </div>
               </div>
             ) : (
               <div>
@@ -832,23 +884,23 @@ export const SellFlowSection: React.FC = () => {
                       {language === 'hi' ? 'सूरत फ्री डोरस्टेप पिकअप' : 'Surat Doorstep Pickup'}
                     </h3>
                     <p className="text-xs text-slate-500">
-                      {sellSelection.model?.name} • {formatINR(quote.maxPrice)} Cash
+                      {sellSelection.model?.name} • {formatINR(quote.maxPrice)} अनुमानित कैश
                     </p>
                   </div>
                   <button
                     onClick={() => setIsBookingModalOpen(false)}
-                    className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+                    className="text-slate-400 hover:text-slate-700 text-sm font-bold cursor-pointer"
                   >
                     ✕
                   </button>
                 </div>
 
-                <div className="space-y-3.5 text-left text-xs">
+                <div className="space-y-3 text-left text-xs max-h-[75vh] overflow-y-auto pr-1">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">
                       {language === 'hi' ? 'सूरत लोकैलिटी (इलाका):' : 'Surat Locality:'}
                     </label>
-                    <div className="p-2.5 rounded-xl bg-slate-100 font-bold text-slate-900 flex justify-between items-center">
+                    <div className="p-2 rounded-xl bg-slate-100 font-bold text-slate-900 flex justify-between items-center text-xs">
                       <span>📍 {selectedLocality}</span>
                       <span className="text-[10px] text-blue-600 bg-white px-2 py-0.5 rounded border border-blue-200">Verified Hub</span>
                     </div>
@@ -856,55 +908,105 @@ export const SellFlowSection: React.FC = () => {
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">
-                      {language === 'hi' ? 'पूरा पता:' : 'Complete Address:'}
+                      {language === 'hi' ? 'पूरा पता:' : 'Complete Address:'} *
                     </label>
                     <textarea
                       rows={2}
                       value={addressInput}
                       onChange={e => setAddressInput(e.target.value)}
                       placeholder="Flat/House No., Landmark, Surat..."
-                      className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs"
+                      className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-red-600 text-xs"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {language === 'hi' ? 'नाम:' : 'Name:'}
+                        {language === 'hi' ? 'नाम:' : 'Name:'} *
                       </label>
                       <input
                         type="text"
                         value={customerNameInput}
                         onChange={e => setCustomerNameInput(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs"
+                        className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-red-600 text-xs"
                       />
                     </div>
                     <div>
                       <label className="font-bold text-slate-700 block mb-1">
-                        {language === 'hi' ? 'फोन:' : 'Phone:'}
+                        {language === 'hi' ? 'फोन (WhatsApp):' : 'Phone:'} *
                       </label>
                       <input
                         type="tel"
+                        maxLength={10}
                         value={customerPhoneInput}
-                        onChange={e => setCustomerPhoneInput(e.target.value)}
-                        className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-blue-600 text-xs"
+                        onChange={e => setCustomerPhoneInput(e.target.value.replace(/\D/g, ''))}
+                        className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-red-600 text-xs"
                       />
                     </div>
+                  </div>
+
+                  {/* Photo Uploads for Phone & Bill */}
+                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                    <label className="font-bold text-slate-800 block text-[11px]">
+                      📸 फोन व बिल की फोटो अपलोड करें (Full Image & Data):
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="p-2 rounded-xl border border-dashed border-slate-300 hover:border-red-500 bg-white text-center cursor-pointer">
+                        <span className="text-[10px] font-bold text-slate-700 block">📱 फोन स्क्रीन फोटो</span>
+                        <span className="text-[9px] text-slate-400">स्क्रीन ऑन रखें</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            if (e.target.files?.[0]) setFrontPhotoUrl(URL.createObjectURL(e.target.files[0]));
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      <label className="p-2 rounded-xl border border-dashed border-slate-300 hover:border-red-500 bg-white text-center cursor-pointer">
+                        <span className="text-[10px] font-bold text-slate-700 block">🧾 बिल / इनवॉइस</span>
+                        <span className="text-[9px] text-slate-400">स्वामित्व प्रमाण</span>
+                        <input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={e => {
+                            if (e.target.files?.[0]) setBillPhotoUrl(URL.createObjectURL(e.target.files[0]));
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Anti-Theft Declaration */}
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-[11px]">
+                    <label className="flex items-start gap-2 cursor-pointer font-bold">
+                      <input
+                        type="checkbox"
+                        checked={isOwnershipConfirmed}
+                        onChange={e => setIsOwnershipConfirmed(e.target.checked)}
+                        className="mt-0.5 rounded border-amber-400 text-red-600"
+                      />
+                      <span>
+                        मैं पुष्टि करता/करती हूँ कि यह फोन चोरी का नहीं है और मेरा वैध स्वामित्व है।
+                      </span>
+                    </label>
                   </div>
 
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">
                       {language === 'hi' ? 'पिकअप समय चुनें:' : 'Pickup Time Slot:'}
                     </label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {['Today (2-4 PM)', 'Today (4-6 PM)', 'Tomorrow (10-12 AM)'].map(slot => (
                         <button
                           key={slot}
                           type="button"
                           onClick={() => setSelectedSlot(slot)}
-                          className={`p-2 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          className={`p-1.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer ${
                             selectedSlot === slot
-                              ? 'bg-blue-600 text-white border-blue-600'
+                              ? 'bg-red-600 text-white border-red-600'
                               : 'bg-slate-50 text-slate-700 border-slate-200'
                           }`}
                         >
@@ -914,15 +1016,11 @@ export const SellFlowSection: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
-                    💵 <strong>पेमेंट गारंटी:</strong> डोरस्टेप पर फोन चेक करके तुरंत UPI या कैश दिया जाएगा।
-                  </div>
-
                   <button
                     onClick={handleConfirmDoorstepBooking}
-                    className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/25 transition-all cursor-pointer"
+                    className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer"
                   >
-                    {language === 'hi' ? 'पिकअप कन्फर्म करें' : 'Confirm Surat Pickup'}
+                    Submit to Team (सस्ताफोन टीम को सबमिट करें)
                   </button>
                 </div>
               </div>

@@ -196,6 +196,30 @@ export interface OrderItem {
   invoiceNumber?: string;
   customOfferNote?: string;
   cloudSyncStatus?: 'synced' | 'local';
+  // Custom Phone Model, Bill Upload & Anti-Theft Verification
+  customModelDetails?: {
+    brand: string;
+    model: string;
+    ram?: string;
+    storage?: string;
+    is5G?: boolean;
+    color?: string;
+    condition?: string;
+    baseValuation?: number;
+  };
+  selectedProblemsList?: {
+    id: string;
+    name: string;
+    hindiName: string;
+    minPrice: number;
+    maxPrice: number;
+    category?: string;
+  }[];
+  billPhotoUrl?: string;
+  ownershipDeclared?: boolean;
+  antiTheftVerified?: boolean;
+  imeiNumber?: string;
+  advanceTokenAmount?: number;
 }
 
 export interface ProAuditVerification {

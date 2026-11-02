@@ -391,7 +391,7 @@ Respond in clear, friendly, and authoritative Hindi (with English technical term
                 <span>सूरत AI सपोर्ट डेस्क (24x7)</span>
               </div>
               <span className="text-[11px] text-slate-300">
-                लाइव चैट • ईमेल <strong className="text-blue-300">sastafone@sastafone.in</strong>
+                लाइव चैट • ईमेल <strong className="text-blue-300">support@sastafone.in</strong>
               </span>
             </div>
 

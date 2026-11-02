@@ -269,8 +269,8 @@ export function formatINR(amount: number): string {
 }
 
 export function generateWhatsAppLink(
-  type: 'sell' | 'buy' | 'repair' | 'general',
-  details: {
+  typeOrCustomText: string,
+  details?: {
     modelName?: string;
     variant?: string;
     condition?: string;
@@ -280,7 +280,12 @@ export function generateWhatsAppLink(
     phoneName?: string;
   }
 ): string {
+  if (!details || !['sell', 'buy', 'repair', 'general'].includes(typeOrCustomText)) {
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(typeOrCustomText)}`;
+  }
+
   let message = '';
+  const type = typeOrCustomText;
 
   if (type === 'sell') {
     message = `नमस्ते Sastaphone Surat टीम! 📱\n\nमैं अपना पुराना फोन बेचना चाहता हूँ:\n` +

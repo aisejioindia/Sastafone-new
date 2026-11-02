@@ -20,7 +20,8 @@ import {
   Check,
   Image as ImageIcon,
   Eye,
-  HelpCircle
+  HelpCircle,
+  Mail
 } from 'lucide-react';
 import { formatINR, generateWhatsAppLink } from '../utils/valuation';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
@@ -439,13 +440,16 @@ export const UserDashboardModal: React.FC = () => {
                             टेक्नीशियन: <strong>{order.technicianName}</strong>
                           </span>
                           <a
-                            href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे अपने ऑर्डर ${order.orderNumber} के बारे में जानकारी चाहिए।`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-emerald-700 font-bold flex items-center gap-1 hover:underline"
+                            href={`mailto:support@sastafone.in?subject=${encodeURIComponent(
+                              `Sastafone Surat Order Status: #${order.orderNumber}`
+                            )}&body=${encodeURIComponent(
+                              `नमस्ते Sastafone Surat!\n\nमुझे अपने ऑर्डर #${order.orderNumber} (${order.title}) के संबंध में सवाल पूछना है।\nटेक्नीशियन: ${order.technicianName}\n\n---\nDirect Q&A via support@sastafone.in`
+                            )}`}
+                            className="text-blue-700 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                            title="support@sastafone.in पर डायरेक्ट सवाल पूछें"
                           >
-                            <MessageCircle className="w-3.5 h-3.5" />
-                            <span>WhatsApp</span>
+                            <Mail className="w-3.5 h-3.5" />
+                            <span>ईमेल Q&A</span>
                           </a>
                         </div>
                       )}

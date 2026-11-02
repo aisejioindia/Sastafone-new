@@ -2,17 +2,19 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
-import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones, Lock } from 'lucide-react';
+import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones, Lock, Mail } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const {
     setLegalModal,
     setSelectedLocality,
+    selectedLocality,
     setActiveTab,
     setIsBrandCentersModalOpen,
     language,
     setIsAdminModalOpen,
-    user
+    user,
+    openEmailSupportWithPreset
   } = useApp();
 
   return (
@@ -201,24 +203,44 @@ export const Footer: React.FC = () => {
               सुबह 9:00 बजे से रात 9:30 बजे तक सूरत वासियों के लिए तुरंत डिजिटल व ऑन-कॉल सहायता उपलब्ध है।
             </p>
 
-            {/* Official Support Channel without exposing raw personal number */}
-            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-white">
-                <Headphones className="w-4 h-4 text-amber-400" />
-                <span>सूरत कस्टमर केयर</span>
+            {/* Official Support Channel with 1-Click Preset Problem Direct Email */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950/60 border border-blue-500/30 space-y-2.5 shadow-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-white">
+                  <Headphones className="w-4 h-4 text-amber-400" />
+                  <span>सूरत कस्टमर केयर</span>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  24x7 एक्टिव
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                आधिकारिक ईमेल: <a href="mailto:support@sastafone.in" className="text-blue-300 hover:underline font-mono">support@sastafone.in</a>
-              </p>
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे सहायता चाहिए।`}
-                target="_blank"
-                rel="noreferrer"
-                className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+
+              <div className="text-[11px] text-slate-300 space-y-0.5">
+                <p>
+                  आधिकारिक ईमेल:{' '}
+                  <button
+                    type="button"
+                    onClick={() => openEmailSupportWithPreset()}
+                    className="text-blue-300 hover:text-amber-300 underline font-mono cursor-pointer transition-colors"
+                    title="1-क्लिक समस्या चुनकर ईमेल भेजें"
+                  >
+                    support@sastafone.in
+                  </button>
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  सूरत सेंट्रल हब • 2 घंटे में समाधान गारंटी
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => openEmailSupportWithPreset()}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer border border-blue-400/30 group"
+                title="समस्या चुनें व तुरंत ईमेल भेजें"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>ऑफ़िशियल सहायता चैट (WhatsApp)</span>
-              </a>
+                <Mail className="w-3.5 h-3.5 fill-white text-blue-600 group-hover:scale-110 transition-transform" />
+                <span>📧 समस्या चुनें व डायरेक्ट मेल करें (support@sastafone.in)</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2 text-[11px] text-emerald-400 pt-1">
