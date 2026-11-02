@@ -10,11 +10,12 @@ export const firebaseConfig = {
   projectId: "sastafone",
   storageBucket: "sastafone.firebasestorage.app",
   messagingSenderId: "162458238860",
-  appId: "1:162458238860:web:e43cb85674817993d3a0a9",
-  measurementId: "G-R0JYBKF89Q"
+  appId: "1:162458238860:web:bc3263b44f4fdc30d3a0a9",
+  measurementId: "G-XVFFKSWHWJ"
 };
 
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Initialize Firebase App safely (singleton instance)
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -22,6 +23,9 @@ export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // Firebase Authentication Instance
 export const auth = getAuth(app);
 export const googleAuthProvider = new GoogleAuthProvider();
+
+// Firebase Firestore Database Instance
+export const db = getFirestore(app);
 
 // Initialize Analytics if supported in the browser environment
 export const initAnalytics = async () => {

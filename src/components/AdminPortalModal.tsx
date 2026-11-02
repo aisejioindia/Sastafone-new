@@ -52,6 +52,7 @@ import confetti from 'canvas-confetti';
 import { AdminAnalyticsCharts } from './AdminAnalyticsCharts';
 import { AdminActivityLog, AdminActivityLogItem } from './AdminActivityLog';
 import { TechnicianProAuditIntake } from './TechnicianProAuditIntake';
+import { DynamicRepairChecklistModal } from './DynamicRepairChecklistModal';
 
 export type StatusCategory = 'all' | 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -103,6 +104,10 @@ export const AdminPortalModal: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [failedAttempts, setFailedAttempts] = useState<number>(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  // DYNAMIC REPAIR CHECKLIST TOOL STATE
+  const [selectedChecklistOrder, setSelectedChecklistOrder] = useState<OrderItem | null>(null);
+  const [isChecklistModalOpen, setIsChecklistModalOpen] = useState(false);
 
   // ACTIVITY LOGGING FEATURE (AUDIT TRAIL STATE)
   const [activityLogs, setActivityLogs] = useState<AdminActivityLogItem[]>([
@@ -1241,18 +1246,38 @@ export const AdminPortalModal: React.FC = () => {
                             </div>
 
                             <div>
-                              <span className="text-[10px] text-slate-400 block font-semibold">सूरत पता:</span>
-                              <span className="text-slate-700 text-[11px] font-medium flex items-center gap-1 line-clamp-1">
+                              <span className="text-[10px] text-slate-400 block font-semibold">सूरत सटीक पता व GPS:</span>
+                              <span className="text-slate-700 text-[11px] font-medium flex items-center gap-1">
                                 <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                                {order.fullAddress}
+                                <span className="truncate">{order.fullAddress}</span>
                               </span>
+                              {order.gpsLocation?.mapsLink && (
+                                <a
+                                  href={order.gpsLocation.mapsLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mt-0.5 underline"
+                                >
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  <span>Google Maps लाइव पिन लोकेशन</span>
+                                </a>
+                              )}
                             </div>
 
                             <div>
-                              <span className="text-[10px] text-slate-400 block font-semibold">असाइंड टेक्नीशियन:</span>
-                              <span className="font-bold text-slate-800 text-[11px]">
+                              <span className="text-[10px] text-slate-400 block font-semibold">असाइंड टेक्नीशियन व भुगतान:</span>
+                              <span className="font-bold text-slate-800 text-[11px] block">
                                 {order.technicianName || 'Sanjay Prajapati (Admin Lead)'}
                               </span>
+                              {order.onlinePaymentUtr ? (
+                                <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono font-bold text-[10px]">
+                                  ✓ UTR: {order.onlinePaymentUtr} (ऑनलाइन ₹199 पेड)
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500">
+                                  {order.paymentMethod || 'टोकन वेरिफाइड'}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -1278,6 +1303,48 @@ export const AdminPortalModal: React.FC = () => {
                                 </span>
                               )}
                             </div>
+                          </div>
+
+                          {/* DYNAMIC REPAIR CHECKLIST TOOL BANNER & MODAL TRIGGER */}
+                          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shadow-xs">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
+                                <CheckSquare className="w-5 h-5 text-white" />
+                              </div>
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-xs font-black text-slate-900">
+                                    📋 डायनेमिक रिपेयर चेकलिस्ट टूल (Repair Checklist & QC Tool)
+                                  </span>
+                                  {order.repairChecklist ? (
+                                    <span className="text-emerald-800 bg-emerald-100 border border-emerald-300 font-extrabold px-2 py-0.5 rounded-md text-[10px]">
+                                      ✓ {order.repairChecklist.qualityScorePercent}% QC पास ({order.repairChecklist.jobStatus.toUpperCase()})
+                                    </span>
+                                  ) : (
+                                    <span className="text-amber-800 bg-amber-100 border border-amber-300 font-bold px-2 py-0.5 rounded-md text-[10px]">
+                                      चेकलिस्ट लंबित (Pending)
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-600 mt-0.5">
+                                  {order.repairChecklist
+                                    ? `अंतिम ऑडिट: ${order.repairChecklist.technicianName} • बदले गए पार्ट्स: ${order.repairChecklist.replacedParts?.length || 0} • सिंक: क्लाउड DB`
+                                    : '9-पॉइंट हार्डवेयर टेस्ट, स्पेयर पार्ट्स लॉग, जॉब स्टेटस और प्रिंटेबल जॉब कार्ड जनरेट करें।'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedChecklistOrder(order);
+                                setIsChecklistModalOpen(true);
+                              }}
+                              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs flex items-center gap-2 shrink-0 self-start sm:self-auto cursor-pointer shadow-md transition-all"
+                            >
+                              <CheckSquare className="w-4 h-4 text-emerald-200" />
+                              <span>{order.repairChecklist ? 'चेकलिस्ट देखें / संपादित करें' : 'ओपन रिपेयर चेकलिस्ट टूल'}</span>
+                            </button>
                           </div>
 
                           {/* Customer Requirement & Reported Problems */}
@@ -2589,6 +2656,32 @@ export const AdminPortalModal: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Dynamic Repair Checklist Tool Modal */}
+      {isChecklistModalOpen && selectedChecklistOrder && (
+        <DynamicRepairChecklistModal
+          order={selectedChecklistOrder}
+          isOpen={isChecklistModalOpen}
+          onClose={() => {
+            setIsChecklistModalOpen(false);
+            setSelectedChecklistOrder(null);
+          }}
+          onSaveChecklist={(orderId, checklist) => {
+            updateOrder(orderId, { repairChecklist: checklist });
+            setSelectedChecklistOrder(prev => (prev && prev.id === orderId ? { ...prev, repairChecklist: checklist } : prev));
+            logActivity(
+              'audit_action',
+              'रिपेयर चेकलिस्ट',
+              `${selectedChecklistOrder.title} चेकलिस्ट सहेजी गई`,
+              `QC स्कोर: ${checklist.qualityScorePercent}%, स्थिति: ${checklist.jobStatus.toUpperCase()}, टेक्नीशियन: ${checklist.technicianName}`,
+              'shield',
+              'bg-emerald-100 text-emerald-800 border-emerald-200',
+              'Repair Checklist',
+              { orderId, orderNumber: selectedChecklistOrder.orderNumber, itemName: selectedChecklistOrder.title }
+            );
+          }}
+        />
       )}
     </div>
   );

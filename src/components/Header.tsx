@@ -74,28 +74,28 @@ export const Header: React.FC = () => {
 
       {/* Main Navbar */}
       <div className="container mx-auto px-4 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3">
+        {/* Brand Logo & Compact Surat Locality Pin */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink min-w-0">
           <button
             onClick={() => {
               setActiveTab('sell');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="group text-left cursor-pointer transition-transform hover:scale-[1.02]"
+            className="group text-left cursor-pointer transition-transform hover:scale-[1.02] shrink-0"
             title="Sastafone Surat - होमपेज"
           >
             <SastafoneLogo size="md" variant="light" showSubtitle={true} />
           </button>
 
-          {/* Surat Locality Pin Button */}
+          {/* Compact Surat Locality Pin Button */}
           <button
             onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-xs font-semibold transition-all group cursor-pointer"
-            title="सूरत में अपनी लोकैलिटी चुनें"
+            className="flex items-center gap-1 px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-[11px] sm:text-xs font-semibold transition-all group cursor-pointer shrink-0"
+            title="सूरत में अपनी लोकैलिटी बदलें"
           >
-            <MapPin className="w-3.5 h-3.5 text-orange-500 group-hover:animate-bounce" />
-            <span className="max-w-[110px] truncate">{selectedLocality}</span>
-            <span className="text-[10px] text-blue-600 font-bold bg-white px-1 rounded border border-blue-200">
+            <MapPin className="w-3 h-3 text-orange-500 shrink-0 group-hover:animate-bounce" />
+            <span className="max-w-[65px] sm:max-w-[110px] truncate">{selectedLocality}</span>
+            <span className="hidden sm:inline text-[9px] text-blue-600 font-bold bg-white px-1 rounded border border-blue-200">
               {language === 'hi' ? 'बदलें' : 'Change'}
             </span>
           </button>
@@ -144,8 +144,7 @@ export const Header: React.FC = () => {
         </nav>
 
         {/* Right Action Buttons */}
-        <div className="flex items-center gap-2">
-
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => {
               const el = document.getElementById('happy-customers');
@@ -163,10 +162,10 @@ export const Header: React.FC = () => {
           {!user.isLoggedIn ? (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0"
               title="100% मुफ़्त लॉगिन • कोई SMS शुल्क नहीं"
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3.5 h-3.5 shrink-0" />
               <span>मुफ़्त लॉगिन</span>
             </button>
           ) : (

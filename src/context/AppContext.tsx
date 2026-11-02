@@ -3,6 +3,12 @@ import { Language, OrderItem, SellSelection, SuratLocality, UserProfile, P2PList
 import { DEFAULT_SURAT_LOCALITY, SURAT_LOCALITIES, INITIAL_P2P_LISTINGS, INITIAL_CUSTOMER_REVIEWS } from '../data/mockData';
 import { validateChatSecurity, getAutomatedSellerReply } from '../utils/chatSecurity';
 import confetti from 'canvas-confetti';
+import {
+  saveUserToFirestore,
+  saveOrderToFirestore,
+  updateOrderInFirestore,
+  subscribeToOrdersFromFirestore
+} from '../services/firebaseDbService';
 
 export type MainTabType = 'sell' | 'buy' | 'repair' | 'bazaar';
 
@@ -18,7 +24,8 @@ interface AppContextType {
     address?: string,
     email?: string,
     avatarUrl?: string,
-    authProvider?: 'google' | 'phone'
+    authProvider?: 'google' | 'phone',
+    extraFields?: Partial<UserProfile>
   ) => void;
   logoutUser: () => void;
   orders: OrderItem[];
@@ -406,6 +413,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateOrder = (orderId: string, updates: Partial<OrderItem>) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
+    updateOrderInFirestore(orderId, updates).catch(() => {});
   };
 
   const setOrderAdminQuote = (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => {
@@ -577,6 +585,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('sastaphone_chat_messages', JSON.stringify(chatMessages));
   }, [chatMessages]);
 
+  // Real-time synchronization from Firebase Firestore database
+  useEffect(() => {
+    const unsubscribe = subscribeToOrdersFromFirestore((remoteOrders) => {
+      if (remoteOrders && remoteOrders.length > 0) {
+        setOrders(prev => {
+          const remoteIds = new Set(remoteOrders.map(o => o.id));
+          const localOnly = prev.filter(o => !remoteIds.has(o.id));
+          return [...remoteOrders, ...localOnly];
+        });
+      }
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
   };
@@ -592,9 +616,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     address?: string,
     email?: string,
     avatarUrl?: string,
-    authProvider?: 'google' | 'phone'
+    authProvider?: 'google' | 'phone',
+    extraFields?: Partial<UserProfile>
   ) => {
-    setUser({
+    const updatedUser: UserProfile = {
       name,
       phone,
       email: email || user.email,
@@ -607,8 +632,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       postsRemaining: user.postsRemaining || 0,
       sellerPostCredits: sellerPostCredits,
       buyerCredits: buyerCredits,
-      buyerPlan: buyerPlan
+      buyerPlan: buyerPlan,
+      ...extraFields
+    };
+
+    setUser(updatedUser);
+
+    // Instantly save user profile & address details to Firebase Firestore
+    saveUserToFirestore(updatedUser).catch(err => {
+      console.warn('Firebase save user error:', err);
     });
+
     setIsAuthModalOpen(false);
     setAuthPromptReason(null);
     if (pendingAuthCallback) {
@@ -637,9 +671,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...orderData,
       id: 'ord-' + Date.now(),
       orderNumber: `STP-SURAT-${Math.floor(1000 + Math.random() * 9000)}`,
-      date: 'Just now'
+      date: 'Just now',
+      cloudSyncStatus: 'synced'
     };
+
     setOrders(prev => [newOrder, ...prev]);
+
+    // Instantly save service request / job to Firebase Firestore
+    saveOrderToFirestore(newOrder).catch(err => {
+      console.warn('Firebase save order error:', err);
+    });
+
     return newOrder;
   };
 
@@ -653,6 +695,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       viewsCount: 1
     };
     setP2PListings(prev => [newListing, ...prev]);
+
+    // Send all services to Jobs in Admin Dashboard & Firebase ("jitni serivse hain o sab ko job me bejho")
+    addOrder({
+      type: 'bazaar',
+      title: `सस्ता बाज़ार विज्ञापन: ${listingData.brand} ${listingData.modelName}`,
+      subtitle: `मांग मूल्य: ₹${listingData.price.toLocaleString('en-IN')} • स्थिति: ${listingData.condition} • फोटो: ${listingData.images.length}`,
+      amount: listingData.price,
+      status: 'pending',
+      statusHindi: 'सस्ता बाज़ार लिस्टिंग जॉब • समीक्षा में',
+      locality: listingData.locality || selectedLocality,
+      fullAddress: `${listingData.locality || selectedLocality}, Surat`,
+      customerName: listingData.sellerName,
+      customerPhone: listingData.sellerPhone,
+      timeSlot: 'Listing Active 24x7',
+      paymentMethod: listingData.planType === 'pro_799' ? 'Pro Seller Pass (₹799)' : 'Single Post Pass (₹99)',
+      paymentStatus: 'paid'
+    });
+
     if (sellerPostCredits > 0) {
       setSellerPostCredits(prev => Math.max(0, prev - 1));
       setUser(prev => ({

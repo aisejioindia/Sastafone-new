@@ -1,6 +1,6 @@
 export type Language = 'hi' | 'en';
 
-export type ServiceType = 'sell' | 'buy' | 'repair' | 'pass';
+export type ServiceType = 'sell' | 'buy' | 'repair' | 'pass' | 'bazaar';
 
 export type PaymentTierType = 'appointment_199' | 'basic_99' | 'pro_299' | 'seller_pro_799';
 
@@ -220,6 +220,37 @@ export interface OrderItem {
   antiTheftVerified?: boolean;
   imeiNumber?: string;
   advanceTokenAmount?: number;
+  gpsLocation?: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    mapsLink?: string;
+    capturedAt?: string;
+  };
+  landmark?: string;
+  pincode?: string;
+  onlinePaymentUtr?: string;
+  repairChecklist?: {
+    screenWorking: boolean;
+    touchDigitizerPassed: boolean;
+    batteryChargingOk: boolean;
+    batteryHealthPct: number;
+    camerasPassed: boolean;
+    audioMicSpeakerOk: boolean;
+    networkWifiBtOk: boolean;
+    lciWaterDamageFree: boolean;
+    bodyAndScrewsIntact: boolean;
+    buttonsBiometricsOk: boolean;
+    replacedParts?: string[];
+    partsReplacedList?: string[];
+    technicianName: string;
+    qualityScorePercent: number;
+    qcPassPct?: number;
+    jobStatus: 'in_progress' | 'qc_passed' | 'ready_for_handover';
+    status?: 'in_progress' | 'qc_passed' | 'ready_for_handover';
+    technicianNotes: string;
+    completedAt?: string;
+  };
 }
 
 export interface ProAuditVerification {
@@ -274,6 +305,14 @@ export interface UserProfile {
   email?: string;
   locality: string;
   address: string;
+  landmark?: string;
+  pincode?: string;
+  gpsLocation?: {
+    latitude: number;
+    longitude: number;
+    accuracyMeters?: number;
+    mapsLink?: string;
+  };
   isLoggedIn: boolean;
   avatarUrl?: string;
   authProvider?: 'google' | 'phone';
@@ -351,7 +390,7 @@ export interface CustomerReview {
   customerName: string;
   customerPhone?: string;
   locality: string;
-  serviceType: 'repair' | 'sell' | 'buy' | 'pass';
+  serviceType: ServiceType;
   phoneModel: string;
   serviceDetail: string; // e.g. "Screen Replacement in 30 Mins", "Instant ₹32,400 Bank Transfer", "Bought Certified iPhone 14"
   rating: number; // 1 to 5

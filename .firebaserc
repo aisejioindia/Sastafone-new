@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "sastafone"
+  },
+  "targets": {
+    "sastafone": {
+      "hosting": {
+        "sastafone-7d087": [
+          "sastafone-7d087"
+        ]
+      }
+    }
+  }
+}
