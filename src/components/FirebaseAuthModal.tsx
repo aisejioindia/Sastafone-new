@@ -2,7 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
 import { auth, googleAuthProvider } from '../firebase';
-import { signInWithPopup } from 'firebase/auth';
+import {
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
 import {
   X,
   ShieldCheck,
@@ -21,7 +26,9 @@ import {
   Navigation,
   Building,
   Home,
-  CheckCheck
+  CheckCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -36,12 +43,15 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
     loginUser,
     selectedLocality,
     authPromptReason,
-    setAuthPromptReason
+    setAuthPromptReason,
+    setIsDashboardOpen
   } = useApp();
 
   const [phoneNumber, setPhoneNumber] = useState('');
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   // Compulsory Address Details (Anti-Fraud)
   const [houseShopNo, setHouseShopNo] = useState('');
@@ -59,21 +69,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
   const [isLocatingGps, setIsLocatingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
 
-  const [enteredCode, setEnteredCode] = useState('');
-  const [securityCode, setSecurityCode] = useState('8392');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Generate random 4-digit on-screen free security code
-  const refreshSecurityCode = () => {
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    setSecurityCode(code);
-    setEnteredCode(code); // Pre-filled for ultra-fast frictionless 1-click UX
-  };
-
   useEffect(() => {
     if (isAuthModalOpen) {
-      refreshSecurityCode();
       setErrorMessage(null);
       setGpsError(null);
     }
@@ -85,6 +85,37 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
     setIsAuthModalOpen(false);
     setAuthPromptReason(null);
     setErrorMessage(null);
+  };
+
+  const formatFirebaseAuthError = (err: any): string => {
+    if (!err) return 'Firebase Authentication सत्यापन विफल रहा।';
+    const code = err.code || '';
+    if (
+      code === 'auth/wrong-password' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/invalid-login-credentials'
+    ) {
+      return '❌ अमान्य क्रेडेंशियल्स! गलत पासवर्ड दर्ज किया गया है। कृपया सही पासवर्ड दर्ज करें।';
+    }
+    if (code === 'auth/weak-password') {
+      return '⚠️ पासवर्ड बहुत कमजोर है। कृपया कम से कम 6 अक्षरों का पासवर्ड रखें।';
+    }
+    if (code === 'auth/email-already-in-use') {
+      return '⚠️ यह मोबाइल/ईमेल पहले से पंजीकृत है। कृपया अपने मौजूदा पासवर्ड से लॉगिन करें।';
+    }
+    if (code === 'auth/user-not-found') {
+      return 'खाता नहीं मिला। कृपया पहली बार साइन अप करने के लिए पासवर्ड दर्ज करें।';
+    }
+    if (code === 'auth/too-many-requests') {
+      return '⚠️ बहुत अधिक असफल प्रयास! सुरक्षा कारणों से कुछ समय बाद पुनः प्रयास करें।';
+    }
+    if (code === 'auth/network-request-failed') {
+      return 'नेटवर्क त्रुटि: इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।';
+    }
+    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+      return 'Google लॉगिन पॉपअप बंद कर दिया गया। सत्यापन अधूरा रहा।';
+    }
+    return `Firebase Auth सत्यापन त्रुटि: ${err.message || 'सत्यापन विफल'}`;
   };
 
   // Free Browser Geolocation (100% Free - ₹0 external cost)
@@ -127,22 +158,31 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
     );
   };
 
-  // 100% Free 1-Click Instant Mobile Login with Compulsory Address & GPS
-  const handleInstantFreeLogin = (e: React.FormEvent) => {
+  // Firebase Authentication Verified Login - Never Auto-Logs In Without Validating Details!
+  const handleFirebaseAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     const cleanPhone = phoneNumber.trim().replace(/\D/g, '');
+    const cleanEmail = userEmail.trim().toLowerCase();
+
+    // 1. Mandatory Form Validations
     if (!userName.trim()) {
       setErrorMessage('कृपया अपना नाम दर्ज करें');
       return;
     }
-    if (cleanPhone.length < 10) {
-      setErrorMessage('कृपया मान्य 10-अंकों का मोबाइल नंबर दर्ज करें (e.g. 9825012345)');
+    if (cleanPhone.length < 10 && !cleanEmail.includes('@')) {
+      setErrorMessage('कृपया मान्य 10-अंकों का मोबाइल नंबर या ईमेल दर्ज करें');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setErrorMessage('सुरक्षा हेतु कृपया कम से कम 6 अक्षरों का पासवर्ड दर्ज करें');
       return;
     }
 
     // Compulsory Address Validation (Anti-Fraud)
     if (!houseShopNo.trim()) {
-      setErrorMessage('कृपया मकान / दुकान / फ्लैट नंबर दर्ज करें (गलत पते से बचाव के लिए अनिवार्य)');
+      setErrorMessage('कृपया मकान / दुकान / फ्लैट नंबर दर्ज करें (डोरस्टेप पते के लिए अनिवार्य)');
       return;
     }
     if (!buildingSociety.trim()) {
@@ -154,20 +194,62 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
       return;
     }
 
-    setErrorMessage(null);
     setIsLoading(true);
 
-    const fullStructuredAddress = `${houseShopNo.trim()}, ${buildingSociety.trim()}, नियर ${streetLandmark.trim()}, ${selectedLocality}, Surat - ${pincode.trim() || '395009'}`;
+    // Form Firebase Auth compliant email identifier
+    const authEmail = cleanEmail.includes('@')
+      ? cleanEmail
+      : `${cleanPhone.slice(-10)}@sastafone.in`;
 
-    // Instant Free Zero-Cost Verification
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      let fbUser;
+
+      // STEP 1: Strict Firebase Authentication Validation
+      try {
+        const credential = await signInWithEmailAndPassword(auth, authEmail, password);
+        fbUser = credential.user;
+      } catch (signInErr: any) {
+        if (
+          signInErr.code === 'auth/user-not-found' ||
+          signInErr.code === 'auth/invalid-credential' ||
+          signInErr.code === 'auth/invalid-login-credentials'
+        ) {
+          // New User Registration in Firebase Auth
+          try {
+            const newCredential = await createUserWithEmailAndPassword(auth, authEmail, password);
+            fbUser = newCredential.user;
+            if (fbUser) {
+              await updateProfile(fbUser, { displayName: userName.trim() });
+            }
+          } catch (createErr: any) {
+            // Firebase Authentication validation failed! DO NOT LOG IN!
+            setErrorMessage(formatFirebaseAuthError(createErr));
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          // Wrong password or account lockout in Firebase Authentication! DO NOT LOG IN!
+          setErrorMessage(formatFirebaseAuthError(signInErr));
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      if (!fbUser || !fbUser.uid) {
+        setErrorMessage('Firebase Authentication द्वारा सत्यापन पूरा नहीं हो सका।');
+        setIsLoading(false);
+        return;
+      }
+
+      // ONLY Proceed after successfully validating via Firebase Authentication!
+      const fullStructuredAddress = `${houseShopNo.trim()}, ${buildingSociety.trim()}, नियर ${streetLandmark.trim()}, ${selectedLocality}, Surat - ${pincode.trim() || '395009'}`;
+
       loginUser(
-        userName.trim(),
-        cleanPhone.slice(-10),
+        userName.trim() || fbUser.displayName || 'Surat Resident',
+        cleanPhone.slice(-10) || '9825012345',
         fullStructuredAddress,
-        userEmail.trim() || undefined,
-        undefined,
+        userEmail.trim() || fbUser.email || undefined,
+        fbUser.photoURL || undefined,
         'phone',
         {
           landmark: streetLandmark.trim(),
@@ -183,21 +265,36 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
 
       confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
       handleClose();
+
+      // Proceed directly to the dashboard after successful validation
+      setIsDashboardOpen(true);
       if (onSuccess) onSuccess();
-    }, 400);
+    } catch (err: any) {
+      console.error('Firebase Auth validation error:', err);
+      setErrorMessage(formatFirebaseAuthError(err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Google 100% Free 1-Click Sign-In
+  // Google Sign-In strictly validated with Firebase Authentication
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
       const result = await signInWithPopup(auth, googleAuthProvider);
       const fbUser = result.user;
+
+      if (!fbUser || !fbUser.uid) {
+        throw new Error('Firebase Authentication सत्यापन विफल रहा।');
+      }
+
+      // Successfully validated via Firebase Authentication!
+      const userFullAddress = `${selectedLocality}, Surat, Gujarat`;
       loginUser(
         fbUser.displayName || 'Google User',
-        fbUser.phoneNumber || '9825012345',
-        `${selectedLocality}, Surat, Gujarat`,
+        fbUser.phoneNumber || (phoneNumber.trim().length >= 10 ? phoneNumber.trim().slice(-10) : '9825012345'),
+        userFullAddress,
         fbUser.email || undefined,
         fbUser.photoURL || undefined,
         'google',
@@ -205,26 +302,17 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
           gpsLocation: gpsData || undefined
         }
       );
+
       confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
       handleClose();
+
+      // Proceed directly to the dashboard after successful validation
+      setIsDashboardOpen(true);
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.warn('Google 1-click fallback login:', err);
-      // Seamless zero-friction fallback
-      loginUser(
-        userName.trim() || 'Surat Resident',
-        phoneNumber.trim().slice(-10) || '9825012345',
-        `${selectedLocality}, Surat, Gujarat`,
-        userEmail.trim() || 'customer@sastafone.in',
-        undefined,
-        'google',
-        {
-          gpsLocation: gpsData || undefined
-        }
-      );
-      confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
-      handleClose();
-      if (onSuccess) onSuccess();
+      console.error('Firebase Auth Google Sign-in error:', err);
+      // DO NOT PROCEED TO DASHBOARD ON ERROR!
+      setErrorMessage(formatFirebaseAuthError(err));
     } finally {
       setIsLoading(false);
     }
@@ -316,8 +404,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
             <div className="flex-1 border-t border-slate-200"></div>
           </div>
 
-          {/* 100% Free Mobile Form with Compulsory Address & Free GPS */}
-          <form onSubmit={handleInstantFreeLogin} className="space-y-3">
+          {/* Firebase Authentication Verified Form with Compulsory Address & Free GPS */}
+          <form onSubmit={handleFirebaseAuthSubmit} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
@@ -336,10 +424,10 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               <div>
                 <div className="flex items-center justify-between mb-0.5">
                   <label className="block text-[11px] font-bold text-slate-700">
-                    मोबाइल नंबर *
+                    मोबाइल नंबर या ईमेल *
                   </label>
                   <span className="text-[9px] text-emerald-700 font-bold bg-emerald-100 px-1 py-0.2 rounded">
-                    ₹0 SMS शुल्क
+                    Firebase Auth
                   </span>
                 </div>
                 <div className="relative">
@@ -357,6 +445,51 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Firebase Authentication Password Field */}
+            <div>
+              <div className="flex items-center justify-between mb-0.5">
+                <label className="block text-[11px] font-bold text-slate-700">
+                  पासवर्ड (Firebase Authentication सुरक्षा) *
+                </label>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  कम से कम 6 अक्षर
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="अपना सुरक्षित पासवर्ड दर्ज करें (न्यूनतम 6 अक्षर)"
+                  className="w-full pl-3 pr-10 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-slate-50/50 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title={showPassword ? 'पासवर्ड छुपाएं' : 'पासवर्ड देखें'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Optional Email Input for Communication */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                ईमेल आईडी (वैकल्पिक / Optional)
+              </label>
+              <input
+                type="email"
+                value={userEmail}
+                onChange={e => setUserEmail(e.target.value)}
+                placeholder="e.g. rahul.patel@gmail.com"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-slate-50/50"
+              />
             </div>
 
             {/* Anti-Fraud Compulsory Address Section */}
@@ -467,32 +600,33 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               </div>
             </div>
 
-            {/* Free Instant Verification Badge */}
+            {/* Firebase Authentication Security Badge */}
             <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>सुरक्षा कोड:</span>
-                <span className="px-2 py-0.5 bg-amber-100 border border-amber-300 rounded text-amber-900 font-mono font-black text-xs">
-                  {securityCode}
-                </span>
+                <span>सुरक्षा सत्यापन:</span>
+                <span className="text-emerald-700 text-[10px] font-semibold">Firebase Authentication 256-Bit</span>
               </div>
               <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
-                <Check className="w-3 h-3" /> ऑटो-वेरिफाइड (₹0 SMS)
+                <Check className="w-3 h-3" /> अधिकृत सर्वर
               </span>
             </div>
 
-            {/* Submit Button */}
+            {/* Login Button: Only Proceeds to Dashboard After Validating via Firebase Authentication */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {isLoading ? (
-                <span>सत्यापित हो रहा है...</span>
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Firebase Authentication सत्यापन जारी है...</span>
+                </span>
               ) : (
                 <>
-                  <Zap className="w-4 h-4 fill-white" />
-                  <span>⚡ 100% मुफ़्त लॉगिन व पता कन्फर्म करें</span>
+                  <Lock className="w-4 h-4 text-emerald-200" />
+                  <span>🔒 Firebase Auth द्वारा लॉगिन करें व डैशबोर्ड खोलें</span>
                 </>
               )}
             </button>

@@ -14,6 +14,7 @@ import { AuthorizedServiceCentersModal } from './components/AuthorizedServiceCen
 import { HappyCustomersSection } from './components/HappyCustomersSection';
 import { RazorpayPaymentModal } from './components/RazorpayPaymentModal';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
+import { WorkVideosFloatingButton } from './components/WorkVideosFloatingButton';
 import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
 import { ProAuditModal } from './components/ProAuditModal';
@@ -202,6 +203,9 @@ function MainApp() {
 
       {/* Floating Quick Support Chat (Sastaphone Surat Support) */}
       <WhatsAppFloatingButton />
+
+      {/* Floating Technician Work Video Feed (Live Repair Clips) */}
+      <WorkVideosFloatingButton />
 
       {/* Surat Local SEO & Google My Business Ranking Directory */}
       <SuratLocalSeoSection />

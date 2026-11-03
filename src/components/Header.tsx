@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
 import { MapPin, Phone, ShieldCheck, Sparkles, User, ShoppingBag, Wrench, ArrowRight, MessageCircle, Building2, Tag, Star, SlidersHorizontal } from 'lucide-react';

@@ -7,7 +7,9 @@ import {
   saveUserToFirestore,
   saveOrderToFirestore,
   updateOrderInFirestore,
-  subscribeToOrdersFromFirestore
+  subscribeToOrdersFromFirestore,
+  updatePendingJobInFirestore,
+  pushJobToPendingJobs
 } from '../services/firebaseDbService';
 
 export type MainTabType = 'sell' | 'buy' | 'repair' | 'bazaar';
@@ -414,6 +416,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateOrder = (orderId: string, updates: Partial<OrderItem>) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
     updateOrderInFirestore(orderId, updates).catch(() => {});
+    updatePendingJobInFirestore(orderId, updates).catch(() => {});
   };
 
   const setOrderAdminQuote = (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => {
@@ -639,7 +642,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUser(updatedUser);
 
     // Instantly save user profile & address details to Firebase Firestore
-    saveUserToFirestore(updatedUser).catch(err => {
+    saveUserToFirestore(updatedUser).catch((err: any) => {
       console.warn('Firebase save user error:', err);
     });
 
