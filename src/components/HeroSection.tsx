@@ -1,242 +1,168 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Smartphone, ShoppingBag, Wrench, ShieldCheck, Zap, Truck, CheckCircle2, Tag, Building2, SlidersHorizontal, Mail } from 'lucide-react';
+import { Wrench, Smartphone, ShoppingBag, ShieldCheck, Clock, CheckCircle2, ArrowRight, MapPin } from 'lucide-react';
 
 export const HeroSection: React.FC = () => {
-  const { language, activeTab, setActiveTab, selectedLocality, setIsLocationModalOpen, setIsBrandCentersModalOpen } = useApp();
+  const { language, selectedLocality, setIsLocationModalOpen, setActiveTab } = useApp();
+
+  const handleNavigate = (tab: any, path: string) => {
+    setActiveTab(tab);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-blue-50/70 via-white to-slate-50 pt-6 pb-8 border-b border-slate-200/60">
-      <div className="container mx-auto px-4">
-        {/* Surat Badge & Tagline */}
-        <div className="max-w-3xl mx-auto text-center">
+    <section className="bg-white border-b border-gray-100 pt-6 pb-10">
+      <div className="container mx-auto px-4 max-w-5xl">
+        {/* Top Tag & Surat Locality Pill */}
+        <div className="text-center max-w-3xl mx-auto mb-6">
           <div className="flex flex-wrap items-center justify-center gap-2 mb-3">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 text-emerald-900 text-[11px] font-black shadow-2xs">
-              <span>🇮🇳 सस्ताफोन सूरत (sastafone.in) • 100% प्रामाणिक व विश्वसनीय सेवा</span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#DC2626] text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Sastafone Certified Technician Network</span>
+            </span>
 
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-blue-200 shadow-xs">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <span className="text-xs font-bold text-slate-800">
-                {language === 'hi'
-                  ? `⚡ सूरत's #1 डोरस्टेप सर्विस (${selectedLocality})`
-                  : `⚡ Surat's #1 Doorstep Service (${selectedLocality})`}
-              </span>
-              <button
-                onClick={() => setIsLocationModalOpen(true)}
-                className="text-[11px] text-blue-600 font-bold underline hover:text-blue-800 cursor-pointer"
-              >
-                {language === 'hi' ? 'बदलें' : 'Change'}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setIsLocationModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-medium cursor-pointer transition-colors"
+            >
+              <MapPin className="w-3 h-3 text-[#DC2626]" />
+              <span>सूरत ({selectedLocality})</span>
+              <span className="text-[10px] text-[#DC2626] font-bold underline ml-0.5">बदलें</span>
+            </button>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-3">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-gray-900 tracking-tight leading-tight mb-3">
             {language === 'hi' ? (
               <>
-                पुराना फोन बेचें, खरीदें या <span className="text-blue-600">घर बैठे रिपेयर</span> करवाएं!
+                सूरत में <span className="text-[#DC2626]">डोरस्टेप मोबाइल रिपेयरिंग</span>, फोन बेचें व खरीदें
               </>
             ) : (
               <>
-                Sell, Buy or <span className="text-blue-600">Repair Mobile</span> at Your Doorstep in Surat!
+                Doorstep Mobile Repair, Sell & Buy in <span className="text-[#DC2626]">Surat</span>
               </>
             )}
           </h1>
 
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mb-5 leading-relaxed">
+          <p className="text-sm sm:text-base text-gray-600 max-w-2xl mx-auto leading-relaxed">
             {language === 'hi'
-              ? 'सूरत में पुराना फोन बेचें तुरंत नकद में, ₹199 में घर बैठे रिपेयर (बिल में एडजस्टेड), सर्टिफाइड सेकंड-हैंड फोन डील्स और सस्ता बाज़ार P2P मोबाइल मंडी।'
-              : 'Sell old phones for instant cash, get doorstep repair at ₹199, buy certified refurbished phones, or trade directly on SastaBazaar in Surat.'}
+              ? 'सूरत के सभी इलाकों में सर्टिफाइड टेक नेटवर्क द्वारा सुरक्षित पिकअप और डिलीवरी। ₹199 विज़िट टोकन फाइनल बिल में एडजस्टेड और ₹1000+ के बिल पर 6 महीने वारंटी।'
+              : 'Doorstep pickup & delivery across Surat. ₹199 visit fee adjusted in final bill, quality-checked parts and 6-month warranty on bills of ₹1000+.'}
           </p>
+        </div>
 
-          {/* PREMIUM LIVE REPAIR & DIRECT PROBLEM SUPPORT BANNER */}
-          <div className="max-w-4xl mx-auto mb-6 p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/20 border border-red-400/40 relative overflow-hidden text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-              <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-black tracking-wide uppercase">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" />
-                  <span>सूरत डोरस्टेप रिपेयर • मात्र ₹199 विज़िट टोकन</span>
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-white tracking-tight">
-                  फोन में कोई भी समस्या हो? 30 मिनट में घर बैठे ठीक कराएं!
-                </h3>
-                <p className="text-xs text-rose-100 leading-relaxed max-w-xl">
-                  डिस्प्ले टूटा हो, बैटरी ड्रेन, कैमरा सेंसर ब्लर या चार्जिंग समस्या — 100% ओरिजिनल पार्ट्स, 90 दिन वारंटी व नो-फिक्स नो-फी (₹99 तुरंत रिफंड) गारंटी।
-                </p>
-              </div>
+        {/* Featured Action Banner (Light Red Theme) */}
+        <div className="mb-8 p-5 sm:p-6 rounded-2xl bg-[#FEF2F2] border border-red-200 text-gray-900 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1 max-w-xl">
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-white text-[#DC2626] text-[10px] font-extrabold uppercase border border-red-200">
+                पिकअप व डिलीवरी सेवा
+              </span>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                घर बैठे फोन रिपेयरिंग स्लॉट बुक करें
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                स्क्रीन, बैटरी, कैमरा, चार्जिंग या मदरबोर्ड — 11-पॉइंट ऑन-साइट QC के बाद पारदर्शी कोटेशन और सुरक्षित रिपेयरिंग।
+              </p>
+            </div>
 
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('repair');
-                    document.getElementById('repair-section')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-red-600 font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Wrench className="w-4 h-4 text-red-600" />
-                  <span>रिपेयर बुक करें</span>
-                </button>
-
-                <a
-                  href={`mailto:support@sastafone.in?subject=${encodeURIComponent(
-                    'Sastafone Surat Q&A: मोबाइल रिपेयर या बाय-बैक पूछताछ'
-                  )}&body=${encodeURIComponent(
-                    `नमस्ते Sastafone Surat!\n\nमेरा प्रश्न / समस्या विवरण:\n- फोन मॉडल:\n- समस्या / आवश्यकता:\n- सूरत क्षेत्र: ${selectedLocality}\n\n---\nDirect Q&A via support@sastafone.in`
-                  )}`}
-                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs sm:text-sm border border-blue-400/40 shadow-md transition-all cursor-pointer flex items-center gap-1.5"
-                  title="support@sastafone.in पर डायरेक्ट सवाल पूछें"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>📧 डायरेक्ट सवाल पूछें (support@sastafone.in)</span>
-                </a>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleNavigate('repair', '/repair')}
+                className="px-5 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-sm shadow-xs transition-colors flex items-center gap-2 cursor-pointer tap-target"
+              >
+                <Wrench className="w-4 h-4" />
+                <span>रिपेयरिंग बुक करें (₹199)</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* 4 Main Interactive Service Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-5xl mx-auto text-left">
-            {/* Card 1: Sell Old Phone */}
-            <div
-              onClick={() => {
-                setActiveTab('sell');
-                document.getElementById('sell-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden ${
-                activeTab === 'sell'
-                  ? 'bg-white border-blue-600 shadow-lg shadow-blue-500/10 ring-2 ring-blue-600/20'
-                  : 'bg-white/90 border-slate-200 hover:border-blue-400 hover:shadow-md'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 mb-1">
-                {language === 'hi' ? 'पुराना फोन बेचें' : 'Sell Phone'}
-              </h2>
-              <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">
-                AI वैल्यूएशन व 2 घंटे में सूरत में होम पिकअप।
-              </p>
-              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                Instant Cash
-              </span>
+        {/* 3 Core Interactive Service Cards (No SastaBazaar) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Card 1: Repair */}
+          <div
+            onClick={() => handleNavigate('repair', '/repair')}
+            role="button"
+            tabIndex={0}
+            className="p-5 rounded-2xl bg-white border border-gray-200 hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Wrench className="w-5 h-5" />
             </div>
-
-            {/* Card 2: Buy Old Phone */}
-            <div
-              onClick={() => {
-                setActiveTab('buy');
-                document.getElementById('buy-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden ${
-                activeTab === 'buy'
-                  ? 'bg-white border-blue-600 shadow-lg shadow-blue-500/10 ring-2 ring-blue-600/20'
-                  : 'bg-white/90 border-slate-200 hover:border-blue-400 hover:shadow-md'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 mb-1">
-                {language === 'hi' ? 'सर्टिफाइड खरीदें' : 'Buy Refurbished'}
-              </h2>
-              <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">
-                टॉप 10 सेकंड-हैंड डील्स, 6 महीने वारंटी सहित।
-              </p>
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                दिवाली धमाका
-              </span>
-            </div>
-
-            {/* Card 3: Repairing to Home Service */}
-            <div
-              onClick={() => {
-                setActiveTab('repair');
-                document.getElementById('repair-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden ${
-                activeTab === 'repair'
-                  ? 'bg-white border-blue-600 shadow-lg shadow-blue-500/10 ring-2 ring-blue-600/20'
-                  : 'bg-white/90 border-slate-200 hover:border-blue-400 hover:shadow-md'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-                <Wrench className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 mb-1">
-                {language === 'hi' ? 'घर पर रिपेयर' : 'Doorstep Repair'}
-              </h2>
-              <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">
-                ₹199 विज़िट टोकन (बिल में एडजस्ट, ₹99 रिफंड)।
-              </p>
-              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                30 Mins Doorstep
-              </span>
-            </div>
-
-            {/* Card 4: SastaBazaar Direct P2P Hook */}
-            <div
-              onClick={() => {
-                setActiveTab('bazaar');
-                document.getElementById('bazaar-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              role="button"
-              tabIndex={0}
-              className={`group p-4 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden ${
-                activeTab === 'bazaar'
-                  ? 'bg-white border-amber-500 shadow-lg shadow-amber-500/10 ring-2 ring-amber-400/20'
-                  : 'bg-white/90 border-slate-200 hover:border-amber-400 hover:shadow-md'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-                <Tag className="w-5 h-5" />
-              </div>
-              <h2 className="text-sm sm:text-base font-bold text-slate-900 mb-1">
-                {language === 'hi' ? 'सस्ता बाज़ार' : 'SastaBazaar'}
-              </h2>
-              <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">
-                डायरेक्ट ग्राहक से ग्राहक, 0% ब्रोकरेज व नंबर प्राइवेसी।
-              </p>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
-                ₹99 Direct Ad
-              </span>
-            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-1">
+              मोबाइल रिपेयरिंग (Repair)
+            </h3>
+            <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+              सूरत में डोरस्टेप पिकअप। ₹199 टोकन फाइनल बिल में एडजस्टेड; QC बाद मना करने पर ₹99 रिफंड।
+            </p>
+            <span className="text-xs font-bold text-[#DC2626] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+              स्लॉट चुनें <ArrowRight className="w-3.5 h-3.5" />
+            </span>
           </div>
 
-          {/* Surat Trust Pills */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-slate-600">
-            <span className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
-              <Truck className="w-4 h-4 text-blue-600" />
-              {language === 'hi' ? 'सूरत के सभी 17+ हब्स में 2 घंटे में सर्विस' : '2-Hour Surat Coverage'}
+          {/* Card 2: Sell Old Phone */}
+          <div
+            onClick={() => handleNavigate('sell', '/sell-phone')}
+            role="button"
+            tabIndex={0}
+            className="p-5 rounded-2xl bg-white border border-gray-200 hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-1">
+              पुराना फोन बेचें (Sell Phone)
+            </h3>
+            <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+              फोन मॉडल व कंडीशन दर्ज करें, अनुमानित भाव देखें और डोरस्टेप पिकअप व तुरंत भुगतान पाएं।
+            </p>
+            <span className="text-xs font-bold text-[#DC2626] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+              भाव चेक करें <ArrowRight className="w-3.5 h-3.5" />
             </span>
-            <button
-              onClick={() => setIsBrandCentersModalOpen(true)}
-              className="flex items-center gap-1.5 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-full border border-blue-200 shadow-2xs hover:bg-blue-100 cursor-pointer"
-            >
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span>सूरत अधिकृत ब्रांड सर्विस सेंटर डायरेक्टरी</span>
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('sell');
-                setTimeout(() => {
-                  document.getElementById('dead-phone-section')?.scrollIntoView({ behavior: 'smooth' });
-                }, 80);
-              }}
-              className="flex items-center gap-1.5 bg-rose-50 text-rose-900 px-3.5 py-1.5 rounded-full border border-rose-300 shadow-2xs hover:bg-rose-100 cursor-pointer font-bold"
-            >
-              <span>♻️ डेड स्मार्टफोन बेचें (₹600 - ₹1,600 लास्ट)</span>
-            </button>
-            <span className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-full border border-slate-200/80 shadow-2xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              {language === 'hi' ? '100% डेटा वाइप व फेयर यूज़ पॉलिसी' : 'Certified Fair Use Policy'}
+          </div>
+
+          {/* Card 3: Buy Certified Phones */}
+          <div
+            onClick={() => handleNavigate('buy', '/buy-phones')}
+            role="button"
+            tabIndex={0}
+            className="p-5 rounded-2xl bg-white border border-gray-200 hover:border-red-300 hover:shadow-md transition-all cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+              <ShoppingBag className="w-5 h-5" />
+            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-1">
+              सर्टिफाइड फोन खरीदें (Buy)
+            </h3>
+            <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+              क्वालिटी-चेक्ड सेकंड-हैंड स्मार्टफोन, पारदर्शी ग्रेडिंग और 6 महीने वारंटी के साथ उपलब्ध।
+            </p>
+            <span className="text-xs font-bold text-[#DC2626] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+              स्टॉक देखें <ArrowRight className="w-3.5 h-3.5" />
             </span>
+          </div>
+        </div>
+
+        {/* Trust Badges */}
+        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap items-center justify-around gap-4 text-xs font-medium text-gray-600">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Sastafone Certified Technician Network</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-[#DC2626] shrink-0" />
+            <span>₹1000+ के बिल पर 6 महीने वारंटी</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-500 shrink-0" />
+            <span>सूरत डोरस्टेप पिकअप व डिलीवरी</span>
           </div>
         </div>
       </div>

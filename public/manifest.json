@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "name": "Sastafone Surat - Phone Repair",
+  "short_name": "Sastafone",
+  "description": "सूरत का नंबर 1 मोबाइल पिकअप व डोरस्टेप रिपेयर प्लेटफॉर्म - ₹199 विज़िट टोकन व 6 माह वारंटी।",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#DC2626",
+  "background_color": "#FFFFFF",
+  "lang": "hi",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
-import { MapPin, Phone, ShieldCheck, Sparkles, User, ShoppingBag, Wrench, ArrowRight, MessageCircle, Building2, Tag, Star, SlidersHorizontal } from 'lucide-react';
-import { SASTAPHONE_PHONE, WHATSAPP_NUMBER } from '../data/mockData';
-import { generateWhatsAppLink } from '../utils/valuation';
+import { MapPin, User, Wrench, Smartphone, ShoppingBag } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const {
@@ -12,57 +10,55 @@ export const Header: React.FC = () => {
     selectedLocality,
     setIsLocationModalOpen,
     orders,
-    setIsDashboardOpen,
     activeTab,
     setActiveTab,
-    setIsBrandCentersModalOpen,
     user,
     setIsAuthModalOpen
   } = useApp();
 
   const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
 
+  const handleNav = (tab: any, path: string) => {
+    setActiveTab(tab);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
-      {/* Top Surat Service & Redirection Alert Banner */}
-      <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white text-xs px-3 py-1.5 font-medium flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xs">
+      {/* Top Surat Service Ribbon (Light Red Tint - No Dark Blue) */}
+      <div className="bg-[#FEF2F2] border-b border-red-100 text-gray-800 text-xs px-3 py-1.5 font-medium flex items-center justify-between">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-            <span className="bg-amber-400 text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-              Surat Exclusive
+            <span className="bg-[#DC2626] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+              सूरत
             </span>
-            <span className="hidden sm:inline">
+            <span className="text-gray-700 text-xs">
               {language === 'hi'
-                ? '🇮🇳 Sastafone Surat (sastafone.in) • सूरत में 2 घंटे में डोरस्टेप फोन पिकअप व होम रिपेयर'
-                : '🇮🇳 Sastafone Surat (sastafone.in) • Fastest Doorstep Phone Pickup & Repair in Surat'}
-            </span>
-            <span className="sm:hidden">
-              {language === 'hi' ? '🇮🇳 सस्ताफोन सूरत • 2 घंटे में डोरस्टेप सर्विस' : '🇮🇳 Sastaphone Surat Doorstep'}
+                ? 'Sastafone Surat • डोरस्टेप पिकअप व डिलीवरी फोन रिपेयरिंग'
+                : 'Sastafone Surat • Doorstep Mobile Pickup & Delivery Service'}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsBrandCentersModalOpen(true)}
-              className="hidden md:inline-flex items-center gap-1 text-[11px] text-amber-300 hover:text-white font-bold transition-colors cursor-pointer"
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>सूरत के ब्रांड सर्विस सेंटर</span>
-            </button>
-
-            <div className="flex items-center bg-blue-900/60 rounded-full p-0.5 border border-blue-400/30">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-white rounded-full p-0.5 border border-red-200">
               <button
+                type="button"
                 onClick={() => setLanguage('hi')}
-                className={`px-2 py-0.5 text-[11px] rounded-full font-semibold transition-all ${
-                  language === 'hi' ? 'bg-amber-400 text-slate-900 shadow-xs' : 'text-blue-100 hover:text-white'
+                className={`px-2 py-0.5 text-[11px] rounded-full font-bold transition-colors cursor-pointer ${
+                  language === 'hi' ? 'bg-[#DC2626] text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 हिंदी
               </button>
               <button
+                type="button"
                 onClick={() => setLanguage('en')}
-                className={`px-2 py-0.5 text-[11px] rounded-full font-semibold transition-all ${
-                  language === 'en' ? 'bg-amber-400 text-slate-900 shadow-xs' : 'text-blue-100 hover:text-white'
+                className={`px-2 py-0.5 text-[11px] rounded-full font-bold transition-colors cursor-pointer ${
+                  language === 'en' ? 'bg-[#DC2626] text-white' : 'text-gray-600 hover:text-gray-900'
                 }`}
               >
                 ENG
@@ -73,154 +69,117 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Main Navbar */}
-      <div className="container mx-auto px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-4">
-        {/* Brand Logo & Compact Surat Locality Pin */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink min-w-0">
+      <div className="container mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+        {/* Brand Logo & Locality Pin */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
           <button
-            onClick={() => {
-              setActiveTab('sell');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="group text-left cursor-pointer transition-transform hover:scale-[1.02] shrink-0"
-            title="Sastafone Surat - होमपेज"
+            type="button"
+            onClick={() => handleNav('repair', '/')}
+            className="text-left cursor-pointer transition-transform hover:opacity-95 shrink-0"
+            title="Sastafone Surat"
           >
             <SastafoneLogo size="sm" variant="light" showSubtitle={false} className="sm:hidden" />
             <SastafoneLogo size="md" variant="light" showSubtitle={true} className="hidden sm:flex" />
           </button>
 
-          {/* Compact Surat Locality Pin Button */}
+          {/* Surat Locality Dropdown / Pin */}
           <button
+            type="button"
             onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-1 px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 text-slate-700 hover:text-blue-700 text-[11px] sm:text-xs font-semibold transition-all group cursor-pointer shrink-0"
-            title="सूरत में अपनी लोकैलिटी बदलें"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-[#FEF2F2] hover:bg-red-100/60 border border-red-200/80 text-gray-800 text-xs font-semibold transition-colors cursor-pointer shrink-0"
+            title="सूरत क्षेत्र बदलें"
           >
-            <MapPin className="w-3 h-3 text-orange-500 shrink-0 group-hover:animate-bounce" />
-            <span className="max-w-[55px] xs:max-w-[75px] sm:max-w-[110px] truncate">{selectedLocality}</span>
-            <span className="hidden sm:inline text-[9px] text-blue-600 font-bold bg-white px-1 rounded border border-blue-200">
-              {language === 'hi' ? 'बदलें' : 'Change'}
+            <MapPin className="w-3.5 h-3.5 text-[#DC2626] shrink-0" />
+            <span className="max-w-[70px] sm:max-w-[110px] truncate">{selectedLocality}</span>
+            <span className="hidden sm:inline text-[9px] text-[#DC2626] font-bold bg-white px-1 py-0.5 rounded border border-red-200">
+              बदलें
             </span>
           </button>
         </div>
 
-        {/* Center Service Switcher (Desktop) - 3 Core Services: Sell, Repair, SastaBazaar (With Buy inside) */}
-        <nav className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 gap-1">
+        {/* Center Desktop Navigation: Home, Repair, Sell, Buy */}
+        <nav className="hidden md:flex items-center bg-gray-50 p-1 rounded-xl border border-gray-200 gap-1">
           <button
-            onClick={() => setActiveTab('sell')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'sell'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
-          >
-            <span>📱</span>
-            <span>{language === 'hi' ? 'पुराना फोन बेचें' : 'Sell Phone'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('repair')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+            type="button"
+            onClick={() => handleNav('repair', '/repair')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'repair'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'bg-[#DC2626] text-white shadow-xs'
+                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200/50'
             }`}
           >
             <Wrench className="w-3.5 h-3.5" />
-            <span>{language === 'hi' ? 'घर पर रिपेयर' : 'Repair'}</span>
-            <span className="bg-blue-100 text-blue-900 text-[9px] px-1 rounded font-bold">₹199</span>
+            <span>मोबाइल रिपेयर</span>
+            <span className={`text-[9px] px-1 rounded font-bold ${activeTab === 'repair' ? 'bg-white/20 text-white' : 'bg-red-50 text-red-600'}`}>
+              ₹199
+            </span>
           </button>
 
-          {/* SastaBazaar Tab - Includes Buy (सर्टिफाइड व डील्स) Inside */}
           <button
-            onClick={() => setActiveTab('bazaar')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'bazaar' || activeTab === 'buy'
-                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm'
-                : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
+            type="button"
+            onClick={() => handleNav('sell', '/sell-phone')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'sell'
+                ? 'bg-[#DC2626] text-white shadow-xs'
+                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200/50'
             }`}
           >
-            <Tag className="w-3.5 h-3.5 text-amber-500" />
-            <span>{language === 'hi' ? 'सस्ता बाज़ार (फोन खरीदें व डील्स)' : 'SastaBazaar (Buy Deals)'}</span>
-            <span className="bg-emerald-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black">₹99 / डील्स</span>
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>पुराना फोन बेचें</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleNav('buy', '/buy-phones')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'buy'
+                ? 'bg-[#DC2626] text-white shadow-xs'
+                : 'text-gray-700 hover:text-gray-900 hover:bg-gray-200/50'
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>सर्टिफाइड फोन खरीदें</span>
           </button>
         </nav>
 
-        {/* Right Action Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <button
-            onClick={() => {
-              const el = document.getElementById('happy-customers');
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-            className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-bold transition-all cursor-pointer"
-            title="सूरत ग्राहकों के रिव्यू व रेटिंग्स"
-          >
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
-            <span>रिव्यू (4.9★)</span>
-          </button>
-
+        {/* Right User Login / Profile Button */}
+        <div className="flex items-center gap-2 shrink-0">
           {!user.isLoggedIn ? (
             <button
+              type="button"
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0 z-10"
-              title="100% मुफ़्त लॉगिन"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer whitespace-nowrap shrink-0 tap-target"
+              title="लॉगिन करें"
             >
-              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <User className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-[11px] sm:text-xs font-bold">लॉगिन</span>
+              <User className="w-3.5 h-3.5" />
+              <span>लॉगिन</span>
             </button>
           ) : (
             <button
-              onClick={() => setIsDashboardOpen(true)}
-              className="relative flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer shrink-0 z-10"
-              title="कस्टमर डैशबोर्ड"
+              type="button"
+              onClick={() => {
+                if (window.location.pathname !== '/profile') {
+                  window.history.pushState({}, '', '/profile');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#FEF2F2] hover:bg-red-100/70 border border-red-200 text-gray-900 text-xs font-bold transition-colors cursor-pointer shrink-0 tap-target"
+              title="प्रोफाइल व ऑर्डर्स"
             >
-              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                <User className="w-3.5 h-3.5 text-white" />
+              <div className="w-5 h-5 rounded-full bg-[#DC2626] text-white flex items-center justify-center shrink-0 text-[10px]">
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
-              <span className="text-[11px] sm:text-xs font-bold truncate max-w-[65px] sm:max-w-none">
-                {user.name ? user.name.split(' ')[0] : 'डैशबोर्ड'}
+              <span className="max-w-[70px] sm:max-w-none truncate">
+                {user.name ? user.name.split(' ')[0] : 'प्रोफाइल'}
               </span>
               {activeOrdersCount > 0 && (
-                <span className="bg-orange-500 text-white text-[9px] w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center font-bold">
+                <span className="bg-[#DC2626] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
                   {activeOrdersCount}
                 </span>
               )}
             </button>
           )}
         </div>
-      </div>
-
-      {/* Mobile Subnav for 3 core services: Sell, Repair, SastaBazaar (Buy) */}
-      <div className="lg:hidden border-t border-slate-200 bg-white grid grid-cols-3 text-center text-xs font-bold py-1 px-1.5 gap-1">
-        <button
-          onClick={() => setActiveTab('sell')}
-          className={`py-1.5 rounded-lg transition-all text-xs font-bold ${
-            activeTab === 'sell' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          📱 फोन बेचें
-        </button>
-        <button
-          onClick={() => setActiveTab('repair')}
-          className={`py-1.5 rounded-lg transition-all text-xs font-bold ${
-            activeTab === 'repair' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          🔧 रिपेयर ₹199
-        </button>
-        <button
-          onClick={() => setActiveTab('bazaar')}
-          className={`py-1.5 rounded-lg transition-all text-xs font-black ${
-            activeTab === 'bazaar' || activeTab === 'buy'
-              ? 'bg-amber-500 text-slate-950 shadow-xs'
-              : 'text-amber-800 bg-amber-50'
-          }`}
-        >
-          🏷️ सस्ता बाज़ार (खरीदें)
-        </button>
       </div>
     </header>
   );

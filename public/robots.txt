@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /orders
 
-# Canonical Sitemap for Sastafone Surat
+# Sastafone Surat Sitemap
 Sitemap: https://sastafone.in/sitemap.xml

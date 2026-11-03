@@ -6,31 +6,52 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   X,
-  ShieldCheck,
   Phone,
   Mail,
   Lock,
   ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  AlertCircle,
-  Zap,
-  Check,
-  RefreshCw,
-  MessageCircle,
+  Eye,
+  EyeOff,
   MapPin,
   Navigation,
-  Building,
+  CheckCircle2,
+  AlertCircle,
   Home,
-  CheckCheck,
-  Eye,
-  EyeOff
+  Building,
+  User
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+const SURAT_AREAS_LIST = [
+  'Adajan',
+  'Vesu',
+  'Pal',
+  'Varachha',
+  'Katargam',
+  'Rander',
+  'Piplod',
+  'Citylight',
+  'Ghod Dod Road',
+  'Althan',
+  'Athwa',
+  'Udhna',
+  'Dindoli',
+  'VIP Road',
+  'Nanpura',
+  'Majura Gate',
+  'Bhatar',
+  'Pandesara',
+  'Amroli',
+  'Mota Varachha',
+  'Jahangirpura',
+  'Dumas Road'
+];
 
 interface FirebaseAuthModalProps {
   onSuccess?: () => void;
@@ -41,41 +62,47 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
     isAuthModalOpen,
     setIsAuthModalOpen,
     loginUser,
-    selectedLocality,
     authPromptReason,
-    setAuthPromptReason,
-    setIsDashboardOpen
+    setAuthPromptReason
   } = useApp();
 
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+
+  // Form states
+  const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
-  // Compulsory Address Details (Anti-Fraud)
-  const [houseShopNo, setHouseShopNo] = useState('');
+
+  // Address fields
+  const [houseFlat, setHouseFlat] = useState('');
   const [buildingSociety, setBuildingSociety] = useState('');
-  const [streetLandmark, setStreetLandmark] = useState('');
+  const [roadLandmark, setRoadLandmark] = useState('');
+  const [area, setArea] = useState('Adajan');
   const [pincode, setPincode] = useState('395009');
 
-  // Free Live GPS Coordinates
-  const [gpsData, setGpsData] = useState<{
+  // GPS Location
+  const [gpsLocation, setGpsLocation] = useState<{
     latitude: number;
     longitude: number;
-    accuracyMeters?: number;
-    mapsLink?: string;
+    accuracy?: number;
   } | null>(null);
-  const [isLocatingGps, setIsLocatingGps] = useState(false);
-  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsSuccessNote, setGpsSuccessNote] = useState<string | null>(null);
 
+  // Status & Feedback
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [forgotPasswordSent, setForgotPasswordSent] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
   useEffect(() => {
     if (isAuthModalOpen) {
       setErrorMessage(null);
-      setGpsError(null);
+      setGpsSuccessNote(null);
+      setForgotPasswordSent(false);
     }
   }, [isAuthModalOpen]);
 
@@ -87,566 +114,767 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
     setErrorMessage(null);
   };
 
-  const formatFirebaseAuthError = (err: any): string => {
-    if (!err) return 'Firebase Authentication सत्यापन विफल रहा।';
-    const code = err.code || '';
+  // Convert technical errors to friendly Hindi messages (NO "Firebase" mention)
+  const getFriendlyErrorMessage = (error: any): string => {
+    if (!error) return 'सत्यापन में समस्या आई। कृपया पुनः प्रयास करें।';
+    const code = error.code || '';
     if (
       code === 'auth/wrong-password' ||
       code === 'auth/invalid-credential' ||
       code === 'auth/invalid-login-credentials'
     ) {
-      return '❌ अमान्य क्रेडेंशियल्स! गलत पासवर्ड दर्ज किया गया है। कृपया सही पासवर्ड दर्ज करें।';
-    }
-    if (code === 'auth/weak-password') {
-      return '⚠️ पासवर्ड बहुत कमजोर है। कृपया कम से कम 6 अक्षरों का पासवर्ड रखें।';
-    }
-    if (code === 'auth/email-already-in-use') {
-      return '⚠️ यह मोबाइल/ईमेल पहले से पंजीकृत है। कृपया अपने मौजूदा पासवर्ड से लॉगिन करें।';
+      return 'दर्ज किया गया पासवर्ड या ईमेल गलत है। कृपया पुनः जांचें।';
     }
     if (code === 'auth/user-not-found') {
-      return 'खाता नहीं मिला। कृपया पहली बार साइन अप करने के लिए पासवर्ड दर्ज करें।';
+      return 'इस ईमेल/नंबर से कोई खाता नहीं मिला। कृपया "नया खाता बनाएं" पर क्लिक करें।';
+    }
+    if (code === 'auth/email-already-in-use') {
+      return 'इस ईमेल से पहले से खाता मौजूद है। कृपया "लॉगिन" टैब का उपयोग करें।';
+    }
+    if (code === 'auth/weak-password') {
+      return 'पासवर्ड कमजोर है। कृपया कम से कम 6 अक्षरों का सुरक्षित पासवर्ड बनाएं।';
+    }
+    if (code === 'auth/invalid-email') {
+      return 'कृपया एक वैध ईमेल पता दर्ज करें।';
+    }
+    if (code === 'auth/popup-closed-by-user') {
+      return 'Google लॉगिन विंडो बंद हो गई। पुनः प्रयास करें।';
     }
     if (code === 'auth/too-many-requests') {
-      return '⚠️ बहुत अधिक असफल प्रयास! सुरक्षा कारणों से कुछ समय बाद पुनः प्रयास करें।';
+      return 'बहुत अधिक असफल प्रयास। कृपया कुछ मिनट बाद पुनः प्रयास करें।';
     }
-    if (code === 'auth/network-request-failed') {
-      return 'नेटवर्क त्रुटि: इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।';
-    }
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-      return 'Google लॉगिन पॉपअप बंद कर दिया गया। सत्यापन अधूरा रहा।';
-    }
-    return `Firebase Auth सत्यापन त्रुटि: ${err.message || 'सत्यापन विफल'}`;
+    return 'सत्यापन विफल रहा। कृपया विवरण जांचें और पुनः प्रयास करें।';
   };
 
-  // Free Browser Geolocation (100% Free - ₹0 external cost)
-  const handleDetectFreeGps = () => {
+  // Handle GPS location capture
+  const handleCaptureGps = () => {
     if (!navigator.geolocation) {
-      setGpsError('आपके ब्राउज़र में GPS उपलब्ध नहीं है। कृपया पूरा पता नीचे टाइप करें।');
+      setErrorMessage('आपके ब्राउज़र में GPS लोकेशन सपोर्ट उपलब्ध नहीं है।');
       return;
     }
 
-    setIsLocatingGps(true);
-    setGpsError(null);
+    setIsLocating(true);
+    setErrorMessage(null);
 
     navigator.geolocation.getCurrentPosition(
-      position => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const accuracy = Math.round(position.coords.accuracy);
-        const link = `https://www.google.com/maps?q=${lat},${lng}`;
-
-        setGpsData({
-          latitude: lat,
-          longitude: lng,
-          accuracyMeters: accuracy,
-          mapsLink: link
+      (pos) => {
+        setIsLocating(false);
+        setGpsLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy)
         });
-        setIsLocatingGps(false);
+        setGpsSuccessNote('✓ सटीक GPS लोकेशन सफलतापूर्वक जोड़ ली गई है।');
       },
-      err => {
-        console.warn('Geolocation notice:', err.message);
-        // Fallback default Surat coordinates so flow never gets blocked
-        setGpsData({
-          latitude: 21.1702,
-          longitude: 72.8311,
-          accuracyMeters: 50,
-          mapsLink: `https://www.google.com/maps?q=21.1702,72.8311`
-        });
-        setIsLocatingGps(false);
+      (err) => {
+        setIsLocating(false);
+        if (err.code === 1) {
+          setErrorMessage('लोकेशन की अनुमति अस्वीकृत हुई। कृपया ब्राउज़र सेटिंग्स में लोकेशन की अनुमति दें।');
+        } else {
+          setErrorMessage('GPS सिग्नल प्राप्त नहीं हो सका। कृपया अपना पता मैन्युअली भरें।');
+        }
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
-  // Firebase Authentication Verified Login - Never Auto-Logs In Without Validating Details!
-  const handleFirebaseAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Sync user profile to users/{uid}
+  const syncUserProfileToFirestore = async (
+    uid: string,
+    profileData: {
+      name: string;
+      phone: string;
+      email?: string;
+      address?: string;
+      houseFlat?: string;
+      buildingSociety?: string;
+      roadLandmark?: string;
+      area?: string;
+      pincode?: string;
+      gpsLocation?: any;
+    }
+  ) => {
+    const userRef = doc(db, 'users', uid);
+    const existingSnap = await getDoc(userRef);
+    const existingRole = existingSnap.exists() ? existingSnap.data()?.role : 'customer';
+
+    const fullFormattedAddress = [
+      profileData.houseFlat,
+      profileData.buildingSociety,
+      profileData.roadLandmark,
+      profileData.area,
+      profileData.pincode ? `Surat - ${profileData.pincode}` : 'Surat'
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const payload = {
+      uid,
+      name: profileData.name || 'ग्राहक',
+      phone: profileData.phone || '',
+      email: profileData.email || '',
+      role: existingRole || 'customer',
+      address: fullFormattedAddress || profileData.address || '',
+      houseFlat: profileData.houseFlat || '',
+      buildingSociety: profileData.buildingSociety || '',
+      roadLandmark: profileData.roadLandmark || '',
+      area: profileData.area || 'Surat',
+      pincode: profileData.pincode || '395009',
+      gpsLocation: profileData.gpsLocation || null,
+      updatedAt: new Date().toISOString(),
+      timestamp: serverTimestamp()
+    };
+
+    await setDoc(userRef, payload, { merge: true });
+    return payload;
+  };
+
+  // Google Login Flow
+  const handleGoogleLogin = async () => {
+    setIsLoading(true);
     setErrorMessage(null);
 
-    const cleanPhone = phoneNumber.trim().replace(/\D/g, '');
-    const cleanEmail = userEmail.trim().toLowerCase();
-
-    // 1. Mandatory Form Validations
-    if (!userName.trim()) {
-      setErrorMessage('कृपया अपना नाम दर्ज करें');
-      return;
-    }
-    if (cleanPhone.length < 10 && !cleanEmail.includes('@')) {
-      setErrorMessage('कृपया मान्य 10-अंकों का मोबाइल नंबर या ईमेल दर्ज करें');
-      return;
-    }
-    if (!password || password.length < 6) {
-      setErrorMessage('सुरक्षा हेतु कृपया कम से कम 6 अक्षरों का पासवर्ड दर्ज करें');
-      return;
-    }
-
-    // Compulsory Address Validation (Anti-Fraud)
-    if (!houseShopNo.trim()) {
-      setErrorMessage('कृपया मकान / दुकान / फ्लैट नंबर दर्ज करें (डोरस्टेप पते के लिए अनिवार्य)');
-      return;
-    }
-    if (!buildingSociety.trim()) {
-      setErrorMessage('कृपया बिल्डिंग / सोसाइटी / अपार्टमेंट का नाम दर्ज करें');
-      return;
-    }
-    if (!streetLandmark.trim()) {
-      setErrorMessage('कृपया नज़दीकी लैंडमार्क दर्ज करें (जैसे मंदिर, स्कूल, RTO)');
-      return;
-    }
-
-    setIsLoading(true);
-
-    // Form Firebase Auth compliant email identifier
-    const authEmail = cleanEmail.includes('@')
-      ? cleanEmail
-      : `${cleanPhone.slice(-10)}@sastafone.in`;
-
     try {
-      let fbUser;
+      const res = await signInWithPopup(auth, googleAuthProvider);
+      const fbUser = res.user;
 
-      // STEP 1: Strict Firebase Authentication Validation
-      try {
-        const credential = await signInWithEmailAndPassword(auth, authEmail, password);
-        fbUser = credential.user;
-      } catch (signInErr: any) {
-        if (
-          signInErr.code === 'auth/user-not-found' ||
-          signInErr.code === 'auth/invalid-credential' ||
-          signInErr.code === 'auth/invalid-login-credentials'
-        ) {
-          // New User Registration in Firebase Auth
-          try {
-            const newCredential = await createUserWithEmailAndPassword(auth, authEmail, password);
-            fbUser = newCredential.user;
-            if (fbUser) {
-              await updateProfile(fbUser, { displayName: userName.trim() });
-            }
-          } catch (createErr: any) {
-            // Firebase Authentication validation failed! DO NOT LOG IN!
-            setErrorMessage(formatFirebaseAuthError(createErr));
-            setIsLoading(false);
-            return;
-          }
-        } else {
-          // Wrong password or account lockout in Firebase Authentication! DO NOT LOG IN!
-          setErrorMessage(formatFirebaseAuthError(signInErr));
-          setIsLoading(false);
-          return;
-        }
+      // Check existing profile in users/{uid}
+      const userRef = doc(db, 'users', fbUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      let savedPhone = '';
+      let savedAddress = '';
+      let savedArea = 'Surat';
+
+      if (userSnap.exists()) {
+        const uData = userSnap.data();
+        savedPhone = uData.phone || '';
+        savedAddress = uData.address || '';
+        savedArea = uData.area || 'Surat';
+      } else {
+        await syncUserProfileToFirestore(fbUser.uid, {
+          name: fbUser.displayName || 'Google User',
+          phone: fbUser.phoneNumber || '',
+          email: fbUser.email || '',
+          area: 'Surat'
+        });
       }
-
-      if (!fbUser || !fbUser.uid) {
-        setErrorMessage('Firebase Authentication द्वारा सत्यापन पूरा नहीं हो सका।');
-        setIsLoading(false);
-        return;
-      }
-
-      // ONLY Proceed after successfully validating via Firebase Authentication!
-      const fullStructuredAddress = `${houseShopNo.trim()}, ${buildingSociety.trim()}, नियर ${streetLandmark.trim()}, ${selectedLocality}, Surat - ${pincode.trim() || '395009'}`;
 
       loginUser(
-        userName.trim() || fbUser.displayName || 'Surat Resident',
-        cleanPhone.slice(-10) || '9825012345',
-        fullStructuredAddress,
-        userEmail.trim() || fbUser.email || undefined,
+        fbUser.displayName || 'Google User',
+        savedPhone,
+        savedAddress,
+        fbUser.email || '',
         fbUser.photoURL || undefined,
-        'phone',
+        'google',
         {
-          landmark: streetLandmark.trim(),
-          pincode: pincode.trim() || '395009',
-          gpsLocation: gpsData || {
-            latitude: 21.1702,
-            longitude: 72.8311,
-            accuracyMeters: 25,
-            mapsLink: `https://www.google.com/maps?q=21.1702,72.8311`
-          }
+          uid: fbUser.uid,
+          role: (userSnap.exists() ? userSnap.data()?.role : 'customer') as any,
+          locality: savedArea
         }
       );
 
-      confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
       handleClose();
-
-      // Proceed directly to the dashboard after successful validation
-      setIsDashboardOpen(true);
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.error('Firebase Auth validation error:', err);
-      setErrorMessage(formatFirebaseAuthError(err));
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Google Sign-In strictly validated with Firebase Authentication
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true);
+  // Email / Password Login Flow
+  const handleEmailPasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMessage(null);
+
+    const loginId = mobile.trim();
+    if (!loginId) {
+      setErrorMessage('कृपया अपना रजिस्टर्ड मोबाइल नंबर या ईमेल दर्ज करें।');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setErrorMessage('कृपया न्यूनतम 6 अक्षरों का पासवर्ड दर्ज करें।');
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      const result = await signInWithPopup(auth, googleAuthProvider);
-      const fbUser = result.user;
+      // Determine if loginId is email or phone number
+      const effectiveEmail = loginId.includes('@')
+        ? loginId
+        : `${loginId.replace(/\D/g, '')}@sastafone.in`;
 
-      if (!fbUser || !fbUser.uid) {
-        throw new Error('Firebase Authentication सत्यापन विफल रहा।');
-      }
+      const res = await signInWithEmailAndPassword(auth, effectiveEmail, password);
+      const fbUser = res.user;
 
-      // Successfully validated via Firebase Authentication!
-      const userFullAddress = `${selectedLocality}, Surat, Gujarat`;
+      // Fetch user profile from users/{uid}
+      const userRef = doc(db, 'users', fbUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      const uData = userSnap.exists() ? userSnap.data() : null;
+      const userName = uData?.name || fbUser.displayName || 'ग्राहक';
+      const userPhone = uData?.phone || (loginId.includes('@') ? '' : loginId);
+      const userAddress = uData?.address || '';
+      const userRole = uData?.role || 'customer';
+
       loginUser(
-        fbUser.displayName || 'Google User',
-        fbUser.phoneNumber || (phoneNumber.trim().length >= 10 ? phoneNumber.trim().slice(-10) : '9825012345'),
-        userFullAddress,
-        fbUser.email || undefined,
-        fbUser.photoURL || undefined,
-        'google',
+        userName,
+        userPhone,
+        userAddress,
+        fbUser.email || '',
+        undefined,
+        'phone',
         {
-          gpsLocation: gpsData || undefined
+          uid: fbUser.uid,
+          role: userRole as any,
+          locality: uData?.area || 'Surat'
         }
       );
 
-      confetti({ particleCount: 75, spread: 65, origin: { y: 0.6 } });
+      confetti({ particleCount: 40, spread: 50, origin: { y: 0.7 } });
       handleClose();
-
-      // Proceed directly to the dashboard after successful validation
-      setIsDashboardOpen(true);
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      console.error('Firebase Auth Google Sign-in error:', err);
-      // DO NOT PROCEED TO DASHBOARD ON ERROR!
-      setErrorMessage(formatFirebaseAuthError(err));
+      setErrorMessage(getFriendlyErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Register New Account Flow
+  const handleRegisterAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    // 1. Validate Name
+    if (!name.trim()) {
+      setErrorMessage('कृपया अपना पूरा नाम दर्ज करें।');
+      return;
+    }
+
+    // 2. Validate 10-digit Indian Mobile (+91)
+    const cleanMobile = mobile.replace(/\D/g, '');
+    const mobileRegex = /^[6-9]\d{9}$/;
+    if (!mobileRegex.test(cleanMobile)) {
+      setErrorMessage('कृपया वैध 10-अंकीय भारतीय मोबाइल नंबर दर्ज करें (6, 7, 8 या 9 से शुरू)।');
+      return;
+    }
+
+    // 3. Validate Password (min 6 chars)
+    if (!password || password.length < 6) {
+      setErrorMessage('पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।');
+      return;
+    }
+
+    // 4. Validate Address fields
+    if (!houseFlat.trim() || !buildingSociety.trim()) {
+      setErrorMessage('कृपया मकान/फ्लैट नंबर और बिल्डिंग/सोसाइटी का नाम दर्ज करें।');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Use email if provided, or synthetic phone-backed auth email
+      const accountEmail = email.trim() ? email.trim() : `${cleanMobile}@sastafone.in`;
+
+      const res = await createUserWithEmailAndPassword(auth, accountEmail, password);
+      const fbUser = res.user;
+
+      await updateProfile(fbUser, { displayName: name.trim() });
+
+      // Save complete profile to users/{uid}
+      const fullSaved = await syncUserProfileToFirestore(fbUser.uid, {
+        name: name.trim(),
+        phone: cleanMobile,
+        email: email.trim() || accountEmail,
+        houseFlat: houseFlat.trim(),
+        buildingSociety: buildingSociety.trim(),
+        roadLandmark: roadLandmark.trim(),
+        area,
+        pincode: pincode.trim(),
+        gpsLocation
+      });
+
+      loginUser(
+        name.trim(),
+        cleanMobile,
+        fullSaved.address,
+        email.trim(),
+        undefined,
+        'phone',
+        {
+          uid: fbUser.uid,
+          role: 'customer',
+          locality: area
+        }
+      );
+
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      handleClose();
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      setErrorMessage(getFriendlyErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Forgot Password handler
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail || !resetEmail.includes('@')) {
+      setErrorMessage('कृपया अपना वैध ईमेल पता दर्ज करें।');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail.trim());
+      setForgotPasswordSent(true);
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(getFriendlyErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto w-full min-h-screen bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md mx-auto my-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-md my-auto shadow-2xl border border-gray-100 overflow-hidden text-gray-900 animate-in fade-in zoom-in-95 duration-200">
+        
         {/* Header */}
-        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 p-4 sm:p-5 text-white relative shrink-0">
+        <div className="p-5 pb-3 border-b border-gray-100 flex items-center justify-between">
+          <SastafoneLogo size="sm" variant="light" showSubtitle={false} />
           <button
+            type="button"
             onClick={handleClose}
-            className="absolute top-3.5 right-3.5 p-1.5 rounded-full bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-colors cursor-pointer"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
-
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-400 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-xs">
-              <Zap className="w-3 h-3 fill-slate-950" />
-              100% मुफ़्त • कोई SMS चार्ज नहीं (₹0 शुल्क)
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-white/25 text-white text-[10px] font-bold">
-              सूरत केवल
-            </span>
-          </div>
-
-          <h3 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-            <span>सस्ताफोन मुफ़्त लॉगिन व पता सत्यापन</span>
-          </h3>
-          <p className="text-[11px] sm:text-xs text-red-100 mt-1 leading-relaxed">
-            {authPromptReason || 'डोरस्टेप पिकअप, रिपेयर व सस्ता बाज़ार के लिए 1-क्लिक मुफ़्त लॉगिन करें।'}
-          </p>
         </div>
 
-        {/* Free Service Zero Charge Banner */}
-        <div className="bg-emerald-50 px-4 py-2 border-b border-emerald-200 flex items-center justify-between text-xs text-emerald-900 font-semibold shrink-0">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>
-              <strong>₹0 SMS शुल्क:</strong> न आपके खाते से, न हमारे खाते से कोई पैसा कटेगा।
-            </span>
+        {/* Reason banner if triggered by a booking/action */}
+        {authPromptReason && (
+          <div className="bg-[#FEF2F2] border-b border-red-100 px-4 py-2 text-xs text-[#DC2626] font-medium flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{authPromptReason}</span>
           </div>
-        </div>
+        )}
 
-        {/* Scrollable Form Body */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5">
+        <div className="p-5 sm:p-6 space-y-5">
+          {/* 1. Google One-Click Login on TOP */}
+          <div>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isLoading}
+              className="w-full py-3 px-4 rounded-xl border border-gray-300 hover:border-gray-400 bg-white hover:bg-gray-50 text-gray-800 font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-colors shadow-2xs cursor-pointer tap-target disabled:opacity-50"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>Google से तुरंत लॉगिन करें</span>
+            </button>
+
+            <div className="relative my-4 text-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <span className="relative bg-white px-3 text-[11px] text-gray-500 font-medium">
+                या मोबाइल नंबर / पासवर्ड से
+              </span>
+            </div>
+          </div>
+
+          {/* 2. Login vs Register Tabs */}
+          <div className="flex bg-gray-100 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('login');
+                setErrorMessage(null);
+              }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'login'
+                  ? 'bg-white text-gray-900 shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              लॉगिन (Login)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('register');
+                setErrorMessage(null);
+              }}
+              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'register'
+                  ? 'bg-white text-[#DC2626] shadow-2xs'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              नया खाता बनाएं (Register)
+            </button>
+          </div>
+
+          {/* Error Message Alert */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="leading-snug">{errorMessage}</span>
             </div>
           )}
 
-          {/* Quick Free Google Sign In Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={isLoading}
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 px-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold shadow-xs transition-all hover:scale-[1.01] cursor-pointer"
-          >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-              />
-            </svg>
-            <span>Google से 1-क्लिक मुफ़्त लॉगिन करें (Free)</span>
-          </button>
-
-          <div className="flex items-center my-2">
-            <div className="flex-1 border-t border-slate-200"></div>
-            <span className="px-2 text-[10px] text-slate-400 font-bold uppercase">
-              या मोबाइल नंबर व पते से (100% मुफ़्त)
-            </span>
-            <div className="flex-1 border-t border-slate-200"></div>
-          </div>
-
-          {/* Firebase Authentication Verified Form with Compulsory Address & Free GPS */}
-          <form onSubmit={handleFirebaseAuthSubmit} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* TAB 1: LOGIN FORM */}
+          {activeTab === 'login' && !isForgotPasswordOpen && (
+            <form onSubmit={handleEmailPasswordLogin} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                  आपका पूरा नाम (Name) *
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  मोबाइल नंबर या ईमेल
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={userName}
-                  onChange={e => setUserName(e.target.value)}
-                  placeholder="e.g. राहुल पटेल"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-slate-50/50"
-                />
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    placeholder="उदा. 9876543210 या your@email.com"
+                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <label className="block text-[11px] font-bold text-slate-700">
-                    मोबाइल नंबर या ईमेल *
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-gray-700">
+                    पासवर्ड
                   </label>
-                  <span className="text-[9px] text-emerald-700 font-bold bg-emerald-100 px-1 py-0.2 rounded">
-                    Firebase Auth
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPasswordOpen(true);
+                      setResetEmail(mobile.includes('@') ? mobile : '');
+                      setErrorMessage(null);
+                    }}
+                    className="text-[11px] text-[#DC2626] hover:underline font-semibold cursor-pointer"
+                  >
+                    पासवर्ड भूल गए?
+                  </button>
                 </div>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-600 text-xs font-bold">
-                    +91
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="न्यूनतम 6 अक्षर"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-2"
+              >
+                {isLoading ? (
+                  <span>सत्यापित हो रहा है...</span>
+                ) : (
+                  <>
+                    <span>लॉगिन करें</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* FORGOT PASSWORD SUB-VIEW */}
+          {activeTab === 'login' && isForgotPasswordOpen && (
+            <div className="space-y-3.5">
+              <h3 className="text-sm font-bold text-gray-900">
+                पासवर्ड रीसेट लिंक प्राप्त करें
+              </h3>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                अपना रजिस्टर्ड ईमेल दर्ज करें। हम आपको पासवर्ड रीसेट करने का सुरक्षित लिंक भेजेंगे।
+              </p>
+
+              {forgotPasswordSent ? (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-2">
+                  <p className="font-bold">✓ ईमेल सफलतापूर्वक भेज दिया गया है!</p>
+                  <p className="text-[11px]">कृपया अपना इनबॉक्स और स्पैम फ़ोल्डर जांचें।</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPasswordOpen(false);
+                      setForgotPasswordSent(false);
+                    }}
+                    className="text-xs font-bold text-[#DC2626] underline cursor-pointer"
+                  >
+                    लॉगिन पर वापस जाएं
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      रजिस्टर्ड ईमेल
+                    </label>
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="उदा. name@example.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm outline-none"
+                      required
+                    />
                   </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPasswordOpen(false)}
+                      className="flex-1 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer"
+                    >
+                      रद्द करें
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading}
+                      className="flex-1 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {isLoading ? 'भेज रहे हैं...' : 'रीसेट लिंक भेजें'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: REGISTER FORM (Mobile-First Complete Profile) */}
+          {activeTab === 'register' && (
+            <form onSubmit={handleRegisterAccount} className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  पूरा नाम <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="उदा. राहुल शर्मा"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Mobile (+91 validated) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  मोबाइल नंबर (+91) <span className="text-red-500">*</span>
+                </label>
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 bg-gray-50 focus-within:bg-white">
+                  <span className="px-3 py-2 bg-gray-100 text-gray-600 text-xs font-bold border-r border-gray-200 flex items-center">
+                    +91
+                  </span>
                   <input
                     type="tel"
-                    required
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="10 अंकों का मोबाइल नंबर"
+                    className="w-full px-3 py-2 text-xs sm:text-sm outline-none bg-transparent font-mono"
                     maxLength={10}
-                    value={phoneNumber}
-                    onChange={e => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                    placeholder="9825012345"
-                    className="w-full pl-12 pr-2.5 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden tracking-wider font-semibold bg-slate-50/50"
+                    required
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Firebase Authentication Password Field */}
-            <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label className="block text-[11px] font-bold text-slate-700">
-                  पासवर्ड (Firebase Authentication सुरक्षा) *
+              {/* Email (Optional) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  ईमेल <span className="text-gray-400 font-normal">(वैकल्पिक / Optional)</span>
                 </label>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  कम से कम 6 अक्षर
-                </span>
-              </div>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="अपना सुरक्षित पासवर्ड दर्ज करें (न्यूनतम 6 अक्षर)"
-                  className="w-full pl-3 pr-10 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-slate-50/50 font-medium"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-                  title={showPassword ? 'पासवर्ड छुपाएं' : 'पासवर्ड देखें'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Optional Email Input for Communication */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                ईमेल आईडी (वैकल्पिक / Optional)
-              </label>
-              <input
-                type="email"
-                value={userEmail}
-                onChange={e => setUserEmail(e.target.value)}
-                placeholder="e.g. rahul.patel@gmail.com"
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-slate-50/50"
-              />
-            </div>
-
-            {/* Anti-Fraud Compulsory Address Section */}
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-slate-900 uppercase tracking-wider flex items-center gap-1">
-                  <Home className="w-3.5 h-3.5 text-red-600" />
-                  सटीक पता (डोरस्टेप पिकअप हेतु अनिवार्य) *
-                </span>
-                <span className="text-[9px] text-rose-700 font-bold bg-rose-100 px-1.5 py-0.2 rounded">
-                  फर्जी पते पर बैन
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
-                    type="text"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Password (min 6, show/hide) */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  पासवर्ड बनाएं <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="न्यूनतम 6 अक्षर या अंक"
+                    className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                     required
-                    value={houseShopNo}
-                    onChange={e => setHouseShopNo(e.target.value)}
-                    placeholder="फ्लैट/मकान/दुकान नं. *"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-white"
                   />
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    required
-                    value={buildingSociety}
-                    onChange={e => setBuildingSociety(e.target.value)}
-                    placeholder="बिल्डिंग/सोसाइटी नाम *"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-white"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
-                  <input
-                    type="text"
-                    required
-                    value={streetLandmark}
-                    onChange={e => setStreetLandmark(e.target.value)}
-                    placeholder="रोड / नज़दीकी लैंडमार्क *"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-white"
-                  />
-                </div>
-                <div>
-                  <input
-                    type="text"
-                    maxLength={6}
-                    value={pincode}
-                    onChange={e => setPincode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="पिनकोड (395009)"
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-red-500 outline-hidden bg-white"
-                  />
-                </div>
-              </div>
+              {/* Surat Address Section */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#DC2626]" />
+                    <span>सूरत पिकअप पता (Address)</span>
+                  </span>
 
-              {/* Free 1-Click Live GPS Geolocation Button */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleDetectFreeGps}
-                  disabled={isLocatingGps}
-                  className={`w-full py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    gpsData
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-                      : 'bg-white hover:bg-slate-100 border-blue-300 text-blue-700 shadow-xs'
-                  }`}
-                >
-                  {isLocatingGps ? (
-                    <span className="flex items-center gap-1.5 animate-pulse">
-                      <Navigation className="w-3.5 h-3.5 animate-spin" />
-                      GPS लोकेशन खोजी जा रही है (मुफ़्त)...
-                    </span>
-                  ) : gpsData ? (
-                    <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCheck className="w-4 h-4 text-emerald-600" />
-                      ✓ लाइव GPS पिन वेरिफाइड (सटीक लोकेशन अटैच)
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-blue-600" />
-                      📍 1-क्लिक में लाइव GPS पिन लें (100% मुफ़्त)
-                    </span>
-                  )}
-                </button>
+                  {/* GPS Button */}
+                  <button
+                    type="button"
+                    onClick={handleCaptureGps}
+                    disabled={isLocating}
+                    className="px-2.5 py-1 rounded-lg bg-[#FEF2F2] hover:bg-red-100 text-[#DC2626] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <Navigation className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
+                    <span>{isLocating ? 'प्राप्त हो रहा है...' : 'GPS उपयोग करें'}</span>
+                  </button>
+                </div>
 
-                {gpsData && (
-                  <p className="text-[10px] text-emerald-700 mt-1 flex items-center justify-between">
-                    <span>GPS: {gpsData.latitude.toFixed(4)}, {gpsData.longitude.toFixed(4)} (±{gpsData.accuracyMeters}m)</span>
-                    <a
-                      href={gpsData.mapsLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline font-bold text-blue-600 hover:text-blue-800"
-                    >
-                      Google Maps में देखें
-                    </a>
+                {gpsSuccessNote && (
+                  <p className="text-[11px] text-emerald-700 font-semibold mb-2 bg-emerald-50 p-1.5 rounded-lg border border-emerald-200">
+                    {gpsSuccessNote}
                   </p>
                 )}
 
-                {gpsError && (
-                  <p className="text-[10px] text-rose-600 mt-1">{gpsError}</p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <input
+                      type="text"
+                      value={houseFlat}
+                      onChange={(e) => setHouseFlat(e.target.value)}
+                      placeholder="मकान/फ्लैट नं. *"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={buildingSociety}
+                      onChange={(e) => setBuildingSociety(e.target.value)}
+                      placeholder="बिल्डिंग/सोसाइटी *"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    value={roadLandmark}
+                    onChange={(e) => setRoadLandmark(e.target.value)}
+                    placeholder="सड़क / प्रमुख लैंडमार्क (वैकल्पिक)"
+                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <select
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500 bg-white"
+                    >
+                      {SURAT_AREAS_LIST.map((loc) => (
+                        <option key={loc} value={loc}>
+                          {loc}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <input
+                      type="text"
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="पिनकोड (395009)"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500 font-mono"
+                      maxLength={6}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-3"
+              >
+                {isLoading ? (
+                  <span>खाता बनाया जा रहा है...</span>
+                ) : (
+                  <>
+                    <span>खाता बनाएं व आगे बढ़ें</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
                 )}
-              </div>
-            </div>
+              </button>
+            </form>
+          )}
 
-            {/* Firebase Authentication Security Badge */}
-            <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>सुरक्षा सत्यापन:</span>
-                <span className="text-emerald-700 text-[10px] font-semibold">Firebase Authentication 256-Bit</span>
-              </div>
-              <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1">
-                <Check className="w-3 h-3" /> अधिकृत सर्वर
-              </span>
-            </div>
-
-            {/* Login Button: Only Proceeds to Dashboard After Validating via Firebase Authentication */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white text-xs font-black shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Firebase Authentication सत्यापन जारी है...</span>
-                </span>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4 text-emerald-200" />
-                  <span>🔒 Firebase Auth द्वारा लॉगिन करें व डैशबोर्ड खोलें</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Zero Cost & Anti-Fraud Guarantee Box */}
-          <div className="p-2.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-[10.5px] text-amber-950 space-y-1">
-            <div className="font-bold flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              <span>सस्ताफोन सुरक्षा व जीरो-चार्ज नियम:</span>
-            </div>
-            <ul className="list-disc pl-4 space-y-0.5 text-amber-900/90">
-              <li>
-                <strong>₹0 SMS चार्ज:</strong> कोई OTP शुल्क या गेटवे चार्ज नहीं।
-              </li>
-              <li>
-                <strong>गलत पते से सुरक्षा:</strong> वेरिफाइड GPS लोकेशन से राइडर सीधे आपके पते पर पहुंचेगा।
-              </li>
-            </ul>
-          </div>
+          {/* Privacy Note */}
+          <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+            सुरक्षित लॉगिन द्वारा आप Sastafone की सेवा शर्तों व गोपनीयता नीति से सहमत होते हैं।
+          </p>
         </div>
       </div>
     </div>

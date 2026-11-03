@@ -1,204 +1,384 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
-import { SellFlowSection } from './components/SellFlowSection';
-import { BuyPhonesSection } from './components/BuyPhonesSection';
-import { RepairServiceSection } from './components/RepairServiceSection';
-import { P2PMarketplaceSection } from './components/P2PMarketplaceSection';
+import { BottomTabBar, TabType } from './components/BottomTabBar';
+import { CustomerRepairBookingFlow } from './components/CustomerRepairBookingFlow';
+import { MyOrdersTimeline } from './components/MyOrdersTimeline';
+import { ProfileView } from './components/ProfileView';
+import { AdminMobileDashboard } from './components/AdminMobileDashboard';
+import { SellPhoneFlow } from './components/SellPhoneFlow';
+import { BuyPhonesInventoryView } from './components/BuyPhonesInventoryView';
+import { WarrantyPage } from './components/WarrantyPage';
+import { SuratAreaPage } from './components/SuratAreaPage';
+import { MobileRepairSuratSeoPage } from './components/MobileRepairSuratSeoPage';
+import { SellOldPhoneSuratSeoPage } from './components/SellOldPhoneSuratSeoPage';
+import { BlogPlaceholderPage } from './components/BlogPlaceholderPage';
 import { LocationSelectorModal } from './components/LocationSelectorModal';
-import { UserDashboardModal } from './components/UserDashboardModal';
 import { LegalModals } from './components/LegalModals';
-import { InvoiceModal } from './components/InvoiceModal';
-import { AuthorizedServiceCentersModal } from './components/AuthorizedServiceCentersModal';
 import { HappyCustomersSection } from './components/HappyCustomersSection';
-import { RazorpayPaymentModal } from './components/RazorpayPaymentModal';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
-import { ProAuditModal } from './components/ProAuditModal';
-import { AdminPortalModal } from './components/AdminPortalModal';
-import { DirectEmailSupportModal } from './components/DirectEmailSupportModal';
 import { FirebaseAuthModal } from './components/FirebaseAuthModal';
-import { applyPageSeo } from './utils/seoData';
-import { Lock, ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
-
-interface AuthGatedServiceProps {
-  serviceType: 'sell' | 'buy' | 'repair' | 'bazaar';
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}
-
-const AuthGatedService: React.FC<AuthGatedServiceProps> = ({
-  serviceType,
-  title,
-  subtitle,
-  children
-}) => {
-  const { user, setIsAuthModalOpen, setAuthPromptReason, isAuthModalOpen } = useApp();
-
-  const servicePrompts: Record<string, string> = {
-    sell: '📱 पुराना मोबाइल बेचने के लिए कृपया पहले सस्ताफोन में लॉगिन करें।',
-    buy: '🛒 सर्टिफाइड फोन डील्स व सस्ता बाज़ार देखने के लिए कृपया लॉगिन करें।',
-    repair: '🔧 ₹199 में घर बैठे मोबाइल रिपेयरिंग बुक करने के लिए कृपया पहले लॉगिन करें।',
-    bazaar: '🏷️ सस्ता बाज़ार (P2P मार्केटप्लेस) में डील व लिस्टिंग के लिए कृपया पहले लॉगिन करें।'
-  };
-
-  const handleOpenLogin = () => {
-    setAuthPromptReason(servicePrompts[serviceType]);
-    setIsAuthModalOpen(true);
-  };
-
-  if (!user.isLoggedIn) {
-    return (
-      <div className="container mx-auto px-4 py-10 max-w-2xl text-center">
-        <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-red-200 relative overflow-hidden animate-in fade-in duration-200">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
-            <Lock className="w-8 h-8 sm:w-10 sm:h-10" />
-          </div>
-
-          <span className="px-3 py-1 rounded-full bg-red-100 text-red-800 text-[11px] font-black uppercase tracking-wider">
-            लॉगिन अनिवार्य है • Login Required
-          </span>
-
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-3 tracking-tight">
-            {title}
-          </h2>
-
-          <p className="text-xs sm:text-sm text-slate-600 mt-1.5 max-w-md mx-auto leading-relaxed">
-            {subtitle}। धोखाधड़ी से सुरक्षा व प्रामाणिक सेवाओं के लिए सस्ताफोन में लॉगिन अनिवार्य है।
-          </p>
-
-          <div className="my-5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-2 text-slate-700 max-w-sm mx-auto">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>100% सत्यापित खरीदार व विक्रेता नेटवर्क</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>CEIR व पुलिस एंटी-थेफ्ट सुरक्षा जांच</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>लाइव जॉब-कार्ड, रसीदें व ट्रैकिंग सुविधा</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleOpenLogin}
-            className="w-full sm:w-auto px-7 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg transition-all cursor-pointer inline-flex items-center justify-center gap-2"
-          >
-            <Lock className="w-4 h-4" />
-            <span>सुरक्षित लॉगिन / साइन इन करें</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
+import { InvoiceModal } from './components/InvoiceModal';
+import { SeoHead } from './components/SeoHead';
+import {
+  Wrench,
+  ShieldCheck,
+  Clock,
+  ArrowRight,
+  CheckCircle2,
+  Lock,
+  Smartphone,
+  ShoppingBag
+} from 'lucide-react';
+import { subscribeToCustomerJobs } from './services/firestoreRepairService';
+import { Job } from './types';
 
 function MainApp() {
-  const { activeTab, language } = useApp();
+  const { language, activeTab: legacyTab, setActiveTab: setLegacyTab, user, setIsAuthModalOpen } = useApp();
 
-  // Dynamic SEO Title & Meta Descriptions updates for Googlebot & Users
-  React.useEffect(() => {
-    applyPageSeo(activeTab, language);
-  }, [activeTab, language]);
+  // Current URL path state
+  const [currentPath, setCurrentPath] = useState<string>(window.location.pathname || '/');
+
+  // Bottom tab state
+  const [currentTab, setCurrentTab] = useState<TabType>('home');
+
+  // Admin Dashboard Modal State
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+
+  // Active customer jobs count for live badge
+  const [activeJobsCount, setActiveJobsCount] = useState<number>(0);
+
+  // Listen to browser navigation (back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname || '/';
+      setCurrentPath(path);
+
+      if (path === '/' || path === '') setCurrentTab('home');
+      else if (path.startsWith('/repair')) setCurrentTab('repair');
+      else if (path === '/orders') setCurrentTab('orders');
+      else if (path === '/profile') setCurrentTab('profile');
+      else if (path === '/admin') {
+        if (user.role === 'admin') {
+          setIsAdminDashboardOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    handlePopState();
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [user.role]);
+
+  // Navigate helper
+  const navigateTo = (path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      setCurrentPath(path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Subscribe to customer jobs for live badge in bottom bar
+  useEffect(() => {
+    if (!user.isLoggedIn || !user.uid) {
+      setActiveJobsCount(0);
+      return;
+    }
+    const unsubscribe = subscribeToCustomerJobs(user.uid, (jobs: Job[]) => {
+      const active = jobs.filter((j) => j.status !== 'Delivered' && j.status !== 'Declined' && j.status !== 'Cancelled').length;
+      setActiveJobsCount(active);
+    });
+    return () => unsubscribe();
+  }, [user.isLoggedIn, user.uid]);
+
+  // Check if current route is an area page (/areas/:slug)
+  const isAreaRoute = currentPath.startsWith('/areas/');
+  const currentAreaSlug = isAreaRoute ? currentPath.replace('/areas/', '').split('/')[0] : '';
+
+  // Check if buy phone detail route (/buy-phones/:slug)
+  const isBuyDetailRoute = currentPath.startsWith('/buy-phones/') && currentPath !== '/buy-phones';
+  const currentBuySlug = isBuyDetailRoute ? currentPath.replace('/buy-phones/', '').split('/')[0] : '';
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans selection:bg-blue-600 selection:text-white">
-      {/* Top Header & Surat Navigation */}
+    <div className="min-h-screen flex flex-col bg-white text-gray-900 font-sans selection:bg-[#DC2626] selection:text-white pb-20">
+      {/* Default Homepage Meta via SeoHead */}
+      <SeoHead
+        title="Sastafone Surat – Doorstep Mobile Repair, Sell & Buy Certified Phones"
+        description="सूरत में सर्टिफाइड टेक्नीशियन नेटवर्क द्वारा फोन पिकअप व डिलीवरी रिपेयर, ₹199 विज़िट टोकन (बिल में एडजस्टेड), पुराना फोन बेचें और 6 माह वारंटी फोन।"
+        canonicalPath="/"
+      />
+
+      {/* Top Header */}
       <Header />
 
-      {/* Hero Section with 4 Core Service Shortcuts */}
-      <HeroSection />
-
-      {/* Main Content Area - Gated with Compulsory Login Check for Core Services */}
+      {/* Main Content Area */}
       <main className="flex-1">
-        {/* Sell Old Phone */}
-        {activeTab === 'sell' && (
-          <AuthGatedService
-            serviceType="sell"
-            title="पुराना मोबाइल बेचें (Sell Old Phone)"
-            subtitle="सूरत में तुरंत नकद भुगतान व 2 घंटे में फ्री होम पिकअप"
-          >
-            <SellFlowSection />
-            <BuyPhonesSection />
-            <P2PMarketplaceSection />
-            <RepairServiceSection />
-          </AuthGatedService>
+        {/* ROUTE: /warranty */}
+        {currentPath === '/warranty' && (
+          <WarrantyPage
+            onNavigateHome={() => navigateTo('/')}
+            onNavigateOrders={() => navigateTo('/orders')}
+          />
         )}
 
-        {/* Buy Certified Phone Deals */}
-        {activeTab === 'buy' && (
-          <AuthGatedService
-            serviceType="buy"
-            title="सर्टिफाइड खरीदें व सस्ता बाज़ार (Buy Phone Deals)"
-            subtitle="32-पॉइंट टेस्टेड, 6 महीने वारंटी व डायरेक्ट यूज़र डील्स"
-          >
-            <BuyPhonesSection />
-            <P2PMarketplaceSection />
-            <SellFlowSection />
-            <RepairServiceSection />
-          </AuthGatedService>
+        {/* ROUTE: /areas/:area */}
+        {isAreaRoute && (
+          <SuratAreaPage
+            areaSlug={currentAreaSlug}
+            onBookInArea={(areaName) => {
+              navigateTo('/repair');
+            }}
+            onNavigateHome={() => navigateTo('/')}
+          />
         )}
 
-        {/* Repair @ Home */}
-        {activeTab === 'repair' && (
-          <AuthGatedService
-            serviceType="repair"
-            title="घर बैठे मोबाइल रिपेयरिंग (Doorstep Repair)"
-            subtitle="30 मिनट में लाइव रिपेयर, मात्र ₹199 विज़िट टोकन (फाइनल बिल में एडजस्टेबल)"
-          >
-            <RepairServiceSection />
-            <P2PMarketplaceSection />
-            <SellFlowSection />
-            <BuyPhonesSection />
-          </AuthGatedService>
+        {/* ROUTE: /mobile-repair-surat */}
+        {currentPath === '/mobile-repair-surat' && (
+          <MobileRepairSuratSeoPage
+            onBookRepair={() => navigateTo('/repair')}
+            onNavigateHome={() => navigateTo('/')}
+          />
         )}
 
-        {/* OLX-style P2P Direct Mobile Bazaar */}
-        {activeTab === 'bazaar' && (
-          <AuthGatedService
-            serviceType="bazaar"
-            title="सस्ता बाज़ार मोबाइल मंडी (P2P Marketplace)"
-            subtitle="0% ब्रोकरेज, केवल ₹99 में विज्ञापन व डायरेक्ट सेलर चैट"
-          >
-            <P2PMarketplaceSection />
-            <SellFlowSection />
-            <BuyPhonesSection />
-            <RepairServiceSection />
-          </AuthGatedService>
+        {/* ROUTE: /sell-old-phone-surat */}
+        {currentPath === '/sell-old-phone-surat' && (
+          <SellOldPhoneSuratSeoPage
+            onGoToSell={() => navigateTo('/sell-phone')}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        )}
+
+        {/* ROUTE: /blog */}
+        {currentPath === '/blog' && <BlogPlaceholderPage />}
+
+        {/* ROUTE: /sell-phone */}
+        {currentPath === '/sell-phone' && (
+          <SellPhoneFlow
+            onRequestCreated={(id) => {
+              navigateTo('/orders');
+            }}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        )}
+
+        {/* ROUTE: /buy-phones or /buy-phones/:slug */}
+        {(currentPath === '/buy-phones' || isBuyDetailRoute) && (
+          <BuyPhonesInventoryView
+            initialSlug={currentBuySlug || undefined}
+            onNavigateHome={() => navigateTo('/')}
+          />
+        )}
+
+        {/* ROUTE: /orders */}
+        {currentPath === '/orders' && (
+          <div className="animate-in fade-in duration-200">
+            <MyOrdersTimeline onBookNew={() => navigateTo('/repair')} />
+          </div>
+        )}
+
+        {/* ROUTE: /profile */}
+        {currentPath === '/profile' && (
+          <div className="animate-in fade-in duration-200">
+            <ProfileView
+              onOpenAdmin={() => setIsAdminDashboardOpen(true)}
+              onNavigateToOrders={() => navigateTo('/orders')}
+              onNavigateToRepair={() => navigateTo('/repair')}
+            />
+          </div>
+        )}
+
+        {/* ROUTE: /repair or /repair/book */}
+        {(currentPath === '/repair' || currentPath === '/repair/book') && (
+          <div className="animate-in fade-in duration-200">
+            <CustomerRepairBookingFlow
+              onJobCreated={(jobId) => {
+                navigateTo('/orders');
+              }}
+              onNavigateToOrders={() => {
+                navigateTo('/orders');
+              }}
+            />
+          </div>
+        )}
+
+        {/* ROUTE: /admin */}
+        {currentPath === '/admin' && (
+          <div className="p-8 text-center max-w-md mx-auto">
+            {user.role === 'admin' ? (
+              <div className="space-y-4">
+                <h2 className="text-xl font-black text-gray-900">एडमिन कंट्रोल डेस्क</h2>
+                <button
+                  type="button"
+                  onClick={() => setIsAdminDashboardOpen(true)}
+                  className="px-6 py-3 rounded-2xl bg-[#DC2626] text-white font-bold text-xs"
+                >
+                  डैशबोर्ड खोलें
+                </button>
+              </div>
+            ) : (
+              <div className="bg-red-50 p-6 rounded-2xl border border-red-200 space-y-3">
+                <Lock className="w-8 h-8 text-[#DC2626] mx-auto" />
+                <h3 className="text-base font-bold text-gray-900">
+                  एडमिन अधिकार आवश्यक है
+                </h3>
+                <p className="text-xs text-gray-600">
+                  यह पृष्ठ केवल अधिकृत स्टाफ व एडमिन के लिए सुरक्षित है।
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-[#DC2626] text-white text-xs font-bold"
+                >
+                  एडमिन अकाउंट से लॉगिन करें
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ROUTE: / (Home) */}
+        {(currentPath === '/' || currentPath === '') && (
+          <div className="animate-in fade-in duration-200">
+            {/* Hero Section */}
+            <HeroSection />
+
+            {/* Doorstep Process Highlights */}
+            <section className="container mx-auto px-4 py-8 max-w-4xl">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xs border border-gray-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-6">
+                  <div>
+                    <span className="px-3 py-1 rounded-full bg-red-100 text-[#DC2626] text-xs font-bold uppercase tracking-wider">
+                      सूरत एक्सक्लूसिव
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black text-gray-900 mt-2">
+                      Sastafone डोरस्टेप पिकअप व डिलीवरी फोन रिपेयरिंग
+                    </h2>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                      सूरत के सभी प्रमुख इलाकों में सर्टिफाइड टेक नेटवर्क द्वारा 60 मिनट स्लॉट पिकअप।
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigateTo('/repair')}
+                    className="px-5 py-3 rounded-2xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2 shrink-0 tap-target"
+                  >
+                    <Wrench className="w-4 h-4" />
+                    <span>रिपेयरिंग बुक करें (₹199)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* 3 Step Process */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 text-[#DC2626] flex items-center justify-center font-black mb-3">
+                      1
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-1">
+                      मॉडल व समस्या चुनें
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      सर्च से फोन मॉडल चुनें, समस्याओं पर टिक करें और लाइव अनुमानित खर्च व समय देखें।
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 text-[#DC2626] flex items-center justify-center font-black mb-3">
+                      2
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-1">
+                      डोरस्टेप पिकअप व QC
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      टेक्नीशियन आपके पते पर आकर 11-पॉइंट QC इंस्पेक्शन करेगा और अंतिम पारदर्शी क्वोट देगा।
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                    <div className="w-9 h-9 rounded-xl bg-red-100 text-[#DC2626] flex items-center justify-center font-black mb-3">
+                      3
+                    </div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-1">
+                      स्वीकृति व 6M वारंटी
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      आपके अनुमोदन के बाद रिपेयर शुरू होगा। ₹1000+ के बिल पर 6 महीने वारंटी सहित सुरक्षित डिलीवरी।
+                    </p>
+                  </div>
+                </div>
+
+                {/* Trust Badges */}
+                <div className="mt-6 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-around gap-4 text-xs font-semibold text-gray-600">
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>Sastafone Certified Technician Network</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#DC2626]" />
+                    <span>₹199 विज़िट टोकन (फाइनल बिल में माइनस)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    <span>60 मिनट पिकअप स्लॉट्स</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Surat Real Customers Reviews (Shown only if min 5 reviews) */}
+            <HappyCustomersSection />
+
+            {/* Surat Local Areas Directory */}
+            <SuratLocalSeoSection />
+          </div>
         )}
       </main>
 
-      {/* Surat Happy Customers Reviews & Testimonials Section */}
-      <HappyCustomersSection />
+      {/* Mobile-first PWA Bottom Tab Bar */}
+      <BottomTabBar
+        activeTab={currentTab}
+        onTabChange={(tab) => {
+          setCurrentTab(tab);
+          if (tab === 'home') navigateTo('/');
+          else if (tab === 'repair') navigateTo('/repair');
+          else if (tab === 'orders') navigateTo('/orders');
+          else if (tab === 'profile') navigateTo('/profile');
+        }}
+        activeOrdersCount={activeJobsCount}
+        onShowComingSoon={(feature) => {
+          if (feature.toLowerCase().includes('sell')) {
+            navigateTo('/sell-phone');
+          } else {
+            navigateTo('/buy-phones');
+          }
+        }}
+      />
+
+      {/* Admin Mobile Dashboard Modal */}
+      <AdminMobileDashboard
+        isOpen={isAdminDashboardOpen}
+        onClose={() => setIsAdminDashboardOpen(false)}
+      />
 
       {/* Modals & Overlays */}
       <LocationSelectorModal />
-      <UserDashboardModal />
-      <InvoiceModal />
-      <AuthorizedServiceCentersModal />
-      <RazorpayPaymentModal />
       <LegalModals />
-      <ProAuditModal />
-      <AdminPortalModal />
-      <DirectEmailSupportModal />
       <FirebaseAuthModal />
+      <InvoiceModal />
 
-      {/* Floating Quick Support Chat (Sastaphone Surat Support) */}
+      {/* Floating WhatsApp Support Button */}
       <WhatsAppFloatingButton />
 
-      {/* Surat Local SEO & Google My Business Ranking Directory */}
-      <SuratLocalSeoSection />
-
-      {/* Footer & Compliance */}
+      {/* Footer */}
       <Footer />
     </div>
   );

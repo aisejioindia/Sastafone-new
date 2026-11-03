@@ -300,6 +300,7 @@ export interface ChatMessage {
 }
 
 export interface UserProfile {
+  uid?: string;
   name: string;
   phone: string;
   email?: string;
@@ -400,5 +401,358 @@ export interface CustomerReview {
   orderNumber?: string;
   likesCount: number;
   likedByMe?: boolean;
+}
+
+// -------------------------------------------------------------
+// Phase 1 Sastafone Pickup & Delivery Repair Service Models
+// -------------------------------------------------------------
+
+export type UserRole = 'customer' | 'admin';
+
+export interface FirestoreUser {
+  uid: string;
+  name: string;
+  phone: string;
+  role: UserRole;
+  email?: string;
+  address?: string;
+  locality?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface RepairPrice {
+  id: string;
+  name_hi: string;
+  description_hi: string;
+  minPrice: number;
+  maxPrice: number;
+  serviceMinutes: number;
+  warrantyMonths: number;
+  active: boolean;
+  sortOrder: number;
+  category?: string;
+  iconName?: string;
+  isCombo?: boolean;
+  comboItems?: string[];
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  area: string;
+  phone: string;
+  rateCard: Record<string, number>; // problemId -> partner technician payout
+  advanceBalance: number;
+  rating: number;
+  active: boolean;
+  jobsCompleted?: number;
+}
+
+export interface Slot {
+  id: string;
+  date: string; // YYYY-MM-DD or DD Mon YYYY
+  window: string; // e.g. "10:00 AM - 01:00 PM", "02:00 PM - 05:00 PM", "05:00 PM - 08:00 PM"
+  area: string; // Surat Locality, e.g. "Adajan", "Vesu", "All Surat"
+  capacity: number; // e.g. 5
+  booked: number; // e.g. 2
+}
+
+export type JobStatus =
+  | 'Booked'
+  | 'Pickup scheduled'
+  | 'Picked up'
+  | 'Quote approved'
+  | 'In repair'
+  | 'Ready'
+  | 'Delivered'
+  | 'Cancelled'
+  | 'Declined';
+
+export interface QCCheckItem {
+  status: 'OK' | 'Issue' | 'NA';
+  note: string;
+}
+
+export interface JobQC {
+  checklist: Record<string, QCCheckItem>;
+  imei: string;
+  billPhotoUrl: string;
+  conditionPhotoUrls: string[];
+  idPhotoUrl?: string;
+  notes?: string;
+  conductedAt?: string;
+  conductedBy?: string;
+  discountPct?: number;
+  discountReason?: string;
+  suggestedFinalPrice?: number;
+  servicesBreakdown?: {
+    serviceId: string;
+    name: string;
+    price: number;
+  }[];
+}
+
+export interface Job {
+  jobId: string;
+  userId: string;
+  name: string;
+  phone: string;
+  address: string;
+  area: string;
+  brand: string;
+  model: string;
+  services: string[]; // List of repairPrice names or IDs
+  serviceDetails?: RepairPrice[];
+  estMin: number;
+  estMax: number;
+  estMinutes: number;
+  pickupSlot: {
+    date: string;
+    window: string;
+    area: string;
+  };
+  status: JobStatus;
+  statusHistory: {
+    status: JobStatus | string;
+    timestamp: string;
+    note?: string;
+  }[];
+  qc?: JobQC;
+  finalServices?: string[];
+  finalPrice?: number;
+  customerApproved: boolean;
+  approvedAt?: string;
+  visitFeePaid: boolean;
+  razorpayPaymentId?: string;
+  partnerId?: string;
+  pickupCost: number; // e.g. 70 standard Surat pickup & delivery logistics cost
+  createdAt: string;
+  updatedAt?: string;
+  deviceNotes?: string;
+}
+
+// -------------------------------------------------------------
+// Phase 2 Sastafone Data Models (Sell, Buy, Ledger, Invoice, Reviews)
+// -------------------------------------------------------------
+
+export interface SellRate {
+  id: string;
+  brand: string;
+  model: string;
+  storage: string;
+  flawlessPriceMin: number;
+  flawlessPriceMax: number;
+  goodPriceMin: number;
+  goodPriceMax: number;
+  averagePriceMin: number;
+  averagePriceMax: number;
+  deadPriceMin: number;
+  deadPriceMax: number;
+  updatedAt?: string;
+}
+
+export type SellRequestStatus =
+  | 'Submitted'
+  | 'Pickup scheduled'
+  | 'Inspected'
+  | 'Offer accepted'
+  | 'Offer declined'
+  | 'Purchased'
+  | 'Moved to inventory'
+  | 'Cancelled';
+
+export interface SellRequest {
+  id: string;
+  userId: string;
+  customerName: string;
+  customerPhone: string;
+  address: string;
+  area: string;
+  brand: string;
+  model: string;
+  storage: string;
+  age: string; // e.g. "under_6_months", "6_to_12_months", "1_to_2_years", "above_2_years"
+  isDeadPhone?: boolean;
+  conditionChecklist: {
+    screenWorking: boolean;
+    touchWorking: boolean;
+    bodyScratches: 'none' | 'minor' | 'heavy' | 'dented';
+    batteryHealth: string; // "above_85", "75_85", "below_75"
+    cameraWorking: boolean;
+    buttonsWorking: boolean;
+    speakerMicWorking: boolean;
+    faceTouchIdWorking: boolean;
+  };
+  conditionPhotos: string[];
+  imei?: string;
+  billPhotoUrl?: string;
+  idPhotoUrl?: string;
+  pickupSlot: {
+    date: string;
+    window: string;
+    area: string;
+  };
+  estMin: number;
+  estMax: number;
+  finalOffer?: number;
+  offerNote?: string;
+  partnerId?: string;
+  paymentMethod?: 'UPI' | 'Bank Transfer' | 'Cash';
+  paymentRef?: string;
+  payoutRecorded?: boolean;
+  movedToInventory?: boolean;
+  status: SellRequestStatus;
+  statusHistory: {
+    status: SellRequestStatus;
+    timestamp: string;
+    note?: string;
+  }[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InventoryPhone {
+  id: string;
+  slug: string;
+  brand: string;
+  model: string;
+  storage: string;
+  colour: string;
+  grade: 'A+ Like New' | 'A Excellent' | 'B Good';
+  batteryHealth: number; // e.g. 92
+  imei: string; // Private, admin only
+  photos: string[];
+  price: number;
+  tokenAmount: number; // usually ₹499
+  warrantyMonths: number; // usually 6
+  status: 'available' | 'booked' | 'sold';
+  specs?: {
+    ram?: string;
+    display?: string;
+    camera?: string;
+    processor?: string;
+  };
+  description?: string;
+  bookedBy?: {
+    userId: string;
+    name: string;
+    phone: string;
+    address: string;
+    area: string;
+    razorpayPaymentId?: string;
+    bookedAt: string;
+  };
+  balancePaid?: boolean;
+  invoiceId?: string;
+  deliveredAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string; // SST-YYYYMM-XXXX
+  jobId?: string;
+  inventoryId?: string;
+  type: 'repair' | 'refurbished_sale';
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  area: string;
+  brand: string;
+  model: string;
+  imei: string;
+  services: {
+    name: string;
+    price: number;
+  }[];
+  partsCost: number;
+  subtotal: number;
+  discountAmount: number;
+  visitFeeAdjusted: number; // ₹199
+  finalTotal: number;
+  paymentMethod: string;
+  razorpayPaymentId?: string;
+  warrantyMonths: number; // 6 if finalTotal >= 1000
+  warrantyExpiry: string;
+  warrantyTerms: string;
+  createdAt: string;
+}
+
+export interface WarrantyClaim {
+  id: string;
+  invoiceNumber: string;
+  customerPhone: string;
+  customerName: string;
+  jobId?: string;
+  brand: string;
+  model: string;
+  issueDescription: string;
+  status: 'Received' | 'Technician assigned' | 'In inspection' | 'Resolved' | 'Rejected';
+  linkedRepairJobId?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PartnerLedgerEntry {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  type: 'advance_topup' | 'job_deduction' | 'incentive' | 'penalty';
+  amount: number;
+  jobId?: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  notes: string;
+  timestamp: string;
+}
+
+export interface JobHandoverRecord {
+  id: string;
+  jobId: string;
+  partnerId: string;
+  partnerName: string;
+  sealedBagId: string;
+  imei: string;
+  handoverPhotos: string[];
+  handoverTime: string;
+  deliveryDeadline: string; // handoverTime + 2 hours
+  returnTime?: string;
+  returnPhotos?: string[];
+  isOverdue?: boolean;
+  notes?: string;
+}
+
+export interface CustomerReferral {
+  id: string;
+  jobId: string;
+  referrerUserId: string;
+  referrerName: string;
+  referrerPhone: string;
+  contacts: {
+    name: string;
+    phone: string;
+  }[];
+  discountAmount: number; // 200 (for 2 contacts) or 300 (for 3 contacts)
+  status: 'applied' | 'verified' | 'rejected';
+  rejectionReason?: string;
+  createdAt: string;
+}
+
+export interface RealCustomerReview {
+  id: string;
+  jobId?: string;
+  userId?: string;
+  customerName: string;
+  phone?: string;
+  rating: number; // 1 to 5
+  reviewText: string;
+  serviceType: 'repair' | 'sell' | 'buy';
+  phoneModel: string;
+  area: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
 }
 

@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        request.auth.token.email == 'aisejio99@gmail.com' ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    // 1. Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'customer' || isAdmin());
+      allow update: if (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Repair prices collection (Customer read-only, Admin full access)
+    match /repairPrices/{priceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 3. Sell rates table (Customer read-only, Admin full access)
+    match /sellRates/{rateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 4. Pickup slots collection (Customer read-only, Admin full access, atomic slot increment on booking)
+    match /slots/{slotId} {
+      allow read: if true;
+      allow update: if (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['booked']) && request.resource.data.booked == resource.data.booked + 1) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // 5. Partners collection (Admin only)
+    match /partners/{partnerId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 6. Partner Ledger entries (Admin only)
+    match /ledger/{entryId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 7. Sealed Bag Handovers (Admin only)
+    match /handovers/{handoverId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 8. Repair Jobs collection
+    match /jobs/{jobId} {
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.visitFeePaid == true;
+
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+
+      allow update: if isAdmin() || (
+        isOwner(resource.data.userId) &&
+        resource.data.status == 'Picked up' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerApproved', 'approvedAt', 'status', 'statusHistory', 'updatedAt', 'finalPrice', 'referralDiscountApplied']) &&
+        (request.resource.data.status in ['In repair', 'Cancelled'])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 9. Sell Requests collection (Customer sells phone)
+    match /sellRequests/{requestId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow update: if isAdmin() || (isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    // 10. Certified Inventory collection (Buy phones)
+    match /inventory/{phoneId} {
+      allow read: if true;
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        resource.data.status == 'available' &&
+        request.resource.data.status == 'booked' &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'bookedBy', 'updatedAt'])
+      );
+      allow write: if isAdmin();
+    }
+
+    // 11. Customer Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow create: if isAuthenticated() && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // 12. Referrals collection
+    match /referrals/{referralId} {
+      allow create: if isAuthenticated() && request.resource.data.referrerUserId == request.auth.uid;
+      allow read, write: if isAdmin();
+    }
+
+    // 13. Warranty Claims & Invoices
+    match /warrantyClaims/{claimId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

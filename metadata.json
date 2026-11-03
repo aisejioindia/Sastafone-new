@@ -1,6 +1,6 @@
 {
-  "name": "Sastaphone Surat - Sell, Buy & Repair Mobile at Doorstep",
-  "description": "सूरत का नंबर 1 मोबाइल प्लेटफॉर्म। पुराना फोन बेचें, 91mobiles डेटा के साथ सर्टिफाइड सेकंड-हैंड फोन खोजें व खरीदें, या घर बैठे 30 मिनट में मोबाइल रिपेयर करवाएं।",
+  "name": "Sastafone Surat – Doorstep Mobile Repair, Sell & Buy Certified Phones",
+  "description": "सूरत का सर्टिफाइड मोबाइल प्लेटफॉर्म। Sastafone Certified Technician Network द्वारा फोन रिपेयर पिकअप, पुराना फोन बेचें और 6 माह वारंटी सेकंड-हैंड फोन।",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

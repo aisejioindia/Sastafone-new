@@ -210,7 +210,7 @@ export const RazorpayPaymentModal: React.FC = () => {
                   <span>शामिल सुविधाएं व गारंटी (Included Benefits):</span>
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {tier.benefits.map((b, idx) => (
+                  {(tier as any).benefits?.map((b: string, idx: number) => (
                     <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200/70 text-slate-700">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                       <span className="font-medium text-[11px]">{b}</span>

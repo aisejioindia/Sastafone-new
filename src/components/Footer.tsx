@@ -2,306 +2,212 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
 import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
-import { ShieldCheck, MapPin, ExternalLink, Building2, MessageCircle, Globe, Flag, Headphones, Lock, Mail } from 'lucide-react';
+import { ShieldCheck, MapPin, MessageCircle, Clock, Mail, Phone, CheckCircle2 } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const {
     setLegalModal,
     setSelectedLocality,
-    selectedLocality,
     setActiveTab,
-    setIsBrandCentersModalOpen,
-    language,
-    setIsAdminModalOpen,
-    user,
     openEmailSupportWithPreset
   } = useApp();
 
+  const handleNav = (tab: any, path: string) => {
+    setActiveTab(tab);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <footer className="bg-slate-950 text-slate-300 pt-12 pb-8 border-t border-slate-800 text-xs">
+    <footer className="bg-white border-t border-red-100 text-gray-800 pt-10 pb-8 text-xs">
       <div className="container mx-auto px-4 max-w-6xl">
-        {/* Sastaphone Surat Trust & Doorstep Assurance Banner */}
-        <div className="mb-10 p-6 rounded-3xl bg-gradient-to-r from-blue-950 via-slate-900 to-indigo-950 border border-blue-500/30 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/30">
-                <Flag className="w-3.5 h-3.5 text-amber-400" />
-                <span>सूरत का 100% प्रामाणिक व अधिकृत मोबाइल हब (sastafone.in)</span>
+        {/* Surat Assurance Banner (Light Red Tint) */}
+        <div className="mb-8 p-5 sm:p-6 rounded-2xl bg-[#FEF2F2] border border-red-200/80">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white text-red-700 text-[11px] font-bold border border-red-200">
+                <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
+                <span>Sastafone Certified Technician Network • सूरत डोरस्टेप सेवा</span>
               </div>
-
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                <span>सस्ताफोन सूरत (Sastafone.in) - अटूट भरोसा व पारदर्शिता</span>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                पारदर्शी व प्रामाणिक मोबाइल रिपेयरिंग व बाय-बैक
               </h3>
-
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                <strong className="text-white">sastafone.in</strong> सूरत वासियों के लिए पुराना मोबाइल बेचने, 6 माह वारंटी वाले सर्टिफाइड फोन खरीदने, 30 मिनट में घर बैठे ओरिजिनल रिपेयर करवाने एवं डेड/स्क्रैप फोन के उच्चतम दाम पाने का आधिकारिक डिजिटल प्लेटफॉर्म है। निष्पक्ष डील्स, 100% डेटा प्राइवेसी और सुरक्षित लेनदेन का सच्चा भरोसा।
+              <p className="text-xs text-gray-600 leading-relaxed">
+                सूरत में ₹199 विज़िट टोकन के साथ घर बैठे पिकअप व डिलीवरी। ₹199 टोकन फाइनल बिल में एडजस्ट हो जाता है (निरीक्षण बाद मना करने पर ₹99 रिफंड, ₹100 इंस्पेक्शन चार्ज)। ₹1000+ के बिल पर 6 महीने वारंटी।
               </p>
-
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px]">
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=नमस्ते Sastaphone Surat! मुझे जानकारी चाहिए।`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black flex items-center gap-1.5 transition-all shadow-md cursor-pointer"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>सूरत 24x7 WhatsApp हेल्पलाइन (डायरेक्ट चैट)</span>
-                </a>
-
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>100% डेटा प्राइवेसी व ऑन-स्पॉट पेमेंट गारंटी</span>
-                </span>
-              </div>
             </div>
 
-            {/* Sastaphone Badge */}
-            <div className="shrink-0 p-4 rounded-2xl bg-white/5 border border-white/15 text-center space-y-1">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-                Official Surat Portal
-              </span>
-              <p className="text-lg font-black text-white">Sastaphone.in</p>
-              <p className="text-[10px] text-amber-300">सूरत नंबर 1 डोरस्टेप हब</p>
-              <span className="inline-block px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-bold">
-                ✓ 100% Verified
-              </span>
+            <div className="flex flex-wrap items-center gap-3 shrink-0">
+              <a
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('नमस्ते Sastafone Surat! मुझे मोबाइल सेवा के बारे में जानकारी चाहिए।')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>WhatsApp पर संपर्क करें</span>
+              </a>
             </div>
           </div>
         </div>
 
         {/* 4-Col Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-10 border-b border-slate-800">
-          {/* Col 1: Brand & Surat Focus */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-8 border-b border-gray-100">
+          {/* Col 1: Brand & About */}
           <div className="space-y-3">
-            <div>
-              <SastafoneLogo variant="dark" size="sm" showSubtitle={false} />
-            </div>
-
-            <p className="text-slate-400 leading-relaxed text-xs">
-              सूरत का पहला 100% क्लिकेबल व विश्वसनीय डोरस्टेप मोबाइल प्लेटफॉर्म। पुराना फोन बेचें, 6 महीने वारंटी वाले सर्टिफाइड फोन खरीदें, घर बैठे रिपेयर करवाएं या "सस्ता बाज़ार" में सीधे ग्राहक से सुरक्षित डील करें।
+            <SastafoneLogo variant="light" size="sm" showSubtitle={false} />
+            <p className="text-gray-600 leading-relaxed text-xs">
+              सूरत की समर्पित डोरस्टेप मोबाइल सेवा। Sastafone Certified Technician Network द्वारा सुरक्षित पिकअप, पारदर्शी रिपेयर और सेकंड-हैंड फोन की प्रामाणिक सुविधा।
             </p>
-
-            <div className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 space-y-1 text-[11px]">
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
-                Official Entity:
-              </span>
-              <p className="text-slate-300 font-semibold">
-                Sastafone Surat • Authorized Mobile Hub (sastafone.in)
+            <div className="space-y-1 pt-1 text-[11px] text-gray-500">
+              <p className="flex items-center gap-1.5 font-medium text-gray-700">
+                <Clock className="w-3.5 h-3.5 text-red-600" />
+                <span>कार्य समय: 9:00 AM – 9:30 PM (सोमवार - रविवार)</span>
               </p>
-              <p className="text-[10px] text-slate-500">
-                रिंग रोड व अडाजण सेंट्रल मोबाइल लैब, सूरत, गुजरात
+              <p className="flex items-center gap-1.5 font-medium text-gray-700">
+                <Mail className="w-3.5 h-3.5 text-red-600" />
+                <span>support@sastafone.in</span>
               </p>
             </div>
           </div>
 
-          {/* Col 2: Core Services */}
+          {/* Col 2: Navigation Links */}
           <div>
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3">
-              प्रमुख सेवाएं (Services)
+            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3">
+              सेवाएं एवं लिंक
             </h4>
             <ul className="space-y-2">
               <li>
                 <button
-                  onClick={() => {
-                    setActiveTab('sell');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => handleNav('repair', '/repair')}
+                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  📱 पुराना फोन बेचें (AI इंस्टेंट वैल्यूएशन)
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>मोबाइल रिपेयरिंग (Doorstep Repair)</span>
                 </button>
               </li>
               <li>
                 <button
-                  onClick={() => {
-                    setActiveTab('buy');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => handleNav('sell', '/sell-phone')}
+                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  🛒 दिवाली धमाका: टॉप 10 सेकंड-हैंड डील्स
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>पुराना फोन बेचें (Sell Old Phone)</span>
                 </button>
               </li>
               <li>
                 <button
-                  onClick={() => {
-                    setActiveTab('repair');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  type="button"
+                  onClick={() => handleNav('buy', '/buy-phones')}
+                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  🔧 घर पर मोबाइल रिपेयर (₹199 विज़िट टोकन)
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>सर्टिफाइड फोन खरीदें (Buy Phones)</span>
                 </button>
               </li>
               <li>
                 <button
-                  onClick={() => {
-                    setActiveTab('bazaar');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
+                  type="button"
+                  onClick={() => handleNav('repair', '/warranty')}
+                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>🏷️ सस्ता बाज़ार (P2P मोबाइल मंडी)</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>वारंटी जांचें व क्लेम करें (Warranty)</span>
                 </button>
               </li>
               <li>
-                <button
-                  onClick={() => {
-                    setActiveTab('sell');
-                    setTimeout(() => {
-                      document.getElementById('dead-phone-section')?.scrollIntoView({ behavior: 'smooth' });
-                    }, 100);
-                  }}
-                  className="text-rose-400 hover:text-rose-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
+                <a
+                  href={`mailto:support@sastafone.in`}
+                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <span>♻️ डेड व स्क्रैप फोन बेचें (₹600 - ₹1,600 / KG भाव)</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  onClick={() => setIsBrandCentersModalOpen(true)}
-                  className="text-blue-400 hover:text-blue-300 font-bold transition-colors cursor-pointer flex items-center gap-1"
-                >
-                  <Building2 className="w-3 h-3" />
-                  <span>सूरत अधिकृत ब्रांड सर्विस सेंटर डायरेक्टरी</span>
-                </button>
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
+                  <span>संपर्क करें (Contact Support)</span>
+                </a>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Surat Localities Coverage */}
+          {/* Col 3: Surat Areas */}
           <div>
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-3 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-amber-400" />
-              <span>सूरत के प्रमुख क्षेत्र</span>
+            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-red-600" />
+              <span>सूरत के प्रमुख क्षेत्र (Areas)</span>
             </h4>
             <div className="flex flex-wrap gap-1.5">
-              {SURAT_LOCALITIES.slice(0, 10).map(loc => (
+              {['Adajan', 'Vesu', 'Pal', 'Varachha', 'Katargam', 'Rander', 'Piplod', 'Citylight', 'Ghod Dod Road', 'Althan', 'Udhna', 'Dindoli'].map(areaName => (
                 <button
-                  key={loc.id}
+                  key={areaName}
+                  type="button"
                   onClick={() => {
-                    setSelectedLocality(`${loc.name}, Surat`);
+                    setSelectedLocality(`${areaName}, Surat`);
+                    const areaSlug = areaName.toLowerCase().replace(/\s+/g, '-');
+                    if (window.location.pathname !== `/areas/${areaSlug}`) {
+                      window.history.pushState({}, '', `/areas/${areaSlug}`);
+                      window.dispatchEvent(new PopStateEvent('popstate'));
+                    }
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
-                  className="px-2 py-0.5 rounded bg-slate-900 hover:bg-blue-600 hover:text-white text-slate-300 text-[11px] transition-colors cursor-pointer border border-slate-800"
+                  className="px-2 py-1 rounded-md bg-gray-50 hover:bg-red-50 text-gray-700 hover:text-red-700 text-[11px] font-medium transition-colors cursor-pointer border border-gray-200/80"
                 >
-                  {loc.name}
+                  {areaName}
                 </button>
               ))}
-              <span className="text-[10px] text-slate-500 self-center">+ अन्य सभी सूरत क्षेत्र</span>
             </div>
           </div>
 
-          {/* Col 4: Official Sastaphone Surat Support */}
+          {/* Col 4: Support & Policies */}
           <div className="space-y-3">
-            <h4 className="font-bold text-white uppercase tracking-wider text-xs mb-2">
-              सस्ताफोन सूरत हेल्पडेस्क
+            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-2">
+              कस्टमर सहायता व गारंटी
             </h4>
-            <p className="text-slate-400 leading-relaxed text-[11px]">
-              सुबह 9:00 बजे से रात 9:30 बजे तक सूरत वासियों के लिए तुरंत डिजिटल व ऑन-कॉल सहायता उपलब्ध है।
-            </p>
-
-            {/* Official Support Channel with 1-Click Preset Problem Direct Email */}
-            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-950/60 border border-blue-500/30 space-y-2.5 shadow-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-bold text-white">
-                  <Headphones className="w-4 h-4 text-amber-400" />
-                  <span>सूरत कस्टमर केयर</span>
-                </div>
-                <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                  24x7 एक्टिव
-                </span>
+            <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>क्वालिटी-चेक्ड पार्ट्स व सेवा</span>
               </div>
-
-              <div className="text-[11px] text-slate-300 space-y-0.5">
-                <p>
-                  आधिकारिक ईमेल:{' '}
-                  <button
-                    type="button"
-                    onClick={() => openEmailSupportWithPreset()}
-                    className="text-blue-300 hover:text-amber-300 underline font-mono cursor-pointer transition-colors"
-                    title="1-क्लिक समस्या चुनकर ईमेल भेजें"
-                  >
-                    support@sastafone.in
-                  </button>
-                </p>
-                <p className="text-[10px] text-slate-400">
-                  सूरत सेंट्रल हब • 2 घंटे में समाधान गारंटी
-                </p>
+              <p className="text-[11px] text-gray-600 leading-relaxed">
+                सभी रिपेयरिंग में ओरिजिनल/सर्टिफाइड ग्रेड पार्ट्स का इस्तेमाल होता है।
+              </p>
+              <div className="text-[11px] text-gray-600 space-y-1 pt-1 border-t border-gray-200">
+                <p>ईमेल: <span className="font-mono text-gray-800">support@sastafone.in</span></p>
+                <p>समय: सुबह 9:00 AM – 9:30 PM</p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => openEmailSupportWithPreset()}
-                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-[11px] flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer border border-blue-400/30 group"
-                title="समस्या चुनें व तुरंत ईमेल भेजें"
-              >
-                <Mail className="w-3.5 h-3.5 fill-white text-blue-600 group-hover:scale-110 transition-transform" />
-                <span>📧 समस्या चुनें व डायरेक्ट मेल करें (support@sastafone.in)</span>
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-emerald-400 pt-1">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>सस्ताफोन 100% सुरक्षित भुगतान व डेटा वाइप गारंटी</span>
             </div>
           </div>
-        </div>
-
-        {/* Dedicated Admin Portal Trigger in Footer (Owner / Staff) */}
-        <div className="mt-8 pt-4 pb-2 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px]">
-          <div className="flex items-center gap-2 text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>सूरत सेंट्रल हब सर्वर लाइव • sastafone.in अधिकृत डिजिटल हब</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsAdminModalOpen(true)}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-              user.role === 'admin'
-                ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-md font-black'
-                : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-amber-400/50 text-slate-400 hover:text-amber-300'
-            }`}
-            title="सस्ताफोन अधिकृत ओनर व एडमिन पोर्टल लॉगिन"
-          >
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-            <span>{user.role === 'admin' ? '🛡️ एडमिन कंट्रोल रूम (ओनर एक्टिव)' : '🔐 एडमिन मोड (sastafone.in)'}</span>
-          </button>
         </div>
 
         {/* Bottom Bar & Legal Links */}
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+        <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-500 text-[11px]">
           <p>
-            © {new Date().getFullYear()} Sastafone Surat (sastafone.in). All rights reserved. सूरत का नंबर 1 विश्वसनीय मोबाइल प्लेटफॉर्म।
+            © {new Date().getFullYear()} Sastafone Surat (sastafone.in). सर्वाधिकार सुरक्षित।
           </p>
 
           <div className="flex flex-wrap items-center gap-4">
             <button
-              onClick={() => setLegalModal('trademark')}
-              className="hover:text-slate-300 underline cursor-pointer text-amber-400 font-semibold"
-            >
-              ट्रेडमार्क व कॉपीराइट डिस्क्लेमर
-            </button>
-            <button
+              type="button"
               onClick={() => setLegalModal('terms')}
-              className="hover:text-slate-300 underline cursor-pointer"
+              className="hover:text-red-600 transition-colors cursor-pointer"
             >
               Terms & Conditions
             </button>
             <button
+              type="button"
               onClick={() => setLegalModal('privacy')}
-              className="hover:text-slate-300 underline cursor-pointer"
+              className="hover:text-red-600 transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
-              onClick={() => setLegalModal('cookies')}
-              className="hover:text-slate-300 underline cursor-pointer"
+              type="button"
+              onClick={() => handleNav('repair', '/warranty')}
+              className="hover:text-red-600 transition-colors cursor-pointer"
             >
-              Cookies Policy
+              Refund & Warranty Policy
             </button>
           </div>
         </div>
