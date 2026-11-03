@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import {
   collection,
   doc,
@@ -8,7 +8,9 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  getDocs
+  getDocs,
+  addDoc,
+  where
 } from 'firebase/firestore';
 import { OrderItem, UserProfile, ProAuditVerification } from '../types';
 
@@ -25,6 +27,13 @@ export interface PendingJobRecord {
   amount: number;
   status: string;
   statusHindi: string;
+  userId?: string;
+  userEmail?: string;
+  isDummy?: boolean;
+  isActive?: boolean;
+  repairCost?: number;
+  saleCost?: number;
+  purchaseCost?: number;
 
   // Captured User Contact Details
   customerContact: {
@@ -130,6 +139,39 @@ export async function saveUserToFirestore(user: UserProfile): Promise<{ success:
 }
 
 /**
+ * Submit Job Form - Only authenticates real users, adds directly to 'pendingJobs',
+ * prevents any dummy entries (isDummy: false), and captures repair, sale, and purchase costs.
+ */
+export const submitJobForm = async (formData: {
+  title: string;
+  category: string;
+  description: string;
+  customerName: string;
+  phone: string;
+  deviceModel: string;
+  estimatedPrice: number;
+  repairCost: number;
+  saleCost: number;
+  purchaseCost: number;
+  [key: string]: any;
+}): Promise<string> => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) throw new Error('User not authenticated');
+  const payload = {
+    ...formData,
+    userId: currentUser.uid,
+    userEmail: currentUser.email || '',
+    isDummy: false,
+    status: 'pending',
+    isActive: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  const docRef = await addDoc(collection(db, PENDING_JOBS_COLLECTION), payload);
+  return docRef.id;
+};
+
+/**
  * Pushes service request data (Repair, Sell, Buy, Bazaar) into centralized Firestore 'pendingJobs' collection.
  * Captures all input form fields, user contact, and geo-location coordinates for admin visibility.
  */
@@ -215,6 +257,13 @@ export async function pushJobToPendingJobs(
       amount: order.amount || 0,
       status: order.status || 'pending',
       statusHindi: order.statusHindi || 'प्रतीक्षारत (Pending)',
+      userId: auth.currentUser?.uid || additionalMetadata?.userId || '',
+      userEmail: auth.currentUser?.email || additionalMetadata?.userEmail || '',
+      isDummy: false,
+      isActive: true,
+      repairCost: order.type === 'repair' ? (order.finalQuoteAmount || order.amount || 0) : (additionalMetadata?.repairCost || 0),
+      saleCost: order.type === 'sell' ? (order.finalQuoteAmount || order.amount || 0) : (additionalMetadata?.saleCost || 0),
+      purchaseCost: (order.type === 'buy' || order.type === 'bazaar') ? (order.finalQuoteAmount || order.amount || 0) : (additionalMetadata?.purchaseCost || 0),
       customerContact,
       geoLocation,
       inputFormFields,

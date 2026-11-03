@@ -14,19 +14,19 @@ export const SastafoneLogo: React.FC<SastafoneLogoProps> = ({
   className = ''
 }) => {
   const iconSizeClasses = {
-    sm: 'w-8 h-8 rounded-xl',
-    md: 'w-10 h-10 rounded-2xl',
-    lg: 'w-12 h-12 rounded-2xl'
+    sm: 'w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl',
+    md: 'w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl',
+    lg: 'w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl'
   }[size];
 
   const textSizeClasses = {
-    sm: 'text-base',
-    md: 'text-xl',
-    lg: 'text-2xl'
+    sm: 'text-sm sm:text-base',
+    md: 'text-base sm:text-xl',
+    lg: 'text-xl sm:text-2xl'
   }[size];
 
   return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
+    <div className={`flex items-center gap-1.5 sm:gap-2.5 ${className}`}>
       {/* Red Background Icon with Crisp White Silhouette & 'S' Lettermark */}
       <div
         className={`${iconSizeClasses} bg-gradient-to-tr from-red-600 via-rose-600 to-red-700 flex items-center justify-center text-white shadow-md shadow-red-500/30 shrink-0 border border-red-400/40 relative overflow-hidden`}
@@ -36,7 +36,7 @@ export const SastafoneLogo: React.FC<SastafoneLogoProps> = ({
           viewBox="0 0 28 28"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="w-6 h-6 drop-shadow-sm"
+          className="w-5 h-5 sm:w-6 sm:h-6 drop-shadow-sm"
         >
           {/* White Outer Phone Body */}
           <rect x="5.5" y="2" width="17" height="24" rx="4" fill="#FFFFFF" />
@@ -63,7 +63,7 @@ export const SastafoneLogo: React.FC<SastafoneLogoProps> = ({
 
       {/* Brand Typography */}
       <div className="flex flex-col text-left">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           <span
             className={`${textSizeClasses} font-black tracking-tight ${
               variant === 'dark' ? 'text-white' : 'text-slate-950'
@@ -73,14 +73,14 @@ export const SastafoneLogo: React.FC<SastafoneLogoProps> = ({
           </span>
 
           {/* Red Background Pill with Crisp White Hindi Text */}
-          <span className="text-[10px] font-black bg-gradient-to-r from-red-600 to-rose-600 text-white px-2 py-0.5 rounded-full shadow-2xs tracking-wide">
+          <span className="text-[9px] sm:text-[10px] font-black bg-gradient-to-r from-red-600 to-rose-600 text-white px-1.5 sm:px-2 py-0.5 rounded-full shadow-2xs tracking-wide">
             सस्ताफोन
           </span>
         </div>
 
         {showSubtitle && (
           <p
-            className={`text-[10px] font-bold tracking-tight ${
+            className={`text-[10px] font-bold tracking-tight hidden sm:block ${
               variant === 'dark' ? 'text-red-400' : 'text-red-700'
             }`}
           >

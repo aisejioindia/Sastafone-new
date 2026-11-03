@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
-import { auth, googleAuthProvider } from '../firebase';
+import { auth, db, googleAuthProvider } from '../firebase';
 import {
   signInWithPopup,
   signInWithEmailAndPassword,

@@ -73,9 +73,9 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Main Navbar */}
-      <div className="container mx-auto px-4 py-2.5 flex items-center justify-between gap-2 sm:gap-4">
+      <div className="container mx-auto px-2.5 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-1.5 sm:gap-4">
         {/* Brand Logo & Compact Surat Locality Pin */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink min-w-0">
           <button
             onClick={() => {
               setActiveTab('sell');
@@ -84,7 +84,8 @@ export const Header: React.FC = () => {
             className="group text-left cursor-pointer transition-transform hover:scale-[1.02] shrink-0"
             title="Sastafone Surat - होमपेज"
           >
-            <SastafoneLogo size="md" variant="light" showSubtitle={true} />
+            <SastafoneLogo size="sm" variant="light" showSubtitle={false} className="sm:hidden" />
+            <SastafoneLogo size="md" variant="light" showSubtitle={true} className="hidden sm:flex" />
           </button>
 
           {/* Compact Surat Locality Pin Button */}
@@ -94,7 +95,7 @@ export const Header: React.FC = () => {
             title="सूरत में अपनी लोकैलिटी बदलें"
           >
             <MapPin className="w-3 h-3 text-orange-500 shrink-0 group-hover:animate-bounce" />
-            <span className="max-w-[65px] sm:max-w-[110px] truncate">{selectedLocality}</span>
+            <span className="max-w-[55px] xs:max-w-[75px] sm:max-w-[110px] truncate">{selectedLocality}</span>
             <span className="hidden sm:inline text-[9px] text-blue-600 font-bold bg-white px-1 rounded border border-blue-200">
               {language === 'hi' ? 'बदलें' : 'Change'}
             </span>
@@ -162,21 +163,28 @@ export const Header: React.FC = () => {
           {!user.isLoggedIn ? (
             <button
               onClick={() => setIsAuthModalOpen(true)}
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0"
-              title="100% मुफ़्त लॉगिन • कोई SMS शुल्क नहीं"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer whitespace-nowrap shrink-0 z-10"
+              title="100% मुफ़्त लॉगिन"
             >
-              <User className="w-3.5 h-3.5 shrink-0" />
-              <span>मुफ़्त लॉगिन</span>
+              <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <User className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[11px] sm:text-xs font-bold">लॉगिन</span>
             </button>
           ) : (
             <button
               onClick={() => setIsDashboardOpen(true)}
-              className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer"
+              className="relative flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer shrink-0 z-10"
+              title="कस्टमर डैशबोर्ड"
             >
-              <User className="w-4 h-4" />
-              <span className="hidden md:inline">{user.name ? user.name.split(' ')[0] : 'डैशबोर्ड'}</span>
+              <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                <User className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="text-[11px] sm:text-xs font-bold truncate max-w-[65px] sm:max-w-none">
+                {user.name ? user.name.split(' ')[0] : 'डैशबोर्ड'}
+              </span>
               {activeOrdersCount > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                <span className="bg-orange-500 text-white text-[9px] w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center font-bold">
                   {activeOrdersCount}
                 </span>
               )}
