@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, MapPin, Search, Check, ShieldCheck, Sparkles } from 'lucide-react';
 import { SURAT_LOCALITIES } from '../data/mockData';
+import { MapPin, Search, X, Check } from 'lucide-react';
 
 export const LocationSelectorModal: React.FC = () => {
   const { isLocationModalOpen, setIsLocationModalOpen, selectedLocality, setSelectedLocality, language } = useApp();
@@ -9,109 +9,95 @@ export const LocationSelectorModal: React.FC = () => {
 
   if (!isLocationModalOpen) return null;
 
-  const filtered = SURAT_LOCALITIES.filter(
-    l => l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-         l.hindiName.includes(searchQuery) ||
-         l.pincode.includes(searchQuery)
+  const filteredLocalities = SURAT_LOCALITIES.filter(
+    (loc) =>
+      loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      loc.hindiName.includes(searchQuery) ||
+      loc.pincode.includes(searchQuery)
   );
 
-  const handleSelect = (localityName: string) => {
-    setSelectedLocality(`${localityName}, Surat`);
+  const handleSelect = (name: string) => {
+    setSelectedLocality(`${name}, Surat`);
     setIsLocationModalOpen(false);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[85vh]">
-        {/* Modal Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-200">
+        {/* Header (Light Theme Red) */}
+        <div className="bg-[#D5151B] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-xs flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-amber-300" />
-            </div>
+            <MapPin className="w-5 h-5" />
             <div>
-              <h3 className="font-bold text-base">
-                {language === 'hi' ? 'सूरत में अपना क्षेत्र चुनें' : 'Select Locality in Surat'}
+              <h3 className="font-bold text-base sm:text-lg leading-tight text-white">
+                {language === 'hi' ? 'अपना सूरत क्षेत्र चुनें' : 'Select Your Surat Locality'}
               </h3>
-              <p className="text-xs text-blue-100">
-                {language === 'hi' ? 'एक्सक्लूसिव 2-घंटे डोरस्टेप सर्विस' : 'Exclusive 2-hour doorstep pickup'}
+              <p className="text-xs text-red-100">
+                {language === 'hi'
+                  ? 'सूरत के सभी इलाकों में डोरस्टेप पिकअप सेवा उपलब्ध है'
+                  : 'Doorstep pickup & delivery available across Surat'}
               </p>
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setIsLocationModalOpen(false)}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            className="p-1.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Search Input */}
-        <div className="p-4 border-b border-slate-100">
+        {/* Search */}
+        <div className="p-4 border-b border-gray-100 bg-gray-50">
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={language === 'hi' ? 'सूरत इलाका या पिनकोड खोजें (उदा. Adajan, Vesu, 395009)...' : 'Search Surat area or pincode...'}
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-blue-600 bg-slate-50"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                language === 'hi'
+                  ? 'इलाका या पिनकोड खोजें (जैसे Adajan, Vesu, 395009)...'
+                  : 'Search area or pincode (e.g. Adajan, Vesu, 395009)...'
+              }
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm text-[#132032] focus:outline-none focus:ring-2 focus:ring-[#D5151B]"
             />
           </div>
         </div>
 
-        {/* Localities List */}
-        <div className="p-4 overflow-y-auto space-y-2 flex-1">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            {language === 'hi' ? 'सूरत के प्रमुख हब्स (Surat Hubs):' : 'Surat Active Hubs:'}
-          </p>
-
-          <div className="grid grid-cols-1 gap-2">
-            {filtered.map(locality => {
-              const isSelected = selectedLocality.includes(locality.name);
-              return (
-                <button
-                  key={locality.id}
-                  onClick={() => handleSelect(locality.name)}
-                  className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between cursor-pointer ${
-                    isSelected
-                      ? 'bg-blue-50 border-blue-600 text-blue-900 shadow-xs'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">📍</span>
-                    <div>
-                      <p className="font-bold text-xs sm:text-sm flex items-center gap-1.5">
-                        <span>{locality.name}</span>
-                        <span className="text-xs font-normal text-slate-500">({locality.hindiName})</span>
-                        {locality.isPopular && (
-                          <span className="text-[9px] font-extrabold bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded">
-                            FAST HUB
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        Pincode: {locality.pincode} • {locality.zone} Surat Zone
-                      </p>
-                    </div>
+        {/* Locality Grid */}
+        <div className="p-4 max-h-[60vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {filteredLocalities.map((loc) => {
+            const isSelected = selectedLocality.includes(loc.name);
+            return (
+              <button
+                type="button"
+                key={loc.id}
+                onClick={() => handleSelect(loc.name)}
+                className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer ${
+                  isSelected
+                    ? 'border-[#D5151B] bg-[#FEF2F2] text-[#D5151B]'
+                    : 'border-gray-200 hover:border-red-200 hover:bg-gray-50 text-[#132032]'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-sm flex items-center gap-1.5">
+                    <span>{loc.name}</span>
+                    {loc.isPopular && (
+                      <span className="text-[10px] bg-red-100 text-[#D5151B] px-1.5 py-0.5 rounded font-bold">
+                        Popular
+                      </span>
+                    )}
                   </div>
-
-                  {isSelected && (
-                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs">
-                      <Check className="w-3.5 h-3.5" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bottom Surat Note */}
-        <div className="p-3 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-600 flex items-center justify-center gap-1.5">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>सूरत नगर निगम (SMC) क्षेत्र में पूर्ण डोरस्टेप कवरेज</span>
+                  <div className="text-xs text-gray-500">
+                    {loc.hindiName} • {loc.pincode} ({loc.zone} Surat)
+                  </div>
+                </div>
+                {isSelected && <Check className="w-4 h-4 text-[#D5151B] shrink-0" />}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -2,10 +2,8 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
 import { Printer, Download, X, ShieldCheck, CheckCircle2, QrCode, MessageCircle } from 'lucide-react';
-import { WHATSAPP_NUMBER } from '../data/mockData';
-
 export const InvoiceModal: React.FC = () => {
-  const { isInvoiceModalOpen, setIsInvoiceModalOpen, selectedInvoiceOrder } = useApp();
+  const { isInvoiceModalOpen, setIsInvoiceModalOpen, selectedInvoiceOrder, siteSettings } = useApp();
 
   if (!isInvoiceModalOpen || !selectedInvoiceOrder) return null;
 
@@ -28,9 +26,9 @@ export const InvoiceModal: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-gray-200 flex flex-col max-h-[92vh]">
         {/* Modal Top Actions */}
-        <div className="p-3.5 bg-gray-900 text-white flex items-center justify-between no-print">
+        <div className="p-3.5 bg-gray-50 border-b border-gray-200 text-[#132032] flex items-center justify-between no-print">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-200">
+            <span className="text-xs font-bold text-[#132032]">
               आधिकारिक इनवॉइस व वारंटी कार्ड
             </span>
           </div>
@@ -39,7 +37,7 @@ export const InvoiceModal: React.FC = () => {
             <a
               href={`https://wa.me/?text=${shareText}`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <MessageCircle className="w-3.5 h-3.5" />
@@ -49,7 +47,7 @@ export const InvoiceModal: React.FC = () => {
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>प्रिंट / PDF</span>
@@ -58,7 +56,7 @@ export const InvoiceModal: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsInvoiceModalOpen(false)}
-              className="w-7 h-7 rounded-full bg-white/20 text-white flex items-center justify-center hover:bg-white/30 cursor-pointer"
+              className="w-7 h-7 rounded-full bg-gray-200 text-[#132032] flex items-center justify-center hover:bg-gray-300 cursor-pointer"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -76,15 +74,15 @@ export const InvoiceModal: React.FC = () => {
                 Sastafone Certified Technician Network • Surat, Gujarat
               </p>
               <p className="text-[11px] text-gray-500">
-                ईमेल: support@sastafone.in • समय: सुबह 9:00 AM – 9:30 PM
+                ईमेल: {siteSettings.supportEmail} • समय: {siteSettings.businessHours}
               </p>
             </div>
 
             <div className="text-left sm:text-right space-y-1">
-              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-red-100 text-[#DC2626]">
+              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-md bg-red-100 text-[#D5151B]">
                 TAX INVOICE & WARRANTY
               </span>
-              <p className="text-sm font-black text-gray-900 mt-1">#{order.orderNumber}</p>
+              <p className="text-sm font-bold text-[#132032] mt-1">#{order.orderNumber}</p>
               <p className="text-[11px] text-gray-500">तारीख: {order.date}</p>
               <p className="text-[11px] text-emerald-700 font-bold">स्थिति: {order.statusHindi || 'सत्यापित'}</p>
             </div>
@@ -96,22 +94,26 @@ export const InvoiceModal: React.FC = () => {
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
                 ग्राहक विवरण (Customer Details):
               </span>
-              <p className="font-bold text-gray-900 text-sm">{order.customerName}</p>
+              <p className="font-bold text-[#132032] text-sm">{order.customerName}</p>
               <p className="text-gray-600 font-mono">+91 {order.customerPhone}</p>
               <p className="text-gray-600 leading-tight mt-1">{order.fullAddress || order.locality}</p>
-              <p className="font-bold text-[#DC2626] mt-0.5">📍 {order.locality}</p>
+              <p className="font-bold text-[#D5151B] mt-0.5">📍 {order.locality}</p>
             </div>
 
             <div>
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
                 डिवाइस व सेवा स्लॉट:
               </span>
-              <p className="font-bold text-gray-900">{order.title}</p>
+              <p className="font-bold text-[#132032]">{order.title}</p>
               <p className="text-gray-600 text-[11px]">सेवा: {order.subtitle}</p>
+              {order.imei && <p className="text-gray-600 text-[11px] font-mono">IMEI: {order.imei}</p>}
               <p className="text-gray-600 mt-1">स्लॉट: {order.timeSlot}</p>
               <p className="text-[11px] text-emerald-700 font-semibold">
                 पेमेंट मोड: {order.paymentMethod || 'ऑनलाइन सत्यापन (Verified)'}
               </p>
+              {order.gstEnabled && order.gstin && (
+                <p className="text-[11px] text-gray-600 font-mono">GSTIN: {order.gstin}</p>
+              )}
             </div>
           </div>
 
@@ -126,26 +128,71 @@ export const InvoiceModal: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                <tr>
-                  <td className="py-3">
-                    <p className="font-bold text-gray-900">{order.title}</p>
-                    <p className="text-[11px] text-gray-500">{order.subtitle}</p>
-                  </td>
-                  <td className="py-3 text-center uppercase text-[10px] font-bold text-gray-500">
-                    {order.type}
-                  </td>
-                  <td className="py-3 text-right font-black text-gray-900">
-                    ₹{order.amount}
-                  </td>
-                </tr>
+                {order.invoiceServices && order.invoiceServices.length > 0 ? (
+                  order.invoiceServices.map((srv, idx) => (
+                    <tr key={idx}>
+                      <td className="py-2.5">
+                        <p className="font-bold text-[#132032]">{srv.name}</p>
+                      </td>
+                      <td className="py-2.5 text-center uppercase text-[10px] font-bold text-gray-500">
+                        Service
+                      </td>
+                      <td className="py-2.5 text-right font-bold text-[#132032]">
+                        ₹{srv.price}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td className="py-3">
+                      <p className="font-bold text-[#132032]">{order.title}</p>
+                      <p className="text-[11px] text-gray-500">{order.subtitle}</p>
+                    </td>
+                    <td className="py-3 text-center uppercase text-[10px] font-bold text-gray-500">
+                      {order.type}
+                    </td>
+                    <td className="py-3 text-right font-bold text-[#132032]">
+                      ₹{order.subtotalAmount || order.amount}
+                    </td>
+                  </tr>
+                )}
 
-                {order.type === 'repair' && (
+                {order.invoiceParts && order.invoiceParts.length > 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-2 text-[11px] text-gray-500">
+                      Replaced Parts: {order.invoiceParts.map((p) => p.name).join(', ')}
+                    </td>
+                  </tr>
+                )}
+
+                {(order.discountAmount || 0) > 0 && (
+                  <tr className="text-emerald-700 bg-emerald-50/40">
+                    <td className="py-2 px-1 text-[11px]">
+                      Discount {order.discountPct ? `(${order.discountPct}%)` : ''}
+                      {order.discountReason ? ` — ${order.discountReason}` : ''}
+                    </td>
+                    <td className="py-2 text-center text-[10px] font-bold">छूट</td>
+                    <td className="py-2 text-right font-bold">-₹{order.discountAmount}</td>
+                  </tr>
+                )}
+
+                {order.type === 'repair' && (order.visitFeeAdjusted ?? 199) > 0 && (
                   <tr className="text-emerald-700 bg-emerald-50/50">
                     <td className="py-2 px-1 text-[11px]">
                       ✓ विज़िट टोकन 100% फाइनल बिल में एडजस्टेड
                     </td>
                     <td className="py-2 text-center text-[10px] font-bold">एडजस्ट</td>
-                    <td className="py-2 text-right font-bold">-₹199</td>
+                    <td className="py-2 text-right font-bold">-₹{order.visitFeeAdjusted ?? 199}</td>
+                  </tr>
+                )}
+
+                {order.gstEnabled && (order.gstAmount || 0) > 0 && (
+                  <tr className="text-gray-700 bg-gray-50">
+                    <td className="py-2 px-1 text-[11px]">
+                      GST ({order.gstPct || 18}%)
+                    </td>
+                    <td className="py-2 text-center text-[10px] font-bold">Tax</td>
+                    <td className="py-2 text-right font-bold">+₹{order.gstAmount}</td>
                   </tr>
                 )}
               </tbody>
@@ -156,12 +203,12 @@ export const InvoiceModal: React.FC = () => {
           <div className="p-4 rounded-2xl bg-[#FEF2F2] border border-red-200 space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#DC2626]" />
-                <span className="text-xs font-bold text-gray-900">
+                <ShieldCheck className="w-5 h-5 text-[#D5151B]" />
+                <span className="text-xs font-bold text-[#132032]">
                   {isEligibleWarranty ? '6 महीने की सीमित रिपेयर वारंटी कार्ड' : 'Sastafone रिपेयरिंग गारंटी'}
                 </span>
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#DC2626] border border-red-200">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-[#D5151B] border border-red-200">
                 {isEligibleWarranty ? 'वारंटी वैध' : 'मानक टेस्टिंग'}
               </span>
             </div>
@@ -174,7 +221,7 @@ export const InvoiceModal: React.FC = () => {
           </div>
 
           {/* Total & Summary */}
-          <div className="pt-3 border-t-2 border-gray-900 flex justify-between items-start">
+          <div className="pt-3 border-t-2 border-[#132032] flex justify-between items-start">
             <div className="max-w-xs space-y-1 text-[10px] text-gray-500">
               <p className="font-bold text-gray-800">वारंटी क्लेम करने का तरीका:</p>
               <p>
@@ -184,7 +231,7 @@ export const InvoiceModal: React.FC = () => {
 
             <div className="text-right space-y-1">
               <span className="text-[11px] text-gray-500">कुल भुगतान (Total Paid):</span>
-              <p className="text-2xl font-black text-[#DC2626]">₹{order.amount}</p>
+              <p className="text-2xl font-bold text-[#D5151B]">₹{order.amount}</p>
               <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
                 VERIFIED PAYMENT
               </span>

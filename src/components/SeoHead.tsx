@@ -8,6 +8,7 @@ interface SeoHeadProps {
   jsonLd?: Record<string, any> | Array<Record<string, any>>;
   type?: 'website' | 'article' | 'product';
   image?: string;
+  noindex?: boolean;
 }
 
 export const SeoHead: React.FC<SeoHeadProps> = ({
@@ -16,23 +17,31 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
   canonicalPath = '',
   jsonLd,
   type = 'website',
-  image = 'https://sastafone.in/favicon-192x192.png'
+  image = 'https://sastafone.in/og-image.png',
+  noindex = false
 }) => {
-  const fullCanonicalUrl = `https://sastafone.in${canonicalPath.startsWith('/') ? canonicalPath : `/${canonicalPath}`}`;
+  const normalizedPath = canonicalPath
+    ? canonicalPath.startsWith('/')
+      ? canonicalPath
+      : `/${canonicalPath}`
+    : '/';
+  const fullCanonicalUrl = `https://sastafone.in${normalizedPath}`;
 
   return (
     <Helmet>
-      {/* Title & Standard Meta */}
       <title>{title}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={fullCanonicalUrl} />
+      {noindex && <meta name="robots" content="noindex, nofollow" />}
 
-      {/* Open Graph Tags */}
+      {/* Open Graph */}
       <meta property="og:type" content={type} />
       <meta property="og:url" content={fullCanonicalUrl} />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={image} />
+      <meta property="og:image:width" content="1200" />
+      <meta property="og:image:height" content="630" />
       <meta property="og:site_name" content="Sastafone" />
       <meta property="og:locale" content="hi_IN" />
 

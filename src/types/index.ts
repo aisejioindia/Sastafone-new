@@ -251,6 +251,19 @@ export interface OrderItem {
     technicianNotes: string;
     completedAt?: string;
   };
+  imei?: string;
+  invoiceServices?: { name: string; price: number }[];
+  invoiceParts?: { name: string; cost: number }[];
+  subtotalAmount?: number;
+  discountAmount?: number;
+  discountPct?: number;
+  discountReason?: string;
+  visitFeeAdjusted?: number;
+  gstEnabled?: boolean;
+  gstPct?: number;
+  gstAmount?: number;
+  gstin?: string;
+  warrantyMonths?: number;
 }
 
 export interface ProAuditVerification {
@@ -322,8 +335,11 @@ export interface UserProfile {
   sellerPostCredits?: number;
   buyerCredits?: number;
   buyerPlan?: 'none' | 'basic_99' | 'pro_299';
-  role?: 'customer' | 'admin' | 'technician';
+  role?: 'customer' | 'admin' | 'partner' | 'technician';
   isAdmin?: boolean;
+  isPartner?: boolean;
+  partnerId?: string | null;
+  emailVerified?: boolean;
 }
 
 export interface P2PListing {
@@ -407,13 +423,14 @@ export interface CustomerReview {
 // Phase 1 Sastafone Pickup & Delivery Repair Service Models
 // -------------------------------------------------------------
 
-export type UserRole = 'customer' | 'admin';
+export type UserRole = 'customer' | 'admin' | 'partner';
 
 export interface FirestoreUser {
   uid: string;
   name: string;
   phone: string;
   role: UserRole;
+  partnerId?: string | null;
   email?: string;
   address?: string;
   locality?: string;
@@ -442,11 +459,18 @@ export interface Partner {
   name: string;
   area: string;
   phone: string;
+  email?: string;
+  uid?: string;
   rateCard: Record<string, number>; // problemId -> partner technician payout
   advanceBalance: number;
+  lowBalanceThreshold?: number;
   rating: number;
   active: boolean;
   jobsCompleted?: number;
+  avgTurnaroundMinutes?: number;
+  overdueCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Slot {
@@ -527,6 +551,20 @@ export interface Job {
   razorpayPaymentId?: string;
   partnerId?: string;
   pickupCost: number; // e.g. 70 standard Surat pickup & delivery logistics cost
+  paymentStatus?: 'paid' | 'pending' | 'refunded' | 'partially_refunded';
+  refundAmount?: number;
+  refundReason?: string;
+  refundedAt?: string;
+  discountPct?: number;
+  discountReason?: string;
+  referralDiscountApplied?: number;
+  internalNotes?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  partnerFindings?: PartnerSubmission;
+  warrantyMonths?: number;
+  customerReviewId?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt?: string;
   deviceNotes?: string;
@@ -653,9 +691,16 @@ export interface InventoryPhone {
 export interface InvoiceRecord {
   id: string;
   invoiceNumber: string; // SST-YYYYMM-XXXX
+  userId?: string;
   jobId?: string;
   inventoryId?: string;
   type: 'repair' | 'refurbished_sale';
+  status?: 'active' | 'voided';
+  voidReason?: string;
+  voidedAt?: string;
+  voidedBy?: string;
+  replacesInvoiceId?: string;
+  reissuedInvoiceId?: string;
   date: string;
   customerName: string;
   customerPhone: string;
@@ -668,17 +713,29 @@ export interface InvoiceRecord {
     name: string;
     price: number;
   }[];
+  parts?: {
+    name: string;
+    cost: number;
+  }[];
   partsCost: number;
   subtotal: number;
+  discountPct?: number;
   discountAmount: number;
+  discountReason?: string;
   visitFeeAdjusted: number; // ₹199
+  gstEnabled?: boolean;
+  gstPct?: number;
+  gstAmount?: number;
+  gstin?: string;
   finalTotal: number;
+  paymentStatus?: 'paid' | 'pending' | 'refunded';
   paymentMethod: string;
   razorpayPaymentId?: string;
   warrantyMonths: number; // 6 if finalTotal >= 1000
   warrantyExpiry: string;
   warrantyTerms: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface WarrantyClaim {
@@ -745,6 +802,8 @@ export interface RealCustomerReview {
   id: string;
   jobId?: string;
   userId?: string;
+  partnerId?: string;
+  partnerName?: string;
   customerName: string;
   phone?: string;
   rating: number; // 1 to 5
@@ -753,6 +812,117 @@ export interface RealCustomerReview {
   phoneModel: string;
   area: string;
   status: 'pending' | 'approved' | 'rejected';
+  flaggedAbusive?: boolean;
+  flagReason?: string;
+  adminReply?: string;
+  repliedAt?: string;
+  repliedBy?: string;
+  createdAt: string;
+  moderatedAt?: string;
+}
+
+export interface PartnerPartUsed {
+  name: string;
+  cost: number;
+}
+
+export interface PartnerSubmission {
+  checksDone: string[];
+  faultsFound: string;
+  tags: string[];
+  partsUsed: PartnerPartUsed[];
+  totalPartsCost: number;
+  repairPhotoUrls: string[];
+  timeTakenMinutes: number;
+  remarks: string;
+  submittedAt: string;
+  updatedAt: string;
+  readyMarked: boolean;
+  costApprovedByAdmin?: boolean;
+  costApprovedAt?: string;
+  costApprovedBy?: string;
+  adminApprovalNote?: string;
+}
+
+export interface PartnerJob {
+  jobId: string;
+  partnerId: string;
+  brand: string;
+  model: string;
+  services: string[];
+  pickupSlot: {
+    date: string;
+    window: string;
+    area: string;
+  };
+  status: JobStatus;
+  sealedBagId?: string;
+  handoverImei?: string;
+  handoverTime?: string;
+  handoverDeadline?: string;
+  partnerSubmission?: PartnerSubmission;
+  updatedAt: string;
+}
+
+export interface OwnerListing {
+  id: string;
+  userId: string;
+  ownerName: string;
+  ownerPhone: string;
+  brand: string;
+  model: string;
+  storage: string;
+  price: number;
+  area: string;
+  description: string;
+  photos: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  moderationNote?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CustomerNote {
+  id: string;
+  userId?: string;
+  phone: string;
+  customerName?: string;
+  note: string;
+  createdBy: string;
   createdAt: string;
 }
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  actorUid: string;
+  actorEmail: string;
+  actorRole: string;
+  targetType: string;
+  targetId: string;
+  reason?: string;
+  before?: any;
+  after?: any;
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface AdminSettings {
+  discountMinPct: number;
+  discountMaxPct: number;
+  minOrderAmountAfterDiscount: number;
+  minNetMarginRupees: number;
+  visitTokenAmount: number;
+  buyPhoneTokenAmount: number;
+  gstEnabled: boolean;
+  gstPct: number;
+  gstin: string;
+  businessLegalName: string;
+  businessAddress: string;
+  sessionTimeoutMinutes: number;
+  lowPartnerBalanceThreshold: number;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SeoHead } from './SeoHead';
 import { getSlotsFromFirestore, createSellRequestInFirestore } from '../services/firestoreRepairService';
+import { uploadImageToStorage } from '../utils/storageUpload';
+import { trackEvent } from '../utils/analytics';
 import { Slot, SellRequest } from '../types';
 import {
   Smartphone,
@@ -87,6 +89,9 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
   const [photos, setPhotos] = useState<string[]>([]);
   const [imei, setImei] = useState('');
   const [billPhotoUrl, setBillPhotoUrl] = useState('');
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
+  const [isUploadingBill, setIsUploadingBill] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Customer & Pickup Details
   const [customerName, setCustomerName] = useState(user.name || '');
@@ -182,20 +187,56 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
   const { min: estMin, max: estMax } = calculateEstimate();
 
-  // Photo mock uploader
-  const handlePhotoUploadMock = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const newUrls: string[] = [];
-      for (let i = 0; i < Math.min(e.target.files.length, 6 - photos.length); i++) {
-        newUrls.push(URL.createObjectURL(e.target.files[i]));
+  // Real Firebase Storage Photo Uploaders
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (!user.isLoggedIn || !user.uid) {
+      setIsAuthModalOpen(true);
+      setUploadError('फ़ोटो अपलोड करने के लिए कृपया पहले लॉगिन करें।');
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingPhotos(true);
+    try {
+      const folder = `sellRequests/${user.uid}`;
+      const limitCount = Math.min(files.length, 6 - photos.length);
+      const uploadedUrls: string[] = [];
+      for (let i = 0; i < limitCount; i++) {
+        const url = await uploadImageToStorage(files[i], folder);
+        uploadedUrls.push(url);
       }
-      setPhotos([...photos, ...newUrls]);
+      setPhotos(prev => [...prev, ...uploadedUrls]);
+    } catch (err: any) {
+      setUploadError(err?.message || 'फ़ोटो अपलोड करने में समस्या आई।');
+    } finally {
+      setIsUploadingPhotos(false);
+      e.target.value = '';
     }
   };
 
-  const handleBillPhotoUploadMock = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setBillPhotoUrl(URL.createObjectURL(e.target.files[0]));
+  const handleBillPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!user.isLoggedIn || !user.uid) {
+      setIsAuthModalOpen(true);
+      setUploadError('बिल फ़ोटो अपलोड करने के लिए कृपया पहले लॉगिन करें।');
+      return;
+    }
+
+    setUploadError(null);
+    setIsUploadingBill(true);
+    try {
+      const url = await uploadImageToStorage(file, `sellRequests/${user.uid}`);
+      setBillPhotoUrl(url);
+    } catch (err: any) {
+      setUploadError(err?.message || 'बिल अपलोड करने में समस्या आई।');
+    } finally {
+      setIsUploadingBill(false);
+      e.target.value = '';
     }
   };
 
@@ -268,6 +309,13 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
       };
 
       const docId = await createSellRequestInFirestore(payload);
+      trackEvent('sell_phone_submitted', {
+        request_id: docId,
+        brand,
+        model: payload.model,
+        storage,
+        area: selectedArea
+      });
       setCreatedRequestId(docId);
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
 
@@ -293,11 +341,11 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
       <div className="container mx-auto px-4 max-w-3xl">
         {/* Top Header */}
         <header className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#DC2626] text-xs font-bold mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#D5151B] text-xs font-bold mb-2">
             <Smartphone className="w-3.5 h-3.5" />
             <span>सूरत डोरस्टेप फोन बाय-बैक</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#132032] tracking-tight">
             पुराना मोबाइल बेचें (Sell Old Phone)
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 mt-1">
@@ -318,7 +366,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
               <div
                 className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                   currentStep >= s.num
-                    ? 'bg-[#DC2626] text-white shadow-2xs'
+                    ? 'bg-[#D5151B] text-white shadow-2xs'
                     : 'bg-gray-100 text-gray-500'
                 }`}
               >
@@ -332,12 +380,12 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
         </div>
 
         {/* Live Estimation Floating/Sticky Pill */}
-        <div className="mb-6 p-4 rounded-2xl bg-[#FEF2F2] border border-red-200 text-gray-900 flex items-center justify-between">
+        <div className="mb-6 p-4 rounded-2xl bg-[#FEF2F2] border border-red-200 text-[#132032] flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
               अनुमानित बाय-बैक मूल्य (Estimated Value)
             </span>
-            <div className="text-lg sm:text-xl font-black text-[#DC2626]">
+            <div className="text-lg sm:text-xl font-bold text-[#D5151B]">
               ₹{estMin.toLocaleString('en-IN')} – ₹{estMax.toLocaleString('en-IN')}
             </div>
             <span className="text-[10px] text-gray-500">
@@ -354,7 +402,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
         {/* STEP 1: BRAND & MODEL */}
         {currentStep === 1 && (
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 animate-in fade-in duration-200">
+          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 step-transition">
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-2">
                 1. फोन का ब्रांड चुनें:
@@ -367,7 +415,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                     onClick={() => setBrand(b)}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       brand === b
-                        ? 'border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
+                        ? 'border-[#D5151B] bg-[#FEF2F2] text-[#D5151B]'
                         : 'border-gray-200 hover:border-gray-300 text-gray-700 bg-gray-50'
                     }`}
                   >
@@ -404,7 +452,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                 id="deadCheck"
                 checked={isDeadPhone}
                 onChange={(e) => setIsDeadPhone(e.target.checked)}
-                className="mt-0.5 accent-[#DC2626] w-4 h-4 cursor-pointer"
+                className="mt-0.5 accent-[#D5151B] w-4 h-4 cursor-pointer"
               />
               <label htmlFor="deadCheck" className="text-xs text-gray-700 cursor-pointer">
                 <strong>क्या फोन पूरी तरह बंद / डेड (Dead / Scrap) है?</strong>
@@ -422,7 +470,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                 }
                 setCurrentStep(2);
               }}
-              className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer tap-target"
+              className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer tap-target"
             >
               <span>अगला कदम (Next)</span>
               <ArrowRight className="w-4 h-4" />
@@ -432,7 +480,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
         {/* STEP 2: STORAGE & AGE */}
         {currentStep === 2 && (
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 animate-in fade-in duration-200">
+          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 step-transition">
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-2">
                 स्टोरेज क्षमता (Storage Variant):
@@ -445,7 +493,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                     onClick={() => setStorage(stg)}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       storage === stg
-                        ? 'border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
+                        ? 'border-[#D5151B] bg-[#FEF2F2] text-[#D5151B]'
                         : 'border-gray-200 text-gray-700 bg-gray-50'
                     }`}
                   >
@@ -472,7 +520,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                     onClick={() => setAge(a.id)}
                     className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
                       age === a.id
-                        ? 'border-[#DC2626] bg-[#FEF2F2] text-[#DC2626]'
+                        ? 'border-[#D5151B] bg-[#FEF2F2] text-[#D5151B]'
                         : 'border-gray-200 text-gray-700 bg-gray-50'
                     }`}
                   >
@@ -493,7 +541,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentStep(3)}
-                className="flex-2 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target"
+                className="flex-2 py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target"
               >
                 <span>कंडीशन चेक करें</span>
                 <ArrowRight className="w-4 h-4" />
@@ -504,8 +552,8 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
         {/* STEP 3: CONDITION CHECKLIST */}
         {currentStep === 3 && (
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4 animate-in fade-in duration-200">
-            <h2 className="text-sm font-bold text-gray-900 mb-2">
+          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-4 step-transition">
+            <h2 className="text-sm font-bold text-[#132032] mb-2">
               फोन की कार्यशील स्थिति (Condition Checklist):
             </h2>
 
@@ -519,14 +567,14 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                   <button
                     type="button"
                     onClick={() => setScreenWorking(true)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${screenWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${screenWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     हाँ
                   </button>
                   <button
                     type="button"
                     onClick={() => setScreenWorking(false)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!screenWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!screenWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     नहीं
                   </button>
@@ -542,14 +590,14 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                   <button
                     type="button"
                     onClick={() => setTouchWorking(true)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${touchWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${touchWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     हाँ
                   </button>
                   <button
                     type="button"
                     onClick={() => setTouchWorking(false)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!touchWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!touchWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     नहीं
                   </button>
@@ -572,7 +620,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                       key={b.id}
                       type="button"
                       onClick={() => setBodyScratches(b.id as any)}
-                      className={`py-1.5 px-2 rounded-lg text-xs font-bold cursor-pointer ${bodyScratches === b.id ? 'bg-[#DC2626] text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-bold cursor-pointer ${bodyScratches === b.id ? 'bg-[#D5151B] text-white' : 'bg-white border border-gray-200 text-gray-700'}`}
                     >
                       {b.label}
                     </button>
@@ -589,14 +637,14 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                   <button
                     type="button"
                     onClick={() => setCameraWorking(true)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${cameraWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${cameraWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     हाँ
                   </button>
                   <button
                     type="button"
                     onClick={() => setCameraWorking(false)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!cameraWorking ? 'bg-[#DC2626] text-white' : 'bg-gray-200 text-gray-700'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold cursor-pointer ${!cameraWorking ? 'bg-[#D5151B] text-white' : 'bg-gray-200 text-gray-700'}`}
                   >
                     नहीं
                   </button>
@@ -615,7 +663,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentStep(4)}
-                className="flex-2 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target"
+                className="flex-2 py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target"
               >
                 <span>फोटो व बिल अपलोड</span>
                 <ArrowRight className="w-4 h-4" />
@@ -626,7 +674,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
         {/* STEP 4: PHOTOS, IMEI & BILL */}
         {currentStep === 4 && (
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 animate-in fade-in duration-200">
+          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 step-transition">
             <div>
               <label className="block text-xs font-bold text-gray-800 mb-1">
                 फोन की 1 से 6 तस्वीरें अपलोड करें (फ्रंट, बैक, साइड्स):
@@ -642,7 +690,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                     <button
                       type="button"
                       onClick={() => setPhotos(photos.filter((_, i) => i !== idx))}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5"
+                      className="absolute top-1 right-1 bg-[#D5151B] text-white rounded-full p-0.5"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -650,19 +698,30 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                 ))}
 
                 {photos.length < 6 && (
-                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-red-400 flex flex-col items-center justify-center text-gray-500 cursor-pointer bg-gray-50">
-                    <Camera className="w-5 h-5 text-gray-400 mb-1" />
-                    <span className="text-[9px] font-bold">फोटो जोड़ें</span>
+                  <label className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 hover:border-[#D5151B] flex flex-col items-center justify-center text-gray-500 cursor-pointer bg-gray-50">
+                    {isUploadingPhotos ? (
+                      <RefreshCw className="w-5 h-5 text-[#D5151B] animate-spin" />
+                    ) : (
+                      <>
+                        <Camera className="w-5 h-5 text-gray-400 mb-1" />
+                        <span className="text-[9px] font-bold">फोटो जोड़ें</span>
+                      </>
+                    )}
                     <input
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={handlePhotoUploadMock}
+                      disabled={isUploadingPhotos}
+                      onChange={handlePhotoUpload}
                       className="hidden"
                     />
                   </label>
                 )}
               </div>
+
+              {uploadError && (
+                <p className="text-xs text-[#D5151B] font-medium mb-2">{uploadError}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -675,7 +734,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                   value={imei}
                   onChange={(e) => setImei(e.target.value.replace(/\D/g, '').slice(0, 15))}
                   placeholder="15-अंकीय IMEI"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono outline-none focus:border-red-500"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono outline-none focus:border-[#D5151B]"
                   maxLength={15}
                 />
               </div>
@@ -685,12 +744,19 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                   बिल की फोटो (यदि उपलब्ध हो)
                 </label>
                 <label className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-600 cursor-pointer hover:bg-gray-50">
-                  <Upload className="w-4 h-4 text-gray-400" />
-                  <span className="truncate">{billPhotoUrl ? '✓ बिल चुना गया' : 'बिल फोटो चुनें'}</span>
+                  {isUploadingBill ? (
+                    <RefreshCw className="w-4 h-4 text-[#D5151B] animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4 text-gray-400" />
+                  )}
+                  <span className="truncate">
+                    {isUploadingBill ? 'अपलोड हो रहा है...' : billPhotoUrl ? '✓ बिल अपलोड हुआ' : 'बिल फोटो चुनें'}
+                  </span>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleBillPhotoUploadMock}
+                    disabled={isUploadingBill}
+                    onChange={handleBillPhotoUpload}
                     className="hidden"
                   />
                 </label>
@@ -701,14 +767,15 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentStep(3)}
-                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs cursor-pointer"
+                className="flex-1 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs cursor-pointer"
               >
                 वापस
               </button>
               <button
                 type="button"
+                disabled={isUploadingPhotos || isUploadingBill}
                 onClick={() => setCurrentStep(5)}
-                className="flex-2 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target"
+                className="flex-2 py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer tap-target disabled:opacity-50"
               >
                 <span>पिकअप स्लॉट व पता</span>
                 <ArrowRight className="w-4 h-4" />
@@ -719,8 +786,8 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
         {/* STEP 5: ADDRESS & PICKUP SLOT */}
         {currentStep === 5 && (
-          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 animate-in fade-in duration-200">
-            <h2 className="text-sm font-bold text-gray-900 mb-1">
+          <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-5 step-transition">
+            <h2 className="text-sm font-bold text-[#132032] mb-1">
               पिकअप स्लॉट व पता दर्ज करें:
             </h2>
 
@@ -745,13 +812,13 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                           isFull
                             ? 'opacity-40 bg-gray-100 cursor-not-allowed border-gray-200'
                             : selectedSlotId === s.id
-                            ? 'border-[#DC2626] bg-[#FEF2F2] shadow-2xs'
+                            ? 'border-[#D5151B] bg-[#FEF2F2] shadow-2xs'
                             : 'border-gray-200 hover:border-gray-300 bg-white cursor-pointer'
                         }`}
                       >
-                        <div className="flex items-center justify-between text-xs font-bold text-gray-900">
+                        <div className="flex items-center justify-between text-xs font-bold text-[#132032]">
                           <span>{s.date}</span>
-                          {isFull && <span className="text-[10px] text-red-600 font-bold">स्लॉट फुल</span>}
+                          {isFull && <span className="text-[10px] text-[#D5151B] font-bold">स्लॉट फुल</span>}
                         </div>
                         <p className="text-[11px] text-gray-600">{s.window}</p>
                         <span className="text-[10px] text-gray-400">{s.area}</span>
@@ -837,7 +904,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                 type="button"
                 onClick={handleSubmitSellRequest}
                 disabled={isSubmitting}
-                className="flex-2 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target"
+                className="flex-2 py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target"
               >
                 {isSubmitting ? (
                   <span>अनुरोध सबमिट हो रहा है...</span>
@@ -855,11 +922,11 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
         {/* Confirmation Modal */}
         {createdRequestId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl border border-gray-100 step-transition">
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h2 className="text-xl font-black text-gray-900">
+              <h2 className="text-xl font-bold text-[#132032]">
                 फोन पिकअप अनुरोध दर्ज हुआ!
               </h2>
               <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs font-mono text-gray-700">
@@ -875,7 +942,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
                     setCreatedRequestId(null);
                     if (onNavigateHome) onNavigateHome();
                   }}
-                  className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer tap-target"
+                  className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer tap-target"
                 >
                   होम पर वापस जाएं
                 </button>

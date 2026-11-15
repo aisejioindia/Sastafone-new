@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { SeoHead } from './SeoHead';
 import { db } from '../firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { trackEvent } from '../utils/analytics';
 import {
   ShieldCheck,
   Search,
@@ -73,7 +74,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
       // 1. Try finding in 'invoices' collection
       let matchFound = false;
       const invRef = collection(db, 'invoices');
-      const qInv = query(invRef, where('invoiceNumber', '==', cleanInvoice));
+      const qInv = query(invRef, where('invoiceNumber', '==', cleanInvoice), limit(1));
       const invSnap = await getDocs(qInv);
 
       if (!invSnap.empty) {
@@ -106,7 +107,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
       // 2. If not found in 'invoices', check 'jobs' by jobId or phone
       if (!matchFound) {
         const jobsRef = collection(db, 'jobs');
-        const qJob = query(jobsRef, where('phone', '==', cleanPhone));
+        const qJob = query(jobsRef, where('phone', '==', cleanPhone), limit(3));
         const jobSnap = await getDocs(qJob);
 
         if (!jobSnap.empty) {
@@ -141,6 +142,8 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
         }
       }
 
+      trackEvent('warranty_lookup', { found: matchFound });
+
       if (!matchFound) {
         setSearchError('इस इनवॉइस नंबर व मोबाइल नंबर के लिए कोई रिकॉर्ड नहीं मिला। कृपया अपने बिल पर छपा इनवॉइस नंबर जांचें।');
       }
@@ -163,12 +166,14 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
       const claimPayload = {
         invoiceNumber: foundWarranty.invoiceNumber,
         customerName: foundWarranty.customerName,
+        phone: foundWarranty.customerPhone,
         customerPhone: foundWarranty.customerPhone,
         brand: foundWarranty.brand,
         model: foundWarranty.model,
         imei: foundWarranty.imei,
+        issue: claimIssueText.trim(),
         issueDescription: claimIssueText.trim(),
-        jobId: foundWarranty.jobId || null,
+        jobId: foundWarranty.jobId || foundWarranty.invoiceNumber,
         status: 'Received',
         createdAt: new Date().toISOString(),
         timestamp: serverTimestamp()
@@ -198,11 +203,11 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
       <div className="container mx-auto px-4 max-w-3xl">
         {/* Top Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#DC2626] text-xs font-bold mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#D5151B] text-xs font-bold mb-3">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Sastafone Certified Warranty Protection</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#132032] tracking-tight mb-2">
             वारंटी स्थिति जांचें व क्लेम करें
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
@@ -212,8 +217,8 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
 
         {/* Warranty Lookup Form */}
         <div className="p-6 rounded-2xl bg-white border border-gray-200 shadow-xs mb-8">
-          <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-[#DC2626]" />
+          <h2 className="text-base font-bold text-[#132032] mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-[#D5151B]" />
             <span>इनवॉइस नंबर से वारंटी खोजें</span>
           </h2>
 
@@ -264,7 +269,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
             <button
               type="submit"
               disabled={isSearching}
-              className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target"
+              className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target"
             >
               {isSearching ? (
                 <span>वारंटी खोजी जा रही है...</span>
@@ -291,13 +296,13 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
 
         {/* Found Warranty Card */}
         {foundWarranty && (
-          <div className="p-6 rounded-2xl bg-[#FEF2F2] border border-red-200 text-gray-900 mb-8 animate-in fade-in duration-200">
+          <div className="p-6 rounded-2xl bg-[#FEF2F2] border border-red-200 text-[#132032] mb-8 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-200/80 pb-4 mb-4">
               <div>
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">
                   इनवॉइस नंबर: {foundWarranty.invoiceNumber}
                 </span>
-                <h3 className="text-lg font-black text-gray-900">
+                <h3 className="text-lg font-bold text-[#132032]">
                   {foundWarranty.brand} {foundWarranty.model}
                 </h3>
                 <p className="text-xs text-gray-600">
@@ -323,19 +328,19 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-4">
               <div>
                 <span className="text-gray-500 block text-[11px]">रिपेयरिंग तारीख:</span>
-                <strong className="text-gray-900">{foundWarranty.date}</strong>
+                <strong className="text-[#132032]">{foundWarranty.date}</strong>
               </div>
               <div>
                 <span className="text-gray-500 block text-[11px]">वारंटी अवधि:</span>
-                <strong className="text-gray-900">{foundWarranty.warrantyMonths} महीने</strong>
+                <strong className="text-[#132032]">{foundWarranty.warrantyMonths} महीने</strong>
               </div>
               <div>
                 <span className="text-gray-500 block text-[11px]">वारंटी अंतिम तिथि:</span>
-                <strong className="text-gray-900">{foundWarranty.expiryDate}</strong>
+                <strong className="text-[#132032]">{foundWarranty.expiryDate}</strong>
               </div>
               <div>
                 <span className="text-gray-500 block text-[11px]">कुल बिल राशि:</span>
-                <strong className="text-gray-900">₹{foundWarranty.finalTotal}</strong>
+                <strong className="text-[#132032]">₹{foundWarranty.finalTotal}</strong>
               </div>
             </div>
 
@@ -353,7 +358,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
               <button
                 type="button"
                 onClick={() => setIsClaimFormOpen(true)}
-                className="w-full py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2 tap-target"
+                className="w-full py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2 tap-target"
               >
                 <Wrench className="w-4 h-4" />
                 <span>इस रिपेयर पर वारंटी क्लेम करें</span>
@@ -363,7 +368,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
             {/* Interactive Claim Form */}
             {isClaimFormOpen && (
               <form onSubmit={handleClaimSubmit} className="mt-4 pt-4 border-t border-red-200 space-y-3">
-                <h4 className="text-xs font-bold text-gray-900">
+                <h4 className="text-xs font-bold text-[#132032]">
                   वारंटी क्लेम विवरण (समस्या बताएं):
                 </h4>
                 <textarea
@@ -386,7 +391,7 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
                   <button
                     type="submit"
                     disabled={isSubmittingClaim}
-                    className="flex-1 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                    className="flex-1 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
                   >
                     {isSubmittingClaim ? 'दर्ज हो रहा है...' : 'क्लेम सबमिट करें'}
                   </button>
@@ -398,8 +403,8 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
 
         {/* Clear Policy Breakdown */}
         <div className="p-6 rounded-2xl bg-gray-50 border border-gray-200 space-y-4">
-          <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-            <HelpCircle className="w-4 h-4 text-[#DC2626]" />
+          <h2 className="text-sm font-bold text-[#132032] flex items-center gap-2">
+            <HelpCircle className="w-4 h-4 text-[#D5151B]" />
             <span>Sastafone वारंटी नियम व शर्तें (Warranty Policy)</span>
           </h2>
 

@@ -10,6 +10,7 @@ import {
   sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { syncAndRefreshUserClaims } from '../services/adminService';
 import {
   X,
   Phone,
@@ -260,6 +261,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
         });
       }
 
+      const claimsResult = await syncAndRefreshUserClaims('google_popup_login');
+
       loginUser(
         fbUser.displayName || 'Google User',
         savedPhone,
@@ -269,7 +272,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
         'google',
         {
           uid: fbUser.uid,
-          role: (userSnap.exists() ? userSnap.data()?.role : 'customer') as any,
+          role: claimsResult.role,
+          isAdmin: claimsResult.admin,
+          isPartner: claimsResult.partner,
+          partnerId: claimsResult.partnerId,
+          emailVerified: fbUser.emailVerified,
           locality: savedArea
         }
       );
@@ -318,7 +325,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
       const userName = uData?.name || fbUser.displayName || 'ग्राहक';
       const userPhone = uData?.phone || (loginId.includes('@') ? '' : loginId);
       const userAddress = uData?.address || '';
-      const userRole = uData?.role || 'customer';
+      const claimsResult = await syncAndRefreshUserClaims('email_password_login');
 
       loginUser(
         userName,
@@ -329,7 +336,11 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
         'phone',
         {
           uid: fbUser.uid,
-          role: userRole as any,
+          role: claimsResult.role,
+          isAdmin: claimsResult.admin,
+          isPartner: claimsResult.partner,
+          partnerId: claimsResult.partnerId,
+          emailVerified: fbUser.emailVerified,
           locality: uData?.area || 'Surat'
         }
       );
@@ -445,7 +456,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl w-full max-w-md my-auto shadow-2xl border border-gray-100 overflow-hidden text-gray-900 animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-3xl w-full max-w-md my-auto shadow-2xl border border-gray-100 overflow-hidden text-[#132032] animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="p-5 pb-3 border-b border-gray-100 flex items-center justify-between">
@@ -462,7 +473,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
 
         {/* Reason banner if triggered by a booking/action */}
         {authPromptReason && (
-          <div className="bg-[#FEF2F2] border-b border-red-100 px-4 py-2 text-xs text-[#DC2626] font-medium flex items-center gap-2">
+          <div className="bg-[#FEF2F2] border-b border-red-100 px-4 py-2 text-xs text-[#D5151B] font-medium flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{authPromptReason}</span>
           </div>
@@ -518,8 +529,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'login'
-                  ? 'bg-white text-gray-900 shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-[#132032] shadow-2xs'
+                  : 'text-gray-600 hover:text-[#132032]'
               }`}
             >
               लॉगिन (Login)
@@ -532,8 +543,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'register'
-                  ? 'bg-white text-[#DC2626] shadow-2xs'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-[#D5151B] shadow-2xs'
+                  : 'text-gray-600 hover:text-[#132032]'
               }`}
             >
               नया खाता बनाएं (Register)
@@ -562,7 +573,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                     placeholder="उदा. 9876543210 या your@email.com"
-                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                     required
                   />
                 </div>
@@ -580,7 +591,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       setResetEmail(mobile.includes('@') ? mobile : '');
                       setErrorMessage(null);
                     }}
-                    className="text-[11px] text-[#DC2626] hover:underline font-semibold cursor-pointer"
+                    className="text-[11px] text-[#D5151B] hover:underline font-semibold cursor-pointer"
                   >
                     पासवर्ड भूल गए?
                   </button>
@@ -592,7 +603,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="न्यूनतम 6 अक्षर"
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                     required
                   />
                   <button
@@ -608,7 +619,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-2"
+                className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-2"
               >
                 {isLoading ? (
                   <span>सत्यापित हो रहा है...</span>
@@ -625,7 +636,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
           {/* FORGOT PASSWORD SUB-VIEW */}
           {activeTab === 'login' && isForgotPasswordOpen && (
             <div className="space-y-3.5">
-              <h3 className="text-sm font-bold text-gray-900">
+              <h3 className="text-sm font-bold text-[#132032]">
                 पासवर्ड रीसेट लिंक प्राप्त करें
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
@@ -642,7 +653,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       setIsForgotPasswordOpen(false);
                       setForgotPasswordSent(false);
                     }}
-                    className="text-xs font-bold text-[#DC2626] underline cursor-pointer"
+                    className="text-xs font-bold text-[#D5151B] underline cursor-pointer"
                   >
                     लॉगिन पर वापस जाएं
                   </button>
@@ -658,7 +669,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="उदा. name@example.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm outline-none"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm outline-none"
                       required
                     />
                   </div>
@@ -674,7 +685,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+                      className="flex-1 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
                     >
                       {isLoading ? 'भेज रहे हैं...' : 'रीसेट लिंक भेजें'}
                     </button>
@@ -699,7 +710,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="उदा. राहुल शर्मा"
-                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                     required
                   />
                 </div>
@@ -710,7 +721,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                 <label className="block text-xs font-bold text-gray-700 mb-1">
                   मोबाइल नंबर (+91) <span className="text-red-500">*</span>
                 </label>
-                <div className="flex rounded-xl border border-gray-200 overflow-hidden focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500 bg-gray-50 focus-within:bg-white">
+                <div className="flex rounded-xl border border-gray-200 overflow-hidden focus-within:border-[#D5151B] focus-within:ring-1 focus-within:ring-[#D5151B] bg-gray-50 focus-within:bg-white">
                   <span className="px-3 py-2 bg-gray-100 text-gray-600 text-xs font-bold border-r border-gray-200 flex items-center">
                     +91
                   </span>
@@ -738,7 +749,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                   />
                 </div>
               </div>
@@ -755,7 +766,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="न्यूनतम 6 अक्षर या अंक"
-                    className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
+                    className="w-full pl-10 pr-10 py-2 rounded-xl border border-gray-200 focus:border-[#D5151B] focus:ring-1 focus:ring-[#D5151B] text-xs sm:text-sm bg-gray-50 focus:bg-white outline-none"
                     required
                   />
                   <button
@@ -771,8 +782,8 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               {/* Surat Address Section */}
               <div className="pt-2 border-t border-gray-100">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-[#DC2626]" />
+                  <span className="text-xs font-bold text-[#132032] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#D5151B]" />
                     <span>सूरत पिकअप पता (Address)</span>
                   </span>
 
@@ -781,7 +792,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     type="button"
                     onClick={handleCaptureGps}
                     disabled={isLocating}
-                    className="px-2.5 py-1 rounded-lg bg-[#FEF2F2] hover:bg-red-100 text-[#DC2626] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-[#FEF2F2] hover:bg-red-100 text-[#D5151B] text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <Navigation className={`w-3 h-3 ${isLocating ? 'animate-spin' : ''}`} />
                     <span>{isLocating ? 'प्राप्त हो रहा है...' : 'GPS उपयोग करें'}</span>
@@ -801,7 +812,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       value={houseFlat}
                       onChange={(e) => setHouseFlat(e.target.value)}
                       placeholder="मकान/फ्लैट नं. *"
-                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B]"
                       required
                     />
                   </div>
@@ -811,7 +822,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       value={buildingSociety}
                       onChange={(e) => setBuildingSociety(e.target.value)}
                       placeholder="बिल्डिंग/सोसाइटी *"
-                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B]"
                       required
                     />
                   </div>
@@ -823,7 +834,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     value={roadLandmark}
                     onChange={(e) => setRoadLandmark(e.target.value)}
                     placeholder="सड़क / प्रमुख लैंडमार्क (वैकल्पिक)"
-                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500"
+                    className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B]"
                   />
                 </div>
 
@@ -832,7 +843,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                     <select
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
-                      className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500 bg-white"
+                      className="w-full px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B] bg-white"
                     >
                       {SURAT_AREAS_LIST.map((loc) => (
                         <option key={loc} value={loc}>
@@ -847,7 +858,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="पिनकोड (395009)"
-                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-red-500 font-mono"
+                      className="w-full px-3 py-1.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B] font-mono"
                       maxLength={6}
                     />
                   </div>
@@ -857,7 +868,7 @@ export const FirebaseAuthModal: React.FC<FirebaseAuthModalProps> = ({ onSuccess 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-3"
+                className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-50 tap-target mt-3"
               >
                 {isLoading ? (
                   <span>खाता बनाया जा रहा है...</span>

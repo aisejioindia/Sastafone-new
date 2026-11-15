@@ -13,6 +13,8 @@ import {
 import { startRazorpayCheckout } from '../services/paymentService';
 import { SURAT_LOCALITIES, BRANDS } from '../data/mockData';
 import { COMPREHENSIVE_PHONE_MODELS } from '../data/phonesDatabase';
+import { buildWhatsappHref } from '../services/siteSettingsService';
+import { trackEvent } from '../utils/analytics';
 import {
   Smartphone,
   Search,
@@ -32,7 +34,9 @@ import {
   Wrench,
   CreditCard,
   Building,
-  RefreshCw
+  RefreshCw,
+  MessageCircle,
+  Package
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -45,10 +49,14 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
   onJobCreated,
   onNavigateToOrders
 }) => {
-  const { user, setIsAuthModalOpen, selectedLocality, setSelectedLocality } = useApp();
+  const { user, setIsAuthModalOpen, selectedLocality, setSelectedLocality, siteSettings } = useApp();
 
   // Wizard Steps: 1: Brand & Model, 2: Select Issues, 3: Address & Slot, 4: Pay & Confirm
   const [step, setStep] = useState<number>(1);
+
+  useEffect(() => {
+    trackEvent('book_repair_start');
+  }, []);
 
   // Firestore Data State
   const [repairPrices, setRepairPrices] = useState<RepairPrice[]>([]);
@@ -173,11 +181,11 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
   const toggleIssue = (id: string) => {
     setSelectedIssueIds(prev => {
-      if (prev.includes(id)) {
-        if (prev.length === 1) return prev; // Keep at least one
-        return prev.filter(item => item !== id);
-      }
-      return [...prev, id];
+      const next = prev.includes(id)
+        ? (prev.length === 1 ? prev : prev.filter(item => item !== id))
+        : [...prev, id];
+      trackEvent('repair_service_selected', { count: next.length, last_id: id });
+      return next;
     });
   };
 
@@ -204,13 +212,20 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
     const brandObj = BRANDS.find(b => b.id === selectedBrand);
     const finalDeviceName = customModelInput.trim() || selectedModel;
 
+    trackEvent('visit_fee_initiated', {
+      job_id: generatedJobId,
+      brand: brandObj?.name || selectedBrand,
+      model: finalDeviceName,
+      services_count: selectedServices.length
+    });
+
     // Start Server-Side Verified Razorpay Checkout
     startRazorpayCheckout({
       amount: 199,
       jobId: generatedJobId,
       customerName: customerName.trim() || 'Surat Resident',
       customerPhone: customerPhone.trim(),
-      description: `सस्ताफोन सूरत ₹199 विज़िट टोकन: ${finalDeviceName}`,
+      description: `Sastafone Surat ₹199 विज़िट टोकन: ${finalDeviceName}`,
       onSuccess: async (paymentId: string) => {
         try {
           // Create the job in Firestore ONLY AFTER PAYMENT IS VERIFIED!
@@ -236,12 +251,18 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             status: 'Booked',
             visitFeePaid: true,
             razorpayPaymentId: paymentId,
-            pickupCost: 70, // Standard Surat courier/partner logistics cost
+            pickupCost: 70,
             customerApproved: false,
             deviceNotes: deviceNotes.trim()
           };
 
           await createJobInFirestore(newJob);
+
+          trackEvent('visit_fee_paid', {
+            job_id: generatedJobId,
+            payment_id: paymentId,
+            amount: 199
+          });
 
           confetti({
             particleCount: 80,
@@ -271,6 +292,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
         }
       },
       onFailure: (errorMsg: string) => {
+        trackEvent('visit_fee_failed', { job_id: generatedJobId, reason: errorMsg });
         setIsProcessingPayment(false);
         setPaymentError(errorMsg);
       }
@@ -278,29 +300,29 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-4 sm:py-6 pb-24">
+    <div className="max-w-2xl mx-auto px-4 py-4 sm:py-6 pb-28 sm:pb-12">
       {/* Step Progress Indicator (Mobile-First) */}
       {step < 4 && (
-        <div className="mb-5 bg-white p-3.5 rounded-2xl shadow-xs border border-slate-200/80">
+        <div className="mb-5 bg-white p-3.5 rounded-2xl shadow-xs border border-gray-200">
           <div className="flex items-center justify-between text-xs font-bold mb-2">
-            <span className="text-red-600 flex items-center gap-1.5 font-black">
-              <Wrench className="w-4 h-4 text-red-600" />
+            <span className="text-[#D5151B] flex items-center gap-1.5 font-bold">
+              <Wrench className="w-4 h-4 text-[#D5151B]" />
               <span>डोरस्टेप पिकअप व रिपेयर</span>
             </span>
-            <span className="text-slate-500 font-mono">चरण {step} / 3</span>
+            <span className="text-gray-500 font-mono tabular-nums">चरण {step} / 3</span>
           </div>
 
-          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
             <div
-              className="bg-red-600 h-full rounded-full transition-all duration-300"
+              className="bg-[#D5151B] h-full rounded-full transition-all duration-200"
               style={{ width: `${(step / 3) * 100}%` }}
             />
           </div>
 
-          <div className="grid grid-cols-3 text-[11px] font-bold text-center mt-2 text-slate-500">
-            <span className={step >= 1 ? 'text-red-600' : ''}>1. फोन मॉडल</span>
-            <span className={step >= 2 ? 'text-red-600' : ''}>2. समस्याएं</span>
-            <span className={step >= 3 ? 'text-red-600' : ''}>3. पता व स्लॉट</span>
+          <div className="grid grid-cols-3 text-[11px] font-bold text-center mt-2 text-gray-500">
+            <span className={step >= 1 ? 'text-[#D5151B]' : ''}>1. फोन मॉडल</span>
+            <span className={step >= 2 ? 'text-[#D5151B]' : ''}>2. समस्याएं</span>
+            <span className={step >= 3 ? 'text-[#D5151B]' : ''}>3. पता व स्लॉट</span>
           </div>
         </div>
       )}
@@ -309,13 +331,13 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       {/* STEP 1: BRAND + MODEL (SEARCHABLE)                            */}
       {/* ------------------------------------------------------------- */}
       {step === 1 && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <div className="space-y-4 step-transition">
+          <div className="bg-white p-5 rounded-2xl shadow-xs border border-gray-200">
+            <h2 className="text-lg sm:text-xl font-bold text-[#132032] tracking-tight flex items-center gap-2">
               <span>अपना मोबाइल ब्रांड व मॉडल चुनें</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              सूरत में ओरिजिनल पार्ट्स व 6 महीने की वारंटी के साथ डोरस्टेप पिकअप
+            <p className="text-xs text-gray-500 mt-0.5">
+              सूरत में गुणवत्ता-जांचे गए पार्ट्स व ₹1000+ बिल पर 6 महीने की वारंटी
             </p>
 
             {/* Brand Chips Carousel */}
@@ -328,10 +350,10 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                     setSelectedBrand(brand.id);
                     setModelSearch('');
                   }}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer shrink-0 border ${
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-150 cursor-pointer shrink-0 border ${
                     selectedBrand === brand.id
-                      ? 'bg-red-600 text-white border-red-600 shadow-md scale-105'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      ? 'bg-[#D5151B] text-white border-[#D5151B] shadow-xs'
+                      : 'bg-gray-50 hover:bg-gray-100 text-[#132032] border-gray-200'
                   }`}
                 >
                   {brand.name}
@@ -341,13 +363,13 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
             {/* Search Input */}
             <div className="relative mt-2">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
               <input
                 type="text"
                 value={modelSearch}
                 onChange={e => setModelSearch(e.target.value)}
                 placeholder="उदा. iPhone 14, S23 Ultra, OnePlus 11R..."
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-300 text-sm bg-white text-slate-900 focus:outline-none focus:border-red-600 shadow-2xs font-medium"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm bg-white text-[#132032] focus:outline-none focus:border-[#D5151B] font-medium"
               />
             </div>
 
@@ -361,21 +383,21 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                     setSelectedModel(model.name);
                     setCustomModelInput('');
                   }}
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer flex flex-col justify-between ${
                     selectedModel === model.name && !customModelInput
-                      ? 'bg-red-50 border-red-500 text-red-900 shadow-xs ring-2 ring-red-400/30'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-800'
+                      ? 'bg-[#FEF2F2] border-[#D5151B] text-[#132032] ring-1 ring-[#D5151B]'
+                      : 'bg-white hover:bg-gray-50 border-gray-200 text-[#132032]'
                   }`}
                 >
                   <span className="text-xs font-bold line-clamp-2">{model.name}</span>
-                  <span className="text-[10px] text-slate-500 mt-1">सर्टिफाइड पार्ट्स ✓</span>
+                  <span className="text-[10px] text-gray-500 mt-1">सर्टिफाइड पार्ट्स ✓</span>
                 </button>
               ))}
             </div>
 
             {/* Custom Model Input Option if not found */}
-            <div className="mt-4 pt-3 border-t border-slate-100">
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-600 block mb-1">
                 यदि आपका मॉडल ऊपर नहीं है, तो यहाँ लिखें:
               </label>
               <input
@@ -383,20 +405,22 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                 value={customModelInput}
                 onChange={e => setCustomModelInput(e.target.value)}
                 placeholder="उदा. Vivo Y200e 5G / अन्य कोई मॉडल"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-[#132032] focus:outline-none focus:border-[#D5151B]"
               />
             </div>
           </div>
 
-          {/* Continue Button */}
-          <button
-            type="button"
-            onClick={() => setStep(2)}
-            className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm shadow-lg shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
-          >
-            <span>समस्याएं चुनें (आगे बढ़ें)</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {/* Sticky Mobile / Standard Desktop Continue Button */}
+          <div className="sticky bottom-16 sm:static z-30 bg-white/95 backdrop-blur-xs border-t border-gray-200 sm:border-0 p-3 -mx-4 sm:mx-0 sm:p-0">
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="w-full py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target"
+            >
+              <span>समस्याएं चुनें (आगे बढ़ें)</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
@@ -404,71 +428,78 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       {/* STEP 2: PROBLEMS MULTI-SELECT & LIVE CALCULATION BOX          */}
       {/* ------------------------------------------------------------- */}
       {step === 2 && (
-        <div className="space-y-4 animate-in fade-in duration-200">
+        <div className="space-y-4 step-transition">
           {/* Selected Device Summary Bar */}
-          <div className="bg-slate-900 text-white p-3.5 rounded-2xl flex items-center justify-between">
+          <div className="bg-[#FEF2F2] border border-red-200 text-[#132032] p-3.5 rounded-2xl flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-red-400" />
+              <Smartphone className="w-4 h-4 text-[#D5151B]" />
               <span className="text-xs font-bold">{customModelInput || selectedModel}</span>
             </div>
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="text-[11px] text-red-300 underline font-bold cursor-pointer"
+              className="text-[11px] text-[#D5151B] underline font-bold cursor-pointer"
             >
               बदलें
             </button>
           </div>
 
-          {/* Live Calculation Floating Box (Exact Spec Requirement) */}
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white shadow-xl shadow-red-600/25 border border-red-400/40">
+          {/* Live Calculation Card */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#D5151B] text-white shadow-sm border border-[#B31419]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-red-100">
                 लाइव एस्टीमेट व समय
               </span>
-              <span className="text-xs text-rose-100 font-bold">
+              <span className="text-xs text-red-100 font-bold">
                 {selectedServices.length} समस्या चुनी गई
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-2">
               <div>
-                <span className="text-[10px] text-rose-200 block uppercase font-bold">अनुमानित खर्च (Range):</span>
-                <span className="text-xl sm:text-2xl font-black text-white">
-                  ₹{calculations.minSum} - ₹{calculations.maxSum}
+                <span className="text-[10px] text-red-100 block uppercase font-bold">अनुमानित खर्च:</span>
+                <span className="text-xl sm:text-2xl font-bold text-white tabular-nums">
+                  ₹{calculations.minSum} – ₹{calculations.maxSum}
                 </span>
               </div>
 
               <div>
-                <span className="text-[10px] text-rose-200 block uppercase font-bold">कुल समय (पिकअप + रिपेयर):</span>
-                <span className="text-sm sm:text-base font-black text-white flex items-center gap-1 mt-1">
-                  <Clock className="w-4 h-4 text-amber-300 shrink-0" />
+                <span className="text-[10px] text-red-100 block uppercase font-bold">कुल समय (पिकअप + रिपेयर):</span>
+                <span className="text-sm sm:text-base font-bold text-white flex items-center gap-1 mt-1">
+                  <Clock className="w-4 h-4 text-red-100 shrink-0" />
                   <span>{calculations.timeFormatted}</span>
                 </span>
               </div>
             </div>
 
-            <div className="mt-3 pt-2.5 border-t border-white/20 flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-bold text-amber-200">
-                <ShieldCheck className="w-4 h-4 text-emerald-300" />
+            <div className="mt-3 pt-2.5 border-t border-white/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <span className="flex items-center gap-1.5 font-bold text-white">
+                <ShieldCheck className="w-4 h-4 text-white" />
                 <span>{calculations.warrantyText}</span>
               </span>
-              <span className="text-[11px] text-rose-100">
+              <span className="text-[11px] text-red-100">
                 ₹199 विज़िट टोकन फाइनल बिल में एडजस्ट
               </span>
             </div>
           </div>
 
           {/* Multi-Select Problems Grid (Loaded from Firestore) */}
-          <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-sm border border-slate-200 space-y-2.5">
-            <h3 className="text-sm font-black text-slate-900 tracking-tight">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl shadow-xs border border-gray-200 space-y-2.5">
+            <h3 className="text-sm font-bold text-[#132032] tracking-tight">
               फोन में क्या खराबी है? (एक या अधिक चुनें)
             </h3>
 
             {isLoadingPrices ? (
-              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-                <RefreshCw className="w-5 h-5 animate-spin mx-auto text-red-600" />
-                <span>Firestore से रिपेयर रेट लोड हो रहे हैं...</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 py-2">
+                {[1, 2, 3, 4, 5, 6].map((sk) => (
+                  <div key={sk} className="p-3 rounded-xl border border-gray-200 space-y-2 animate-pulse">
+                    <div className="flex justify-between gap-2">
+                      <div className="h-3.5 bg-gray-200 rounded w-3/5" />
+                      <div className="h-3.5 bg-red-100 rounded w-1/4" />
+                    </div>
+                    <div className="h-2.5 bg-gray-100 rounded w-4/5" />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[380px] overflow-y-auto p-1">
@@ -479,17 +510,17 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                       key={item.id}
                       type="button"
                       onClick={() => toggleIssue(item.id)}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-start gap-2.5 ${
+                      className={`p-3 rounded-xl border text-left transition-all duration-150 cursor-pointer flex items-start gap-2.5 ${
                         isSelected
-                          ? 'bg-red-50/80 border-red-500 text-slate-900 ring-2 ring-red-400/30'
-                          : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          ? 'bg-[#FEF2F2] border-[#D5151B] text-[#132032] ring-1 ring-[#D5151B]'
+                          : 'bg-white hover:bg-gray-50 border-gray-200 text-[#132032]'
                       }`}
                     >
                       <div
                         className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 border ${
                           isSelected
-                            ? 'bg-red-600 border-red-600 text-white'
-                            : 'border-slate-300 bg-white'
+                            ? 'bg-[#D5151B] border-[#D5151B] text-white'
+                            : 'border-gray-300 bg-white'
                         }`}
                       >
                         {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -498,15 +529,18 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-bold truncate">{item.name_hi}</span>
-                          <span className="text-[11px] font-black text-red-600 shrink-0">
-                            ₹{item.minPrice} - ₹{item.maxPrice}
+                          <span className="text-[11px] font-bold text-[#D5151B] shrink-0 tabular-nums">
+                            ₹{item.minPrice}–₹{item.maxPrice}
                           </span>
                         </div>
-                        <p className="text-[10px] text-slate-500 line-clamp-1 mt-0.5">
+                        <p className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">
                           {item.description_hi}
                         </p>
-                        <div className="flex items-center gap-2 mt-1 text-[9px] font-bold text-slate-400">
-                          <span>⏱️ {item.serviceMinutes || 30} मिनट रिपेयर</span>
+                        <div className="flex items-center gap-2 mt-1 text-[10px] font-medium text-gray-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            {item.serviceMinutes || 30} मिनट
+                          </span>
                           <span>•</span>
                           <span className="text-emerald-700 font-bold">{item.warrantyMonths || 3}M वारंटी</span>
                         </div>
@@ -518,12 +552,12 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             )}
           </div>
 
-          {/* Navigation Controls */}
-          <div className="flex items-center gap-3">
+          {/* Navigation Controls (Sticky on Mobile) */}
+          <div className="sticky bottom-16 sm:static z-30 bg-white/95 backdrop-blur-xs border-t border-gray-200 sm:border-0 p-3 -mx-4 sm:mx-0 sm:p-0 flex items-center gap-3">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="px-4 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1"
+              className="px-4 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-all duration-150 cursor-pointer flex items-center gap-1"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>पीछे</span>
@@ -532,7 +566,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             <button
               type="button"
               onClick={() => setStep(3)}
-              className="flex-1 py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-sm shadow-lg shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+              className="flex-1 py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target"
             >
               <span>पिकअप स्लॉट व पता दर्ज करें</span>
               <ArrowRight className="w-4 h-4" />
@@ -545,15 +579,15 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       {/* STEP 3: ADDRESS, AREA & REAL-TIME PICKUP SLOTS               */}
       {/* ------------------------------------------------------------- */}
       {step === 3 && (
-        <div className="space-y-4 animate-in fade-in duration-200">
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 space-y-4">
-            <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-red-600" />
+        <div className="space-y-4 step-transition">
+          <div className="bg-white p-5 rounded-2xl shadow-xs border border-gray-200 space-y-4">
+            <h3 className="text-base sm:text-lg font-bold text-[#132032] tracking-tight flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-[#D5151B]" />
               <span>सूरत में डोरस्टेप पिकअप का पता व समय</span>
             </h3>
 
             {paymentError && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-[#FEF2F2] border border-red-200 text-[#D5151B] text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{paymentError}</span>
               </div>
@@ -562,7 +596,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             {/* Customer Contact */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                <label className="text-[11px] font-bold text-gray-700 block mb-1">
                   आपका नाम (Full Name):
                 </label>
                 <input
@@ -571,12 +605,12 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                   value={customerName}
                   onChange={e => setCustomerName(e.target.value)}
                   placeholder="उदा. राहुल पटेल"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-[#132032] focus:outline-none focus:border-[#D5151B]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                <label className="text-[11px] font-bold text-gray-700 block mb-1">
                   मोबाइल नंबर (सूरत):
                 </label>
                 <input
@@ -585,14 +619,14 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                   value={customerPhone}
                   onChange={e => setCustomerPhone(e.target.value)}
                   placeholder="9825012345"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono text-slate-900 focus:outline-none focus:border-red-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-[#132032] focus:outline-none focus:border-[#D5151B]"
                 />
               </div>
             </div>
 
             {/* Surat Area Selection */}
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+              <label className="text-[11px] font-bold text-gray-700 block mb-1">
                 सूरत इलाका / क्षेत्र (Area):
               </label>
               <select
@@ -601,7 +635,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                   setArea(e.target.value);
                   setSelectedLocality(`${e.target.value}, Surat`);
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs bg-white text-slate-900 font-bold focus:outline-none focus:border-red-600 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs bg-white text-[#132032] font-bold focus:outline-none focus:border-[#D5151B] cursor-pointer"
               >
                 {SURAT_LOCALITIES.map(loc => (
                   <option key={loc.id} value={loc.name}>
@@ -613,7 +647,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
             {/* Street Address */}
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+              <label className="text-[11px] font-bold text-gray-700 block mb-1">
                 पूरा पता (मकान/दुकान नं, सोसाइटी, लैंडमार्क):
               </label>
               <textarea
@@ -622,34 +656,36 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                 value={streetAddress}
                 onChange={e => setStreetAddress(e.target.value)}
                 placeholder="उदा. फ्लैट 302, राजहंस हाइट्स, नियर पाल आरटीओ रोड, सूरत"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600 leading-relaxed"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-[#132032] focus:outline-none focus:border-[#D5151B] leading-relaxed"
               />
             </div>
 
             {/* Date Selector */}
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1 flex items-center justify-between">
+              <label className="text-[11px] font-bold text-gray-700 block mb-1 flex items-center justify-between">
                 <span>पिकअप की तारीख:</span>
-                <span className="text-[10px] text-red-600 font-semibold">आज या कल का स्लॉट चुनें</span>
+                <span className="text-[10px] text-[#D5151B] font-bold">आज या कल का स्लॉट चुनें</span>
               </label>
               <input
                 type="date"
                 value={pickupDate}
                 min={new Date().toISOString().split('T')[0]}
                 onChange={e => setPickupDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs text-slate-900 font-bold focus:outline-none focus:border-red-600 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-[#132032] font-bold focus:outline-none focus:border-[#D5151B] cursor-pointer"
               />
             </div>
 
             {/* Available Slots Grid (Capacity Checked) */}
             <div className="space-y-2 pt-1">
-              <label className="text-[11px] font-bold text-slate-700 block">
+              <label className="text-[11px] font-bold text-gray-700 block">
                 पिकअप टाइम स्लॉट चुनें (उपलब्धता अनुसार):
               </label>
 
               {isLoadingSlots ? (
-                <div className="p-3 text-center text-xs text-slate-500">
-                  स्लॉट लोड हो रहे हैं...
+                <div className="space-y-2 py-1">
+                  {[1, 2, 3].map((sk) => (
+                    <div key={sk} className="h-11 rounded-xl bg-gray-100 animate-pulse" />
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -664,22 +700,22 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                         type="button"
                         disabled={isFull}
                         onClick={() => setSelectedSlotWindow(slot.window)}
-                        className={`w-full p-3 rounded-2xl border text-left transition-all flex items-center justify-between ${
+                        className={`w-full p-3 rounded-xl border text-left transition-all duration-150 flex items-center justify-between ${
                           isFull
-                            ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                            ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
                             : isSelected
-                            ? 'bg-red-50 border-red-500 text-slate-900 ring-2 ring-red-400/30 cursor-pointer'
-                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 cursor-pointer'
+                            ? 'bg-[#FEF2F2] border-[#D5151B] text-[#132032] ring-1 ring-[#D5151B] cursor-pointer'
+                            : 'bg-white hover:bg-gray-50 border-gray-200 text-[#132032] cursor-pointer'
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <Calendar className={`w-4 h-4 ${isFull ? 'text-slate-400' : 'text-red-600'}`} />
+                          <Calendar className={`w-4 h-4 ${isFull ? 'text-gray-400' : 'text-[#D5151B]'}`} />
                           <span className="text-xs font-bold">{slot.window}</span>
                         </div>
 
                         <div>
                           {isFull ? (
-                            <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-600 text-[10px] font-black uppercase">
+                            <span className="px-2 py-0.5 rounded-md bg-gray-200 text-gray-600 text-[10px] font-bold uppercase">
                               स्लॉट फुल (Full)
                             </span>
                           ) : (
@@ -697,7 +733,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
             {/* Device notes */}
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+              <label className="text-[11px] font-bold text-gray-700 block mb-1">
                 कोई अतिरिक्त निर्देश / टेक्नीशियन नोट (वैकल्पिक):
               </label>
               <input
@@ -705,29 +741,29 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                 value={deviceNotes}
                 onChange={e => setDeviceNotes(e.target.value)}
                 placeholder="उदा. सिम कार्ड निकाल लिया है / बैक कवर साथ में देंगे"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-red-600"
+                className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs text-[#132032] focus:outline-none focus:border-[#D5151B]"
               />
             </div>
           </div>
 
-          {/* ₹199 Token Explainer Card */}
-          <div className="p-4 rounded-3xl bg-slate-900 text-white space-y-2 border border-slate-800">
+          {/* ₹199 Token Explainer Card (Light Theme) */}
+          <div className="p-4 rounded-2xl bg-[#FEF2F2] border border-red-200 text-[#132032] space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-300">डोरस्टेप विज़िट व पिकअप टोकन:</span>
-              <span className="text-lg font-black text-amber-400">₹199</span>
+              <span className="text-xs font-bold text-[#132032]">डोरस्टेप विज़िट व पिकअप टोकन:</span>
+              <span className="text-lg font-bold text-[#D5151B] tabular-nums">₹199</span>
             </div>
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              यह ₹199 टोकन केवल सुरक्षित अपॉइंटमेंट और फेक ऑर्डर्स रोकने के लिए है। जब फोन रिपेयर होगा, तब यह ₹199 आपके फाइनल बिल में से पूरा माइनस (एडजस्ट) हो जाएगा।
+            <p className="text-[11px] text-gray-600 leading-relaxed">
+              यह ₹199 विज़िट शुल्क आपके फाइनल बिल में पूरा एडजस्ट होगा। यदि QC के बाद आप रिपेयर रद्द करते हैं तो ₹99 रिफंड होगा (₹100 विज़िट शुल्क रखा जाएगा)।
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          {/* Action Buttons (Sticky Mobile CTA) */}
+          <div className="sticky bottom-16 sm:static z-30 bg-white/95 backdrop-blur-xs border-t border-gray-200 sm:border-0 p-3 -mx-4 sm:mx-0 sm:p-0 flex items-center gap-3">
             <button
               type="button"
               disabled={isProcessingPayment}
               onClick={() => setStep(2)}
-              className="px-4 py-3.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all cursor-pointer flex items-center gap-1"
+              className="px-4 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-all duration-150 cursor-pointer flex items-center gap-1"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>पीछे</span>
@@ -737,7 +773,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
               type="button"
               disabled={isProcessingPayment}
               onClick={handleProceedToPayment}
-              className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-sm shadow-xl shadow-red-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98 disabled:opacity-70"
+              className="flex-1 py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
             >
               {isProcessingPayment ? (
                 <>
@@ -760,46 +796,46 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       {/* STEP 4: CONFIRMATION SCREEN WITH JOB ID & LIVE TIMELINE LINK */}
       {/* ------------------------------------------------------------- */}
       {step === 4 && completedJob && (
-        <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-emerald-200 text-center space-y-4 animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-emerald-200 text-center space-y-4 step-transition">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
           <div>
-            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
-              सत्यापित बुकिंग कन्फर्म • Job Created
+            <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
+              सत्यापित बुकिंग कन्फर्म
             </span>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#132032] mt-2">
               आपकी रिपेयर बुकिंग सफलतापूर्वक दर्ज हो गई है!
             </h2>
-            <p className="text-xs text-slate-600 mt-1">
-              ₹199 विज़िट टोकन Razorpay सर्वर द्वारा सत्यापित हो चुका है (आईडी: {completedJob.razorpayPaymentId})
+            <p className="text-xs text-gray-600 mt-1">
+              ₹199 विज़िट टोकन Razorpay द्वारा सत्यापित हो चुका है (आईडी: {completedJob.razorpayPaymentId})
             </p>
           </div>
 
           {/* Job Card Details */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left text-xs space-y-2 text-slate-800 font-medium">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-              <span className="text-slate-500 font-bold">जॉब आईडी (Job ID):</span>
-              <span className="font-mono font-black text-red-600 text-sm">{completedJob.jobId}</span>
+          <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-left text-xs space-y-2 text-[#132032] font-medium">
+            <div className="flex items-center justify-between pb-2 border-b border-gray-200">
+              <span className="text-gray-500 font-bold">जॉब आईडी (Job ID):</span>
+              <span className="font-mono font-bold text-[#D5151B] text-sm">{completedJob.jobId}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">डिवाइस:</span>
+              <span className="text-gray-500">डिवाइस:</span>
               <span className="font-bold">{completedJob.model}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">चुनी गई समस्याएं:</span>
+              <span className="text-gray-500">चुनी गई समस्याएं:</span>
               <span className="font-bold text-right truncate max-w-[180px]">{completedJob.services.join(', ')}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">पिकअप स्लॉट:</span>
-              <span className="font-bold text-blue-700">{completedJob.pickupSlot.date} ({completedJob.pickupSlot.window})</span>
+              <span className="text-gray-500">पिकअप स्लॉट:</span>
+              <span className="font-bold text-[#132032]">{completedJob.pickupSlot.date} ({completedJob.pickupSlot.window})</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-500">पता:</span>
+              <span className="text-gray-500">पता:</span>
               <span className="font-bold text-right truncate max-w-[200px]">{completedJob.address}, {completedJob.area}</span>
             </div>
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-emerald-700 font-bold">
+            <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-emerald-700 font-bold">
               <span>वारंटी:</span>
               <span>{calculations.warrantyText}</span>
             </div>
@@ -813,24 +849,27 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
                 if (onNavigateToOrders) {
                   onNavigateToOrders();
                 } else {
-                  window.location.hash = '#orders';
+                  window.history.pushState({}, '', '/orders');
                 }
               }}
-              className="w-full py-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target"
             >
-              <span>📦 'My Orders' में लाइव स्टेटस टाइमलाइन देखें</span>
-              <ArrowRight className="w-4 h-4 text-emerald-400" />
+              <Package className="w-4 h-4" />
+              <span>&apos;My Orders&apos; में लाइव स्टेटस टाइमलाइन देखें</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
 
             <a
-              href={`https://wa.me/919372802044?text=${encodeURIComponent(
+              href={buildWhatsappHref(
+                siteSettings.whatsappNumber,
                 `नमस्ते Sastafone Surat! मैंने ₹199 टोकन के साथ रिपेयर बुक किया है। जॉब आईडी: ${completedJob.jobId}, फोन: ${completedJob.model}, क्षेत्र: ${completedJob.area}`
-              )}`}
+              )}
               target="_blank"
-              rel="noreferrer"
-              className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all"
+              rel="noopener noreferrer"
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all duration-150"
             >
-              <span>💬 WhatsApp पर अपडेट्स प्राप्त करें</span>
+              <MessageCircle className="w-4 h-4" />
+              <span>WhatsApp पर अपडेट्स प्राप्त करें</span>
             </a>
           </div>
         </div>

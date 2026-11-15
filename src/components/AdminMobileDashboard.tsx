@@ -16,8 +16,13 @@ import {
   addPartnerLedgerEntry
 } from '../services/firestoreRepairService';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
 import { PickupQCScreen } from './PickupQCScreen';
+import {
+  updateSiteSettingsInFirestore,
+  DEFAULT_SITE_SETTINGS
+} from '../services/siteSettingsService';
+import { uploadImageToStorage } from '../utils/storageUpload';
 import {
   ShieldAlert,
   Search,
@@ -47,7 +52,10 @@ import {
   ArrowRight,
   Star,
   Check,
-  FileText
+  FileText,
+  Settings,
+  Download,
+  Database
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -60,7 +68,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
   isOpen,
   onClose
 }) => {
-  const { user } = useApp();
+  const { user, siteSettings } = useApp();
 
   const [activeTab, setActiveTab] = useState<
     | 'new_bookings'
@@ -72,6 +80,8 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
     | 'partner_ledger'
     | 'rates_slots'
     | 'reviews'
+    | 'site_settings'
+    | 'backup'
   >('new_bookings');
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -104,6 +114,8 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
   const [sellFinalOffer, setSellFinalOffer] = useState<number>(0);
   const [sellPaymentMethod, setSellPaymentMethod] = useState<'UPI' | 'Bank Transfer' | 'Cash'>('UPI');
   const [sellPayoutError, setSellPayoutError] = useState<string | null>(null);
+  const [isUploadingSellId, setIsUploadingSellId] = useState(false);
+  const [isUploadingSellBill, setIsUploadingSellBill] = useState(false);
 
   // Add Inventory State
   const [isAddInventoryOpen, setIsAddInventoryOpen] = useState(false);
@@ -116,6 +128,9 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
   const [newInvImei, setNewInvImei] = useState('');
   const [newInvPrice, setNewInvPrice] = useState<number>(25000);
   const [newInvPhotos, setNewInvPhotos] = useState<string[]>([]);
+  const [isUploadingInvPhotos, setIsUploadingInvPhotos] = useState(false);
+  const [isSavingInventory, setIsSavingInventory] = useState(false);
+  const [invError, setInvError] = useState<string | null>(null);
 
   // Partner Handover Modal State
   const [activeHandoverJob, setActiveHandoverJob] = useState<Job | null>(null);
@@ -127,6 +142,37 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
   // Partner Top-up State
   const [topupPartnerId, setTopupPartnerId] = useState<string | null>(null);
   const [topupAmount, setTopupAmount] = useState<number>(2000);
+
+  // Public Site Settings Form State
+  const [settingsGoogleReviewUrl, setSettingsGoogleReviewUrl] = useState(
+    siteSettings.googleReviewUrl || DEFAULT_SITE_SETTINGS.googleReviewUrl
+  );
+  const [settingsWhatsapp, setSettingsWhatsapp] = useState(
+    siteSettings.whatsappNumber || DEFAULT_SITE_SETTINGS.whatsappNumber
+  );
+  const [settingsSupportPhone, setSettingsSupportPhone] = useState(
+    siteSettings.supportPhone || DEFAULT_SITE_SETTINGS.supportPhone
+  );
+  const [settingsBusinessHours, setSettingsBusinessHours] = useState(
+    siteSettings.businessHours || DEFAULT_SITE_SETTINGS.businessHours
+  );
+  const [settingsSupportEmail, setSettingsSupportEmail] = useState(
+    siteSettings.supportEmail || DEFAULT_SITE_SETTINGS.supportEmail
+  );
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsSaveMessage, setSettingsSaveMessage] = useState<string | null>(null);
+
+  // Backup Export State
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+  const [backupStatusMessage, setBackupStatusMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSettingsGoogleReviewUrl(siteSettings.googleReviewUrl || '');
+    setSettingsWhatsapp(siteSettings.whatsappNumber || DEFAULT_SITE_SETTINGS.whatsappNumber);
+    setSettingsSupportPhone(siteSettings.supportPhone || DEFAULT_SITE_SETTINGS.supportPhone);
+    setSettingsBusinessHours(siteSettings.businessHours || DEFAULT_SITE_SETTINGS.businessHours);
+    setSettingsSupportEmail(siteSettings.supportEmail || DEFAULT_SITE_SETTINGS.supportEmail);
+  }, [siteSettings]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -313,8 +359,8 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
         colour: 'Original',
         grade: 'A Excellent',
         batteryHealth: 88,
-        imei: sellReq.imei || '358912093847561',
-        photos: sellReq.conditionPhotos?.length > 0 ? sellReq.conditionPhotos : ['https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600'],
+        imei: sellReq.imei || '',
+        photos: sellReq.conditionPhotos?.length > 0 ? sellReq.conditionPhotos : [],
         price: Math.round((sellReq.finalOffer || 12000) * 1.25),
         tokenAmount: 499,
         warrantyMonths: 6,
@@ -410,18 +456,207 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
     }
   };
 
+  // Save public settings
+  const handleSaveSiteSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setSettingsSaveMessage(null);
+    const res = await updateSiteSettingsInFirestore(
+      {
+        googleReviewUrl: settingsGoogleReviewUrl.trim(),
+        whatsappNumber: settingsWhatsapp.trim(),
+        supportPhone: settingsSupportPhone.trim(),
+        businessHours: settingsBusinessHours.trim(),
+        supportEmail: settingsSupportEmail.trim()
+      },
+      user.uid
+    );
+    setIsSavingSettings(false);
+    if (res.success) {
+      setSettingsSaveMessage('✓ पब्लिक सेटिंग्स सफलतापूर्वक सेव हो गई हैं।');
+    } else {
+      setSettingsSaveMessage(res.error || 'सेटिंग्स सेव करने में त्रुटि हुई।');
+    }
+  };
+
+  // Add inventory phone handler
+  const handleSaveNewInventory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setInvError(null);
+    if (!newInvModel.trim()) {
+      setInvError('कृपया फोन का मॉडल नाम दर्ज करें।');
+      return;
+    }
+    if (!newInvImei || newInvImei.length < 15) {
+      setInvError('कृपया सही 15-अंकीय IMEI दर्ज करें।');
+      return;
+    }
+    if (newInvPrice <= 0) {
+      setInvError('कृपया मान्य विक्रय मूल्य दर्ज करें।');
+      return;
+    }
+
+    setIsSavingInventory(true);
+    try {
+      const slug = `${newInvBrand.toLowerCase()}-${newInvModel.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${newInvStorage.toLowerCase()}-${Date.now().toString().slice(-4)}`;
+      await addInventoryPhoneInFirestore({
+        slug,
+        brand: newInvBrand,
+        model: newInvModel.trim(),
+        storage: newInvStorage,
+        colour: newInvColour.trim() || 'Original',
+        grade: newInvGrade,
+        batteryHealth: newInvBattery,
+        imei: newInvImei,
+        photos: newInvPhotos,
+        price: newInvPrice,
+        tokenAmount: 499,
+        warrantyMonths: 6,
+        status: 'available',
+        description: `सर्टिफाइड ${newInvBrand} ${newInvModel.trim()} (${newInvStorage})। 32-पॉइंट QC पास और 6 महीने की Sastafone वारंटी।`
+      });
+      setIsAddInventoryOpen(false);
+      setNewInvModel('');
+      setNewInvImei('');
+      setNewInvPhotos([]);
+    } catch (err: any) {
+      setInvError(err?.message || 'इन्वेंट्री जोड़ने में त्रुटि हुई।');
+    } finally {
+      setIsSavingInventory(false);
+    }
+  };
+
+  // Download helper for JSON / CSV backup
+  const triggerDownload = (content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const escapeCsvCell = (val: any): string => {
+    if (val === null || val === undefined) return '""';
+    const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
+    return `"${str.replace(/"/g, '""')}"`;
+  };
+
+  const handleExportFullJsonBackup = async () => {
+    setIsExportingBackup(true);
+    setBackupStatusMessage(null);
+    try {
+      const collectionNames = [
+        'jobs',
+        'sellRequests',
+        'inventory',
+        'repairPrices',
+        'partners',
+        'reviews',
+        'warrantyClaims',
+        'settings',
+        'handovers',
+        'ledger'
+      ];
+      const backupPayload: Record<string, any[]> = {};
+      for (const col of collectionNames) {
+        try {
+          const snap = await getDocs(collection(db, col));
+          backupPayload[col] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        } catch {
+          backupPayload[col] = [];
+        }
+      }
+      const dateStamp = new Date().toISOString().split('T')[0];
+      triggerDownload(
+        JSON.stringify(
+          {
+            exportedAt: new Date().toISOString(),
+            exportedBy: user.email || user.uid,
+            collections: backupPayload
+          },
+          null,
+          2
+        ),
+        `sastafone-backup-${dateStamp}.json`,
+        'application/json'
+      );
+      setBackupStatusMessage('✓ पूरा JSON डेटाबेस बैकअप डाउनलोड हो गया।');
+    } catch (err: any) {
+      setBackupStatusMessage('बैकअप डाउनलोड करने में समस्या आई।');
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
+  const handleExportJobsCsv = () => {
+    const headers = [
+      'jobId',
+      'name',
+      'phone',
+      'area',
+      'address',
+      'brand',
+      'model',
+      'status',
+      'estMin',
+      'estMax',
+      'finalPrice',
+      'visitFeePaid',
+      'customerApproved',
+      'partnerId',
+      'createdAt'
+    ];
+    const rows = jobs.map((j) =>
+      headers.map((h) => escapeCsvCell((j as any)[h])).join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
+    const dateStamp = new Date().toISOString().split('T')[0];
+    triggerDownload(csv, `sastafone-repair-jobs-${dateStamp}.csv`, 'text/csv;charset=utf-8;');
+    setBackupStatusMessage(`✓ ${jobs.length} रिपेयर जॉब्स CSV में डाउनलोड हो गए।`);
+  };
+
+  const handleExportSellRequestsCsv = () => {
+    const headers = [
+      'id',
+      'customerName',
+      'customerPhone',
+      'area',
+      'brand',
+      'model',
+      'storage',
+      'estMin',
+      'estMax',
+      'finalOffer',
+      'paymentMethod',
+      'status',
+      'imei',
+      'createdAt'
+    ];
+    const rows = sellRequests.map((r) =>
+      headers.map((h) => escapeCsvCell((r as any)[h])).join(',')
+    );
+    const csv = [headers.join(','), ...rows].join('\n');
+    const dateStamp = new Date().toISOString().split('T')[0];
+    triggerDownload(csv, `sastafone-sell-requests-${dateStamp}.csv`, 'text/csv;charset=utf-8;');
+    setBackupStatusMessage(`✓ ${sellRequests.length} बाय-बैक अनुरोध CSV में डाउनलोड हो गए।`);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs step-transition overflow-y-auto">
       <div className="relative w-full max-w-5xl my-auto bg-gray-50 rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[94vh]">
         {/* Top Header */}
-        <div className="p-4 sm:p-5 bg-white border-b border-gray-200 text-gray-900 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-5 bg-white border-b border-gray-200 text-[#132032] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#DC2626] text-white flex items-center justify-center font-black shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-[#D5151B] text-white flex items-center justify-center font-bold shadow-xs">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-gray-900 tracking-tight">
+                <h2 className="text-base sm:text-lg font-bold text-[#132032] tracking-tight">
                   Sastafone Admin Control Center
                 </h2>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
@@ -455,7 +690,9 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
             { id: 'inventory', label: 'इन्वेंट्री (Buy)', count: inventoryList.length },
             { id: 'partner_ledger', label: 'पार्टनर लेजर', count: partners.length },
             { id: 'rates_slots', label: 'रेट व स्लॉट', count: null },
-            { id: 'reviews', label: 'रिव्यू मॉडरेशन', count: counts.reviews_pending }
+            { id: 'reviews', label: 'रिव्यू मॉडरेशन', count: counts.reviews_pending },
+            { id: 'site_settings', label: 'सेटिंग्स (Site)', count: null },
+            { id: 'backup', label: 'बैकअप (Export)', count: null }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -463,15 +700,15 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                 activeTab === tab.id
-                  ? 'bg-[#DC2626] text-white shadow-2xs'
+                  ? 'bg-[#D5151B] text-white shadow-2xs'
                   : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
               }`}
             >
               <span>{tab.label}</span>
               {tab.count !== null && tab.count > 0 && (
                 <span
-                  className={`text-[9px] font-black px-1.5 py-0.2 rounded-full ${
-                    activeTab === tab.id ? 'bg-white text-[#DC2626]' : 'bg-red-100 text-[#DC2626]'
+                  className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                    activeTab === tab.id ? 'bg-white text-[#D5151B]' : 'bg-red-100 text-[#D5151B]'
                   }`}
                 >
                   {tab.count}
@@ -498,7 +735,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="जॉब ID, ग्राहक नाम, फोन या मॉडल खोजें..."
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs outline-none focus:border-red-500"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs outline-none focus:border-[#D5151B]"
                   />
                 </div>
 
@@ -537,10 +774,10 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2">
                         <div>
-                          <span className="text-xs font-mono font-bold text-[#DC2626]">
+                          <span className="text-xs font-mono font-bold text-[#D5151B]">
                             #{job.jobId}
                           </span>
-                          <h3 className="text-sm font-bold text-gray-900">
+                          <h3 className="text-sm font-bold text-[#132032]">
                             {job.name} • {job.brand} {job.model}
                           </h3>
                           <p className="text-[11px] text-gray-500">
@@ -619,15 +856,15 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                               setHandoverImei(job.qc?.imei || '');
                               setSealedBagId(`BAG-${job.jobId.slice(-4)}`);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-[#FEF2F2] hover:bg-red-100 text-[#D5151B] border border-red-200 font-bold text-xs cursor-pointer"
                           >
-                            📦 सीलबंद हैंडओवर (2-hr Timer)
+                            सीलबंद हैंडओवर (2-hr Timer)
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setQcActiveJob(job)}
-                            className="px-3 py-1.5 rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer"
                           >
                             11-पॉइंट QC करें
                           </button>
@@ -644,7 +881,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           {activeTab === 'sell_requests' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs">
-                <h3 className="font-bold text-gray-900">
+                <h3 className="font-bold text-[#132032]">
                   फोन बाय-बैक अनुरोध (`sellRequests`):
                 </h3>
                 <span className="text-gray-500">{sellRequests.length} अनुरोध</span>
@@ -659,8 +896,8 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                   <div key={req.id} className="p-4 rounded-2xl bg-white border border-gray-200 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2">
                       <div>
-                        <span className="text-xs font-mono font-bold text-[#DC2626]">#{req.id.slice(-6)}</span>
-                        <h4 className="text-sm font-bold text-gray-900">
+                        <span className="text-xs font-mono font-bold text-[#D5151B]">#{req.id.slice(-6)}</span>
+                        <h4 className="text-sm font-bold text-[#132032]">
                           {req.customerName} (+91 {req.customerPhone}) • {req.brand} {req.model} ({req.storage})
                         </h4>
                         <p className="text-[11px] text-gray-500">
@@ -699,7 +936,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                               setSellInspectionImei(req.imei || '');
                               setSellFinalOffer(req.estMax || 10000);
                             }}
-                            className="px-3 py-1.5 rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer"
                           >
                             ऑन-साइट निरीक्षण व पेआउट
                           </button>
@@ -726,13 +963,13 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           {activeTab === 'inventory' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs">
-                <h3 className="font-bold text-gray-900">
+                <h3 className="font-bold text-[#132032]">
                   सर्टिफाइड फोन इन्वेंट्री (`inventory` Collection):
                 </h3>
                 <button
                   type="button"
                   onClick={() => setIsAddInventoryOpen(true)}
-                  className="px-3 py-1.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer"
                 >
                   + नया फोन इन्वेंट्री में जोड़ें
                 </button>
@@ -748,8 +985,8 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     <div key={item.id} className="p-4 rounded-2xl bg-white border border-gray-200 space-y-2 text-xs">
                       <div className="flex items-start justify-between">
                         <div>
-                          <span className="text-[10px] font-bold text-[#DC2626] uppercase">{item.brand}</span>
-                          <h4 className="text-sm font-bold text-gray-900">{item.model}</h4>
+                          <span className="text-[10px] font-bold text-[#D5151B] uppercase">{item.brand}</span>
+                          <h4 className="text-sm font-bold text-[#132032]">{item.model}</h4>
                           <p className="text-gray-500 text-[11px]">
                             {item.storage} • {item.colour} • ग्रेड: {item.grade}
                           </p>
@@ -770,11 +1007,11 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                       <div className="p-2 rounded-xl bg-gray-50 text-[11px] space-y-0.5">
                         <div className="flex justify-between">
                           <span>विक्रय मूल्य:</span>
-                          <strong className="text-gray-900 font-mono">₹{item.price}</strong>
+                          <strong className="text-[#132032] font-mono">₹{item.price}</strong>
                         </div>
                         <div className="flex justify-between">
                           <span>प्राइवेट IMEI:</span>
-                          <span className="font-mono text-gray-600">{item.imei || '358912093847561'}</span>
+                          <span className="font-mono text-gray-600">{item.imei || 'दर्ज नहीं'}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>बैटरी हेल्थ:</span>
@@ -814,7 +1051,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           {activeTab === 'partner_ledger' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs">
-                <h3 className="font-bold text-gray-900">
+                <h3 className="font-bold text-[#132032]">
                   पार्टनर लेजर व सीलबंद बैग हैंडओवर (`partners` & `ledger`):
                 </h3>
                 <span className="text-gray-500">{partners.length} एक्टिव पार्टनर्स</span>
@@ -825,7 +1062,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                   <div key={p.id} className="p-4 rounded-2xl bg-white border border-gray-200 space-y-2 text-xs">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h4 className="text-sm font-bold text-gray-900">{p.name}</h4>
+                        <h4 className="text-sm font-bold text-[#132032]">{p.name}</h4>
                         <p className="text-[11px] text-gray-500">📍 {p.area} • 📞 {p.phone}</p>
                       </div>
                       <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
@@ -836,7 +1073,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     <div className="p-3 rounded-xl bg-gray-50 border border-gray-100 space-y-1">
                       <div className="flex justify-between">
                         <span className="text-gray-600">एडवांस बैलेंस:</span>
-                        <strong className="text-gray-900 font-mono text-sm">₹{p.advanceBalance}</strong>
+                        <strong className="text-[#132032] font-mono text-sm">₹{p.advanceBalance}</strong>
                       </div>
                       <div className="flex justify-between text-[11px] text-gray-500">
                         <span>रेट कार्ड (स्क्रीन रिपेयर):</span>
@@ -867,7 +1104,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
             <div className="space-y-4">
               <div className="bg-white p-4 rounded-2xl border border-gray-200 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-gray-900">
+                  <h4 className="text-xs font-bold text-[#132032]">
                     रिपेयर प्राइस मास्टर (`repairPrices` Collection):
                   </h4>
                   <span className="text-xs text-gray-500">{repairPrices.length} सेवाएं</span>
@@ -879,7 +1116,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     return (
                       <div key={item.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
                         <div className="flex-1 min-w-0">
-                          <span className="font-bold text-gray-900 block truncate">{item.name_hi}</span>
+                          <span className="font-bold text-[#132032] block truncate">{item.name_hi}</span>
                           <span className="text-[10px] text-gray-500">{item.description_hi}</span>
                         </div>
 
@@ -918,7 +1155,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                           </div>
                         ) : (
                           <div className="flex items-center gap-3 shrink-0">
-                            <span className="font-mono font-bold text-[#DC2626]">
+                            <span className="font-mono font-bold text-[#D5151B]">
                               ₹{item.minPrice} - ₹{item.maxPrice}
                             </span>
                             <button
@@ -947,7 +1184,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           {activeTab === 'reviews' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-xs">
-                <h3 className="font-bold text-gray-900">
+                <h3 className="font-bold text-[#132032]">
                   ग्राहक समीक्षा मॉडरेशन (`reviews` Collection):
                 </h3>
                 <span className="text-gray-500">
@@ -965,7 +1202,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-gray-900">{rev.customerName}</span>
+                          <span className="font-bold text-[#132032]">{rev.customerName}</span>
                           <span className="text-[10px] text-gray-400">({rev.area})</span>
                         </div>
                         <div className="flex items-center gap-0.5 text-amber-500 my-1">
@@ -1017,6 +1254,171 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
               )}
             </div>
           )}
+
+          {/* TAB: SITE SETTINGS */}
+          {activeTab === 'site_settings' && (
+            <form onSubmit={handleSaveSiteSettings} className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <Settings className="w-5 h-5 text-[#D5151B]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#132032]">
+                    पब्लिक वेबसाइट व लोकल संपर्क सेटिंग्स (`settings/public`)
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    यहाँ से सेव किया गया डेटा तुरंत Contact पेज, Footer, WhatsApp बटन और Order Review बटन पर अपडेट होता है।
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-[#132032] mb-1">
+                    Google Review URL ("Review us on Google" बटन के लिए)
+                  </label>
+                  <input
+                    type="url"
+                    value={settingsGoogleReviewUrl}
+                    onChange={(e) => setSettingsGoogleReviewUrl(e.target.value)}
+                    placeholder="https://g.page/r/..."
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] outline-none"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1">
+                    खाली होने पर "Review us on Google" बटन छिपा रहेगा; वैध URL डालते ही यह Contact व पूर्ण ऑर्डर कार्ड में दिखने लगेगा।
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">
+                    WhatsApp नंबर (देश कोड सहित, बिना +)
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsWhatsapp}
+                    onChange={(e) => setSettingsWhatsapp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="919372802044"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 font-mono focus:border-[#D5151B] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">
+                    सपोर्ट कॉल नंबर (Display + Tel)
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsSupportPhone}
+                    onChange={(e) => setSettingsSupportPhone(e.target.value)}
+                    placeholder="+91 93728 02044"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 font-mono focus:border-[#D5151B] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">
+                    सपोर्ट ईमेल (Support Email)
+                  </label>
+                  <input
+                    type="email"
+                    value={settingsSupportEmail}
+                    onChange={(e) => setSettingsSupportEmail(e.target.value)}
+                    placeholder="support@sastafone.in"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">
+                    कार्य समय (Business Hours)
+                  </label>
+                  <input
+                    type="text"
+                    value={settingsBusinessHours}
+                    onChange={(e) => setSettingsBusinessHours(e.target.value)}
+                    placeholder="9:00 AM – 9:30 PM (Monday – Sunday)"
+                    className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:border-[#D5151B] outline-none"
+                  />
+                </div>
+              </div>
+
+              {settingsSaveMessage && (
+                <div className="p-3 rounded-xl bg-[#FEF2F2] border border-red-200 text-[#132032] text-xs font-medium">
+                  {settingsSaveMessage}
+                </div>
+              )}
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSavingSettings}
+                  className="px-5 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer transition-colors disabled:opacity-50"
+                >
+                  {isSavingSettings ? 'सेव हो रहा है...' : 'पब्लिक सेटिंग्स सेव करें'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* TAB: BACKUP EXPORT */}
+          {activeTab === 'backup' && (
+            <div className="bg-white p-5 rounded-2xl border border-gray-200 space-y-4">
+              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                <Database className="w-5 h-5 text-[#D5151B]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#132032]">
+                    Firestore डेटाबेस बैकअप व CSV एक्सपोर्ट
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    सभी मुख्य कलेक्शन (jobs, sellRequests, inventory, repairPrices, partners, reviews, warrantyClaims, settings) की सुरक्षित ऑफलाइन कॉपी डाउनलोड करें।
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <button
+                  type="button"
+                  onClick={handleExportFullJsonBackup}
+                  disabled={isExportingBackup}
+                  className="p-4 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold flex flex-col items-start gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>पूरा JSON बैकअप डाउनलोड करें (.json)</span>
+                  <span className="text-[10px] font-medium text-red-100">
+                    {isExportingBackup ? 'सभी कलेक्शन लोड हो रहे हैं...' : 'सभी 10 Firestore कलेक्शन शामिल'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportJobsCsv}
+                  className="p-4 rounded-xl bg-[#FEF2F2] hover:bg-red-100 border border-red-200 text-[#132032] font-bold flex flex-col items-start gap-1.5 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-5 h-5 text-[#D5151B]" />
+                  <span>रिपेयर जॉब्स CSV डाउनलोड करें (.csv)</span>
+                  <span className="text-[10px] font-medium text-gray-600">
+                    कुल {jobs.length} जॉब्स (Excel/Sheets के लिए)
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportSellRequestsCsv}
+                  className="p-4 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[#132032] font-bold flex flex-col items-start gap-1.5 transition-colors cursor-pointer"
+                >
+                  <FileText className="w-5 h-5 text-[#132032]" />
+                  <span>फोन बाय-बैक CSV डाउनलोड करें (.csv)</span>
+                  <span className="text-[10px] font-medium text-gray-600">
+                    कुल {sellRequests.length} अनुरोध (Excel/Sheets के लिए)
+                  </span>
+                </button>
+              </div>
+
+              {backupStatusMessage && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
+                  {backupStatusMessage}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* MODAL: ON-SITE SELL INSPECTION & PAYOUT (Section E) */}
@@ -1024,7 +1426,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <div className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-gray-200">
               <div className="flex items-center justify-between border-b pb-3">
-                <h3 className="text-base font-bold text-gray-900">
+                <h3 className="text-base font-bold text-[#132032]">
                   ऑन-साइट बाय-बैक निरीक्षण व पेआउट
                 </h3>
                 <button
@@ -1046,53 +1448,81 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                 {/* Mandatory Fields */}
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">
-                    1. 15-अंकीय IMEI नंबर दर्ज करें (*#06#) <span className="text-red-500">*</span>
+                    1. 15-अंकीय IMEI नंबर दर्ज करें (*#06#) <span className="text-[#D5151B]">*</span>
                   </label>
                   <input
                     type="text"
                     value={sellInspectionImei}
                     onChange={(e) => setSellInspectionImei(e.target.value.replace(/\D/g, '').slice(0, 15))}
                     placeholder="15-अंकीय IMEI"
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 font-mono text-xs outline-none focus:border-red-500"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 font-mono text-xs outline-none focus:border-[#D5151B]"
                     maxLength={15}
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">
-                    2. ग्राहक पहचान पत्र (Aadhaar / DL फोटो) <span className="text-red-500">*</span>
+                    2. ग्राहक पहचान पत्र (Aadhaar / DL फोटो) <span className="text-[#D5151B]">*</span>
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    disabled={isUploadingSellId}
+                    onChange={async (e) => {
                       if (e.target.files && e.target.files[0]) {
-                        setSellInspectionIdPhoto(URL.createObjectURL(e.target.files[0]));
+                        setIsUploadingSellId(true);
+                        setSellPayoutError(null);
+                        try {
+                          const url = await uploadImageToStorage(e.target.files[0], 'admin/sell-inspections');
+                          setSellInspectionIdPhoto(url);
+                        } catch (err: any) {
+                          setSellPayoutError(err?.message || 'ID फोटो अपलोड विफल रहा।');
+                        } finally {
+                          setIsUploadingSellId(false);
+                        }
                       }
                     }}
                     className="w-full text-xs"
                   />
+                  {isUploadingSellId && <p className="text-[11px] text-[#D5151B] mt-1">ID फोटो अपलोड हो रहा है...</p>}
+                  {sellInspectionIdPhoto && !isUploadingSellId && (
+                    <p className="text-[11px] text-emerald-700 font-bold mt-1">✓ ID फोटो Firebase Storage में अपलोड हुआ</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">
-                    3. खरीद बिल / ऑनरशिप प्रूफ फोटो <span className="text-red-500">*</span>
+                    3. खरीद बिल / ऑनरशिप प्रूफ फोटो <span className="text-[#D5151B]">*</span>
                   </label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={(e) => {
+                    disabled={isUploadingSellBill}
+                    onChange={async (e) => {
                       if (e.target.files && e.target.files[0]) {
-                        setSellInspectionBillPhoto(URL.createObjectURL(e.target.files[0]));
+                        setIsUploadingSellBill(true);
+                        setSellPayoutError(null);
+                        try {
+                          const url = await uploadImageToStorage(e.target.files[0], 'admin/sell-inspections');
+                          setSellInspectionBillPhoto(url);
+                        } catch (err: any) {
+                          setSellPayoutError(err?.message || 'बिल फोटो अपलोड विफल रहा।');
+                        } finally {
+                          setIsUploadingSellBill(false);
+                        }
                       }
                     }}
                     className="w-full text-xs"
                   />
+                  {isUploadingSellBill && <p className="text-[11px] text-[#D5151B] mt-1">बिल फोटो अपलोड हो रहा है...</p>}
+                  {sellInspectionBillPhoto && !isUploadingSellBill && (
+                    <p className="text-[11px] text-emerald-700 font-bold mt-1">✓ बिल फोटो Firebase Storage में अपलोड हुआ</p>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">
-                    4. अंतिम ऑफर रकम (Final Offer Amount) ₹ <span className="text-red-500">*</span>
+                    4. अंतिम ऑफर रकम (Final Offer Amount) ₹ <span className="text-[#D5151B]">*</span>
                   </label>
                   <input
                     type="number"
@@ -1136,7 +1566,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                 <button
                   type="button"
                   onClick={handleCompleteSellInspection}
-                  className="flex-1 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer"
                 >
                   बाय-बैक पुष्टि करें व पेआउट दें
                 </button>
@@ -1150,7 +1580,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-gray-200 text-xs">
               <div className="flex items-center justify-between border-b pb-3">
-                <h3 className="text-base font-bold text-gray-900">
+                <h3 className="text-base font-bold text-[#132032]">
                   सीलबंद बैग हैंडओवर (2-Hour Timer)
                 </h3>
                 <button type="button" onClick={() => setActiveHandoverJob(null)}>
@@ -1158,7 +1588,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                 </button>
               </div>
 
-              <div className="p-3 bg-red-50 rounded-xl text-[11px] text-[#DC2626] font-semibold">
+              <div className="p-3 bg-red-50 rounded-xl text-[11px] text-[#D5151B] font-semibold">
                 *डेटा सुरक्षा: पार्टनर को ग्राहक का नाम व फोन नंबर नहीं दिखाया जाएगा। सीलबंद बैग पर केवल जॉब ID #{activeHandoverJob.jobId} दिखेगी।
               </div>
 
@@ -1213,7 +1643,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                 <button
                   type="button"
                   onClick={handleConfirmHandover}
-                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold"
+                  className="flex-1 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold cursor-pointer"
                 >
                   हैंडओवर व 2-घंटे टाइमर शुरू
                 </button>
@@ -1226,7 +1656,7 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
         {topupPartnerId && (
           <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
             <div className="bg-white rounded-3xl max-w-sm w-full p-5 space-y-3 shadow-2xl border border-gray-200 text-xs">
-              <h3 className="text-sm font-bold text-gray-900">पार्टनर एडवांस बैलेंस टॉप-अप</h3>
+              <h3 className="text-sm font-bold text-[#132032]">पार्टनर एडवांस बैलेंस टॉप-अप</h3>
               <p className="text-gray-600">
                 पार्टनर: <strong>{partners.find((p) => p.id === topupPartnerId)?.name}</strong>
               </p>
@@ -1257,6 +1687,187 @@ export const AdminMobileDashboard: React.FC<AdminMobileDashboardProps> = ({
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* MODAL: ADD INVENTORY PHONE */}
+        {isAddInventoryOpen && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+            <form
+              onSubmit={handleSaveNewInventory}
+              className="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-gray-200 max-h-[90vh] overflow-y-auto text-xs"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h3 className="text-base font-bold text-[#132032]">
+                  नया सर्टिफाइड फोन इन्वेंट्री में जोड़ें
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setIsAddInventoryOpen(false)}
+                  className="text-gray-500 hover:text-[#132032]"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">ब्रांड</label>
+                  <select
+                    value={newInvBrand}
+                    onChange={(e) => setNewInvBrand(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#D5151B]"
+                  >
+                    {['Apple', 'Samsung', 'OnePlus', 'Xiaomi', 'Vivo', 'Oppo', 'Realme', 'Google'].map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">मॉडल नाम *</label>
+                  <input
+                    type="text"
+                    value={newInvModel}
+                    onChange={(e) => setNewInvModel(e.target.value)}
+                    placeholder="उदा. iPhone 13 Pro"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-[#D5151B]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">स्टोरेज</label>
+                  <select
+                    value={newInvStorage}
+                    onChange={(e) => setNewInvStorage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#D5151B]"
+                  >
+                    {['64GB', '128GB', '256GB', '512GB', '1TB'].map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">रंग (Colour)</label>
+                  <input
+                    type="text"
+                    value={newInvColour}
+                    onChange={(e) => setNewInvColour(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 outline-none focus:border-[#D5151B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">कंडीशन ग्रेड</label>
+                  <select
+                    value={newInvGrade}
+                    onChange={(e) => setNewInvGrade(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 bg-white outline-none focus:border-[#D5151B]"
+                  >
+                    <option value="A+ Like New">A+ Like New</option>
+                    <option value="A Excellent">A Excellent</option>
+                    <option value="B Good">B Good</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">बैटरी हेल्थ (%)</label>
+                  <input
+                    type="number"
+                    min={50}
+                    max={100}
+                    value={newInvBattery}
+                    onChange={(e) => setNewInvBattery(parseInt(e.target.value, 10) || 85)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 font-mono outline-none focus:border-[#D5151B]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">15-अंकीय IMEI *</label>
+                  <input
+                    type="text"
+                    value={newInvImei}
+                    onChange={(e) => setNewInvImei(e.target.value.replace(/\D/g, '').slice(0, 15))}
+                    placeholder="15-अंकीय IMEI"
+                    maxLength={15}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 font-mono outline-none focus:border-[#D5151B]"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-[#132032] mb-1">विक्रय मूल्य (₹) *</label>
+                  <input
+                    type="number"
+                    value={newInvPrice}
+                    onChange={(e) => setNewInvPrice(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 font-mono font-bold outline-none focus:border-[#D5151B]"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-[#132032] mb-1">फोन की तस्वीरें (Firebase Storage)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isUploadingInvPhotos}
+                    onChange={async (e) => {
+                      if (!e.target.files || e.target.files.length === 0) return;
+                      setIsUploadingInvPhotos(true);
+                      setInvError(null);
+                      try {
+                        const urls = await Promise.all(
+                          Array.from(e.target.files)
+                            .slice(0, 4)
+                            .map((f) => uploadImageToStorage(f, 'inventory'))
+                        );
+                        setNewInvPhotos((prev) => [...prev, ...urls].slice(0, 5));
+                      } catch (err: any) {
+                        setInvError(err?.message || 'फोटो अपलोड विफल रहा।');
+                      } finally {
+                        setIsUploadingInvPhotos(false);
+                      }
+                    }}
+                    className="w-full text-xs"
+                  />
+                  {isUploadingInvPhotos && (
+                    <p className="text-[11px] text-[#D5151B] mt-1">तस्वीरें अपलोड हो रही हैं...</p>
+                  )}
+                  {newInvPhotos.length > 0 && (
+                    <p className="text-[11px] text-emerald-700 font-bold mt-1">
+                      ✓ {newInvPhotos.length} तस्वीरें अपलोड हुईं
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {invError && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-[#D5151B] text-xs">
+                  {invError}
+                </div>
+              )}
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddInventoryOpen(false)}
+                  className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold cursor-pointer"
+                >
+                  रद्द करें
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingInventory || isUploadingInvPhotos}
+                  className="flex-1 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingInventory ? 'सेव हो रहा है...' : 'इन्वेंट्री में जोड़ें'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
 

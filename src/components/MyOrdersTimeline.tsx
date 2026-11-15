@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Job, JobStatus } from '../types';
+import { Job, JobStatus, InvoiceRecord } from '../types';
 import {
   subscribeToCustomerJobs,
   customerApproveQuoteInFirestore,
@@ -8,7 +8,17 @@ import {
   submitReviewToFirestore
 } from '../services/firestoreRepairService';
 import { db } from '../firebase';
-import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  updateDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  onSnapshot
+} from 'firebase/firestore';
+import { trackEvent } from '../utils/analytics';
 import {
   Package,
   Clock,
@@ -33,13 +43,13 @@ import {
 import confetti from 'canvas-confetti';
 
 const TIMELINE_STAGES: { status: JobStatus; label: string; hindi: string; icon: string }[] = [
-  { status: 'Booked', label: 'Booked', hindi: 'बुक हुआ', icon: '📝' },
-  { status: 'Pickup scheduled', label: 'Pickup Scheduled', hindi: 'पिकअप शेड्यूल', icon: '🛵' },
-  { status: 'Picked up', label: 'Picked Up', hindi: 'पिकअप हुआ', icon: '📦' },
-  { status: 'Quote approved', label: 'Quote Approved', hindi: 'क्वोट स्वीकृत', icon: '🤝' },
-  { status: 'In repair', label: 'In Repair', hindi: 'रिपेयर चालू', icon: '🔧' },
-  { status: 'Ready', label: 'Ready', hindi: 'तैयार', icon: '✨' },
-  { status: 'Delivered', label: 'Delivered', hindi: 'डिलीवर हुआ', icon: '🎉' }
+  { status: 'Booked', label: 'Booked', hindi: 'बुक हुआ', icon: '1' },
+  { status: 'Pickup scheduled', label: 'Pickup Scheduled', hindi: 'पिकअप शेड्यूल', icon: '2' },
+  { status: 'Picked up', label: 'Picked Up', hindi: 'पिकअप हुआ', icon: '3' },
+  { status: 'Quote approved', label: 'Quote Approved', hindi: 'क्वोट स्वीकृत', icon: '4' },
+  { status: 'In repair', label: 'In Repair', hindi: 'रिपेयर चालू', icon: '5' },
+  { status: 'Ready', label: 'Ready', hindi: 'तैयार', icon: '6' },
+  { status: 'Delivered', label: 'Delivered', hindi: 'डिलीवर हुआ', icon: '7' }
 ];
 
 interface MyOrdersTimelineProps {
@@ -47,7 +57,7 @@ interface MyOrdersTimelineProps {
 }
 
 export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew }) => {
-  const { user, setIsAuthModalOpen, setIsInvoiceModalOpen, setSelectedInvoiceOrder } = useApp();
+  const { user, setIsAuthModalOpen, setIsInvoiceModalOpen, setSelectedInvoiceOrder, siteSettings } = useApp();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -71,15 +81,18 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState<Record<string, boolean>>({});
 
+  const [invoicesByJobId, setInvoicesByJobId] = useState<Record<string, InvoiceRecord>>({});
+
   useEffect(() => {
     if (!user.isLoggedIn || !user.uid) {
       setJobs([]);
+      setInvoicesByJobId({});
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
-    const unsubscribe = subscribeToCustomerJobs(user.uid, (updatedJobs) => {
+    const unsubscribeJobs = subscribeToCustomerJobs(user.uid, (updatedJobs) => {
       setJobs(updatedJobs);
       setIsLoading(false);
       if (updatedJobs.length > 0 && !activeJobId) {
@@ -87,8 +100,30 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
       }
     });
 
+    const invQuery = query(collection(db, 'invoices'), where('userId', '==', user.uid));
+    const unsubscribeInvoices = onSnapshot(
+      invQuery,
+      (snap) => {
+        const map: Record<string, InvoiceRecord> = {};
+        const docs = snap.docs
+          .map((d) => ({ ...(d.data() as InvoiceRecord), id: d.id }))
+          .filter((inv) => inv.status !== 'voided')
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        docs.forEach((inv) => {
+          if (inv.jobId && !map[inv.jobId]) {
+            map[inv.jobId] = inv;
+          }
+        });
+        setInvoicesByJobId(map);
+      },
+      () => {
+        // Ignore if index or empty
+      }
+    );
+
     return () => {
-      unsubscribe();
+      unsubscribeJobs();
+      unsubscribeInvoices();
     };
   }, [user.uid, user.isLoggedIn]);
 
@@ -96,11 +131,11 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
     return (
       <div className="max-w-md mx-auto px-4 py-12 text-center">
         <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xs border border-gray-200 space-y-4">
-          <div className="w-14 h-14 rounded-full bg-red-50 text-[#DC2626] flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-full bg-red-50 text-[#D5151B] flex items-center justify-center mx-auto">
             <Lock className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-gray-900">
+            <h3 className="text-lg font-bold text-[#132032]">
               अपने रिपेयर ऑर्डर्स देखने के लिए लॉगिन करें
             </h3>
             <p className="text-xs text-gray-600 mt-1">
@@ -111,7 +146,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
           <button
             type="button"
             onClick={() => setIsAuthModalOpen(true)}
-            className="w-full py-3.5 rounded-2xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-2"
           >
             <span>लॉगिन करें</span>
             <ChevronRight className="w-4 h-4" />
@@ -126,6 +161,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
     setActionInProgress(jobId);
     try {
       await customerApproveQuoteInFirestore(jobId);
+      trackEvent('quote_approved', { job_id: jobId });
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
     } catch (err) {
       alert('क्वोट स्वीकार करने में समस्या आई। कृपया पुनः प्रयास करें।');
@@ -142,6 +178,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
     setActionInProgress(jobId);
     try {
       await customerDeclineQuoteInFirestore(jobId);
+      trackEvent('quote_declined', { job_id: jobId });
     } catch (err) {
       alert('क्वोट अस्वीकार करने में समस्या आई।');
     } finally {
@@ -247,6 +284,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
         area: job.area
       });
 
+      trackEvent('review_submitted', { job_id: job.jobId, rating: reviewRating });
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       setReviewSubmitted((prev) => ({ ...prev, [job.jobId]: true }));
       setReviewText('');
@@ -262,11 +300,11 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#DC2626] text-xs font-bold mb-1">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#D5151B] text-xs font-bold mb-1">
             <Package className="w-3.5 h-3.5" />
             <span>लाइव ऑन-स्नैपशॉट ट्रैकिंग</span>
           </span>
-          <h1 className="text-xl sm:text-2xl font-black text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#132032]">
             मेरे रिपेयर ऑर्डर्स (My Orders)
           </h1>
           <p className="text-xs text-gray-500">
@@ -278,7 +316,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
           <button
             type="button"
             onClick={onBookNew}
-            className="px-4 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer tap-target self-start sm:self-auto"
+            className="px-4 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer tap-target self-start sm:self-auto"
           >
             <Wrench className="w-4 h-4" />
             <span>नया रिपेयर बुक करें</span>
@@ -288,14 +326,14 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
 
       {isLoading ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-gray-200 shadow-xs">
-          <Clock className="w-8 h-8 text-[#DC2626] animate-spin mx-auto mb-2" />
+          <Clock className="w-8 h-8 text-[#D5151B] animate-spin mx-auto mb-2" />
           <p className="text-xs text-gray-500 font-medium">ऑर्डर्स लोड हो रहे हैं...</p>
         </div>
       ) : jobs.length === 0 ? (
         <div className="p-12 text-center bg-white rounded-3xl border border-gray-200 shadow-xs space-y-4">
           <Package className="w-12 h-12 text-gray-300 mx-auto" />
           <div>
-            <h3 className="text-base font-bold text-gray-900">
+            <h3 className="text-base font-bold text-[#132032]">
               कोई सक्रिय रिपेयर ऑर्डर नहीं है
             </h3>
             <p className="text-xs text-gray-500 max-w-sm mx-auto mt-1">
@@ -307,7 +345,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
             <button
               type="button"
               onClick={onBookNew}
-              className="px-6 py-3 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
             >
               रिपेयरिंग बुक करें (₹199 विज़िट टोकन)
             </button>
@@ -329,7 +367,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-[#DC2626] bg-[#FEF2F2] px-2.5 py-0.5 rounded-full border border-red-200">
+                      <span className="text-xs font-mono font-bold text-[#D5151B] bg-[#FEF2F2] px-2.5 py-0.5 rounded-full border border-red-200">
                         #{job.jobId}
                       </span>
                       <span className="text-xs text-gray-500">
@@ -341,7 +379,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                       </span>
                     </div>
 
-                    <h2 className="text-base sm:text-lg font-black text-gray-900">
+                    <h2 className="text-base sm:text-lg font-bold text-[#132032]">
                       {job.brand} {job.model}
                     </h2>
 
@@ -360,22 +398,42 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                     <button
                       type="button"
                       onClick={() => {
+                        const inv = invoicesByJobId[job.jobId];
                         setSelectedInvoiceOrder({
                           id: job.jobId,
-                          orderNumber: job.jobId,
+                          orderNumber: inv?.invoiceNumber || job.invoiceNumber || job.jobId,
+                          invoiceNumber: inv?.invoiceNumber || job.invoiceNumber,
                           type: 'repair',
                           title: `${job.brand} ${job.model}`,
-                          subtitle: job.services.join(', '),
-                          amount: job.finalPrice || job.estMax || 199,
-                          date: new Date(job.createdAt).toLocaleDateString('hi-IN'),
-                          timeSlot: `${job.pickupSlot?.date} (${job.pickupSlot?.window})`,
+                          subtitle: inv
+                            ? inv.services.map((s) => s.name).join(', ')
+                            : (job.finalServices && job.finalServices.length > 0
+                                ? job.finalServices
+                                : job.services
+                              ).join(', '),
+                          amount: inv ? inv.finalTotal : job.finalPrice || job.estMax || 199,
+                          date: inv?.date || new Date(job.createdAt).toLocaleDateString('hi-IN'),
+                          timeSlot: `${job.pickupSlot?.date || ''} (${job.pickupSlot?.window || ''})`,
                           status: job.status === 'Delivered' ? 'completed' : 'in_progress',
                           statusHindi: job.status,
-                          locality: job.area,
-                          customerName: job.name,
-                          customerPhone: job.phone,
-                          fullAddress: job.address,
-                          paymentMethod: 'Razorpay UPI'
+                          locality: inv?.area || job.area,
+                          customerName: inv?.customerName || job.name,
+                          customerPhone: inv?.customerPhone || job.phone,
+                          fullAddress: inv?.customerAddress || job.address,
+                          paymentMethod: inv?.paymentMethod || 'Razorpay UPI',
+                          imei: inv?.imei || job.qc?.imei,
+                          invoiceServices: inv?.services,
+                          invoiceParts: inv?.parts,
+                          subtotalAmount: inv?.subtotal,
+                          discountAmount: inv?.discountAmount,
+                          discountPct: inv?.discountPct || job.discountPct,
+                          discountReason: inv?.discountReason || job.discountReason,
+                          visitFeeAdjusted: inv?.visitFeeAdjusted ?? (job.visitFeePaid ? 199 : 0),
+                          gstEnabled: inv?.gstEnabled,
+                          gstPct: inv?.gstPct,
+                          gstAmount: inv?.gstAmount,
+                          gstin: inv?.gstin,
+                          warrantyMonths: inv?.warrantyMonths ?? job.warrantyMonths
                         });
                         setIsInvoiceModalOpen(true);
                       }}
@@ -394,7 +452,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                       {/* Line */}
                       <div className="absolute left-6 right-6 top-4 h-0.5 bg-gray-200 -z-0">
                         <div
-                          className="h-full bg-[#DC2626] transition-all duration-300"
+                          className="h-full bg-[#D5151B] transition-all duration-300"
                           style={{
                             width: `${(Math.max(0, currentStageIdx) / (TIMELINE_STAGES.length - 1)) * 100}%`
                           }}
@@ -410,7 +468,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                             <div
                               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                                 isCurrent
-                                  ? 'bg-[#DC2626] text-white ring-4 ring-red-100 scale-110'
+                                  ? 'bg-[#D5151B] text-white ring-4 ring-red-100 scale-110'
                                   : isDone
                                   ? 'bg-emerald-600 text-white'
                                   : 'bg-white border-2 border-gray-300 text-gray-400'
@@ -420,7 +478,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                             </div>
                             <span
                               className={`text-[10px] font-bold mt-1.5 leading-tight ${
-                                isCurrent ? 'text-[#DC2626]' : isDone ? 'text-gray-800' : 'text-gray-400'
+                                isCurrent ? 'text-[#D5151B]' : isDone ? 'text-gray-800' : 'text-gray-400'
                               }`}
                             >
                               {stage.hindi}
@@ -439,7 +497,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
 
                 {/* Final Quote & Referral Box (Light Theme) */}
                 {job.finalPrice !== undefined && (
-                  <div className="p-5 rounded-2xl bg-[#FEF2F2] border border-red-200 text-gray-900 space-y-4">
+                  <div className="p-5 rounded-2xl bg-[#FEF2F2] border border-red-200 text-[#132032] space-y-4">
                     <div className="flex items-center justify-between border-b border-red-200/80 pb-2">
                       <span className="text-xs font-bold text-red-700">
                         निरीक्षण बाद फाइनल क्वोट (Final Quote)
@@ -453,15 +511,15 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                     <div className="space-y-1.5 text-xs">
                       <div className="flex items-center justify-between text-gray-600">
                         <span>रिपेयरिंग पार्ट्स व सर्विस:</span>
-                        <span className="font-bold text-gray-900">₹{job.finalPrice}</span>
+                        <span className="font-bold text-[#132032]">₹{job.finalPrice}</span>
                       </div>
                       <div className="flex items-center justify-between text-gray-600">
                         <span>विज़िट टोकन छूट (Adjusted Token):</span>
                         <span className="text-emerald-700 font-bold">-₹199</span>
                       </div>
-                      <div className="flex items-center justify-between text-sm sm:text-base font-black text-gray-900 pt-2 border-t border-red-200">
+                      <div className="flex items-center justify-between text-sm sm:text-base font-bold text-[#132032] pt-2 border-t border-red-200">
                         <span>फाइनल देय राशि (Balance to Pay):</span>
-                        <span className="text-xl font-black text-[#DC2626]">
+                        <span className="text-xl font-bold text-[#D5151B]">
                           ₹{Math.max(0, job.finalPrice - (job.visitFeePaid ? 199 : 0))}
                         </span>
                       </div>
@@ -481,7 +539,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                             <button
                               type="button"
                               onClick={() => setIsReferralOpen(!isReferralOpen)}
-                              className="text-xs font-bold text-[#DC2626] hover:underline flex items-center gap-1 cursor-pointer"
+                              className="text-xs font-bold text-[#D5151B] hover:underline flex items-center gap-1 cursor-pointer"
                             >
                               <Users className="w-3.5 h-3.5" />
                               <span>
@@ -496,7 +554,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                                     type="button"
                                     onClick={() => setReferralCount(2)}
                                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
-                                      referralCount === 2 ? 'bg-[#DC2626] text-white' : 'bg-gray-100 text-gray-700'
+                                      referralCount === 2 ? 'bg-[#D5151B] text-white' : 'bg-gray-100 text-gray-700'
                                     }`}
                                   >
                                     2 दोस्त (₹200 छूट)
@@ -505,7 +563,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                                     type="button"
                                     onClick={() => setReferralCount(3)}
                                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold cursor-pointer ${
-                                      referralCount === 3 ? 'bg-[#DC2626] text-white' : 'bg-gray-100 text-gray-700'
+                                      referralCount === 3 ? 'bg-[#D5151B] text-white' : 'bg-gray-100 text-gray-700'
                                     }`}
                                   >
                                     3 दोस्त (₹300 छूट)
@@ -547,7 +605,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                                     type="checkbox"
                                     checked={referralConsent}
                                     onChange={(e) => setReferralConsent(e.target.checked)}
-                                    className="accent-[#DC2626]"
+                                    className="accent-[#D5151B]"
                                   />
                                   <span>मैं पुष्टि करता हूँ कि ये वास्तविक संपर्क हैं और मेरी अनुमति से जोड़े गए हैं।</span>
                                 </label>
@@ -598,7 +656,7 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                 {/* Section J: Post-Delivery Review Box */}
                 {isDelivered && (
                   <div className="p-5 rounded-2xl bg-gray-50 border border-gray-200 space-y-3">
-                    <h3 className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-[#132032] flex items-center gap-1.5">
                       <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
                       <span>आपकी राय हमारे लिए महत्वपूर्ण है (Rate Your Repair)</span>
                     </h3>
@@ -642,19 +700,22 @@ export const MyOrdersTimeline: React.FC<MyOrdersTimelineProps> = ({ onBookNew })
                             type="button"
                             disabled={isSubmittingReview}
                             onClick={() => handleSubmitJobReview(job)}
-                            className="flex-1 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
+                            className="flex-1 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs cursor-pointer disabled:opacity-50"
                           >
                             {isSubmittingReview ? 'सबमिट हो रहा है...' : 'समीक्षा सबमिट करें'}
                           </button>
 
-                          <a
-                            href="https://g.page/r/sastafone/review"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="py-2 px-3 rounded-xl border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                          >
-                            <span>Google पर भी रिव्यू दें</span>
-                          </a>
+                          {siteSettings.googleReviewUrl ? (
+                            <a
+                              href={siteSettings.googleReviewUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={() => trackEvent('google_review_click', { location: 'my_orders' })}
+                              className="py-2 px-3 rounded-xl border border-gray-300 hover:bg-gray-100 text-[#132032] font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                            >
+                              <span>Review us on Google</span>
+                            </a>
+                          ) : null}
                         </div>
                       </div>
                     )}

@@ -7,37 +7,61 @@ service firebase.storage {
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
-        request.auth.token.email == 'aisejio99@gmail.com' ||
-        request.auth.token.role == 'admin'
-      );
+      return isAuthenticated() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.admin == true;
+    }
+
+    function isPartner() {
+      return isAuthenticated() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.partner == true &&
+             request.auth.token.partnerId is string;
     }
 
     // Customer job attachments (condition photos, bill)
     match /jobs/{jobId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
-                   request.resource.size < 10 * 1024 * 1024 &&
+                   request.resource.size < 5 * 1024 * 1024 &&
                    request.resource.contentType.matches('image/.*');
+    }
+
+    // Partner repair proof photos (scoped strictly to partnerId or admin)
+    match /partner/{partnerId}/{allPaths=**} {
+      allow read: if isAdmin() || (isPartner() && request.auth.token.partnerId == partnerId);
+      allow write: if isAdmin() || (
+        isPartner() &&
+        request.auth.token.partnerId == partnerId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*')
+      );
     }
 
     // Sell phone request photos
     match /sellRequests/{requestId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() &&
-                   request.resource.size < 10 * 1024 * 1024 &&
+                   request.resource.size < 5 * 1024 * 1024 &&
                    request.resource.contentType.matches('image/.*');
     }
 
-    // Inventory product photos (public read)
+    // Inventory product photos (public read, admin write max 5MB images)
     match /inventory/{allPaths=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() &&
+                   request.resource.size < 5 * 1024 * 1024 &&
+                   request.resource.contentType.matches('image/.*');
     }
 
     // Admin-only private files (customer ID proofs, partner docs, sealed bags)
     match /admin/{allPaths=**} {
       allow read, write: if isAdmin();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

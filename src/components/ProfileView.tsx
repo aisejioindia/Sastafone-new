@@ -12,29 +12,32 @@ import {
   MessageCircle,
   ShieldAlert
 } from 'lucide-react';
-import { WHATSAPP_NUMBER } from '../data/mockData';
+import { buildWhatsappHref } from '../services/siteSettingsService';
 
 interface ProfileViewProps {
   onOpenAdmin: () => void;
+  onOpenPartner?: () => void;
   onNavigateToOrders: () => void;
   onNavigateToRepair: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
   onOpenAdmin,
+  onOpenPartner,
   onNavigateToOrders,
   onNavigateToRepair
 }) => {
-  const { user, logoutUser, setIsAuthModalOpen, selectedLocality } = useApp();
+  const { user, logoutUser, setIsAuthModalOpen, selectedLocality, siteSettings } = useApp();
 
-  const isAdmin = user.isLoggedIn && user.role === 'admin';
+  const isAdmin = Boolean(user.isLoggedIn && user.isAdmin && user.role === 'admin');
+  const isPartner = Boolean(user.isLoggedIn && user.isPartner && user.role === 'partner');
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-5 animate-in fade-in duration-200">
       {/* User Card */}
       <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center font-black text-xl shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-[#FEF2F2] text-[#D5151B] flex items-center justify-center font-bold text-xl shrink-0">
             {user.isLoggedIn ? (
               user.name ? user.name.charAt(0).toUpperCase() : <User className="w-8 h-8" />
             ) : (
@@ -46,12 +49,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {user.isLoggedIn ? (
               <>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-black text-gray-900 truncate">
+                  <h2 className="text-lg font-bold text-[#132032] truncate">
                     {user.name || 'Sastafone ग्राहक'}
                   </h2>
                   {isAdmin && (
-                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-[#DC2626] text-[10px] font-bold uppercase">
+                    <span className="px-2 py-0.5 rounded-full bg-red-100 text-[#D5151B] text-[10px] font-bold uppercase">
                       Admin
+                    </span>
+                  )}
+                  {isPartner && !isAdmin && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase">
+                      Partner
                     </span>
                   )}
                 </div>
@@ -65,7 +73,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </>
             ) : (
               <>
-                <h2 className="text-lg font-black text-gray-900">
+                <h2 className="text-lg font-bold text-[#132032]">
                   नमस्ते, आपका स्वागत है
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
@@ -79,7 +87,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* Auth CTA */}
         <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between">
           <div className="text-xs text-gray-600 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-[#DC2626]" />
+            <MapPin className="w-3.5 h-3.5 text-[#D5151B]" />
             <span>सूरत: {user.address || selectedLocality}</span>
           </div>
 
@@ -96,7 +104,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <button
               type="button"
               onClick={() => setIsAuthModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold transition-colors cursor-pointer"
             >
               लॉगिन करें
             </button>
@@ -113,10 +121,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 flex items-center justify-center shrink-0">
-              <Package className="w-5 h-5 text-[#DC2626]" />
+              <Package className="w-5 h-5 text-[#D5151B]" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900">मेरे ऑर्डर्स (My Orders)</div>
+              <div className="text-sm font-bold text-[#132032]">मेरे ऑर्डर्स (My Orders)</div>
               <div className="text-xs text-gray-500">लाइव स्टेटस ट्रैकिंग, इनवॉइस व क्वोट अप्रूवल</div>
             </div>
           </div>
@@ -129,11 +137,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           className="w-full flex items-center justify-between p-3.5 rounded-2xl hover:bg-gray-50 transition-colors text-left cursor-pointer"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] text-[#D5151B] flex items-center justify-center shrink-0">
               <Wrench className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-sm font-bold text-gray-900">नया रिपेयर बुक करें (Book Repair)</div>
+              <div className="text-sm font-bold text-[#132032]">नया रिपेयर बुक करें (Book Repair)</div>
               <div className="text-xs text-gray-500">₹199 विज़िट टोकन • 60 मिनट पिकअप स्लॉट्स</div>
             </div>
           </div>
@@ -141,31 +149,60 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </button>
       </div>
 
-      {/* Admin Quick Action (ONLY visible to user.role === 'admin', NO public button or PIN prompt) */}
+      {/* Admin Quick Action (ONLY visible to verified admin claim, NO public button or PIN prompt) */}
       {isAdmin && (
         <div className="bg-[#FEF2F2] rounded-3xl p-5 border border-red-200">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="w-5 h-5 text-[#DC2626]" />
-              <h3 className="text-sm font-bold text-gray-900">
-                Sastafone एडमिन कंसोल (/admin)
+              <ShieldAlert className="w-5 h-5 text-[#D5151B]" />
+              <h3 className="text-sm font-bold text-[#132032]">
+                Admin Control Room (/admin)
               </h3>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-[#DC2626]">
-              Admin Active
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-[#D5151B]">
+              Verified Admin
             </span>
           </div>
 
           <p className="text-xs text-gray-600 mb-3">
-            सूरत पिकअप, रिपेयर असाइनमेंट, फोन बाय-बैक, इन्वेंट्री व पार्टनर लेजर प्रबंधन।
+            सूरत लीड्स, पिकअप जॉब्स, QC, इनवॉइस, पार्टनर लेजर व सिस्टम सेटिंग्स प्रबंधन।
           </p>
 
           <button
             type="button"
             onClick={onOpenAdmin}
-            className="w-full py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold transition-colors cursor-pointer"
+            className="w-full py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold transition-colors cursor-pointer"
           >
-            एडमिन डेस्क खोलें
+            Admin Control Room खोलें
+          </button>
+        </div>
+      )}
+
+      {/* Partner Portal Quick Action (ONLY visible to verified partner claim) */}
+      {isPartner && !isAdmin && onOpenPartner && (
+        <div className="bg-emerald-50 rounded-3xl p-5 border border-emerald-200">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-emerald-700" />
+              <h3 className="text-sm font-bold text-[#132032]">
+                Technician Partner Portal (/partner)
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+              Verified Partner
+            </span>
+          </div>
+
+          <p className="text-xs text-gray-600 mb-3">
+            असाइन किए गए रिपेयर जॉब्स, प्रयुक्त पार्ट्स व एडवांस लेजर स्टेटमेंट देखें।
+          </p>
+
+          <button
+            type="button"
+            onClick={onOpenPartner}
+            className="w-full py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors cursor-pointer"
+          >
+            Partner Portal खोलें
           </button>
         </div>
       )}
@@ -179,10 +216,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           सूरत के सभी प्रमुख इलाकों (अडाजण, वेसु, वराछा, कतारगाम, सिटीलाइट) में डोरस्टेप पिकअप व डिलीवरी।
         </p>
         <a
-          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('नमस्ते Sastafone Surat! मुझे सहायता चाहिए।')}`}
+          href={buildWhatsappHref(siteSettings.whatsappNumber, 'नमस्ते Sastafone Surat! मुझे सहायता चाहिए।')}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
         >
           <MessageCircle className="w-4 h-4" />
           <span>WhatsApp सहायता</span>

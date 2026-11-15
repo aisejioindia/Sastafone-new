@@ -1,24 +1,38 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, OrderItem, SellSelection, SuratLocality, UserProfile, P2PListing, ChatMessage, CustomerReview, PaymentRequest } from '../types';
-import { DEFAULT_SURAT_LOCALITY, SURAT_LOCALITIES, INITIAL_P2P_LISTINGS, INITIAL_CUSTOMER_REVIEWS } from '../data/mockData';
-import { validateChatSecurity, getAutomatedSellerReply } from '../utils/chatSecurity';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { Language, OrderItem, SellSelection, UserProfile, P2PListing, ChatMessage, CustomerReview, PaymentRequest, AdminSettings } from '../types';
+import { DEFAULT_SURAT_LOCALITY } from '../data/mockData';
+import { validateChatSecurity } from '../utils/chatSecurity';
 import confetti from 'canvas-confetti';
+import { auth, db } from '../firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import {
   saveUserToFirestore,
   saveOrderToFirestore,
   updateOrderInFirestore,
   subscribeToOrdersFromFirestore,
-  updatePendingJobInFirestore,
-  pushJobToPendingJobs
+  updatePendingJobInFirestore
 } from '../services/firebaseDbService';
+import {
+  SiteSettings,
+  DEFAULT_SITE_SETTINGS,
+  subscribeToSiteSettings
+} from '../services/siteSettingsService';
+import {
+  DEFAULT_ADMIN_SETTINGS,
+  subscribeToAdminSettings,
+  syncAndRefreshUserClaims,
+  recordAuditLog
+} from '../services/adminService';
 
-export type MainTabType = 'sell' | 'buy' | 'repair' | 'bazaar';
+export type MainTabType = 'sell' | 'buy' | 'repair';
 
 interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   selectedLocality: string;
   setSelectedLocality: (locality: string) => void;
+  siteSettings: SiteSettings;
   user: UserProfile;
   loginUser: (
     name: string,
@@ -88,15 +102,18 @@ interface AppContextType {
   paymentModalRequest: PaymentRequest | null;
   openPaymentModal: (request: PaymentRequest) => void;
   closePaymentModal: () => void;
-  // Admin & Pro-Audit Controls
+  // Admin, Partner & Verified Claims Controls
+  adminSettings: AdminSettings;
+  authClaimsLoading: boolean;
+  sessionSecondsRemaining: number | null;
+  resetSessionTimer: () => void;
+  refreshUserClaims: () => Promise<void>;
   isAdminModalOpen: boolean;
   setIsAdminModalOpen: (open: boolean) => void;
   isProAuditModalOpen: boolean;
   setIsProAuditModalOpen: (open: boolean) => void;
   selectedAuditOrder: OrderItem | null;
   setSelectedAuditOrder: (order: OrderItem | null) => void;
-  loginAsAdmin: (email?: string) => void;
-  switchToCustomerRole: () => void;
   updateOrder: (orderId: string, updates: Partial<OrderItem>) => void;
   setOrderAdminQuote: (orderId: string, finalAmount: number, discountPct: number, adminNotes?: string) => void;
   confirmOrderPaymentAndHandover: (orderId: string, isPaid: boolean, isHandedOver: boolean) => void;
@@ -119,119 +136,35 @@ const initialSellSelection: SellSelection = {
   functionalIssues: []
 };
 
-const initialSampleOrders: OrderItem[] = [
-  {
-    id: 'ord-103',
-    orderNumber: 'STP-SURAT-9941',
-    type: 'repair',
-    title: 'Samsung Galaxy S24 Ultra 5G',
-    subtitle: '1 समस्या: कैमरा सेंसर ब्लर / फोकस खराबी • सूरत लैब व डोरस्टेप सर्विस',
-    amount: 199,
-    status: 'in_inspection',
-    statusHindi: 'जांच व प्राइसिंग समीक्षा में (एडमिन अप्रूवल पेंडिंग)',
-    locality: 'Pal, Surat',
-    fullAddress: 'A-304, Rajhans Synfonia, Near Pal RTO, Surat',
-    customerName: 'Jignesh Mewada',
-    customerPhone: '9825123456',
-    date: 'Today, 11:45 AM',
-    timeSlot: 'Today, 12:00 PM - 1:00 PM',
-    technicianName: 'Sanjay Prajapati (सस्ताफोन ओनर व सर्टिफाइड टेक लीड)',
-    technicianPhone: '9372802044',
-    visitCharge: 199,
-    paymentMethod: 'UPI / Doorstep',
-    paymentStatus: 'paid',
-    originalEstimateMin: 699,
-    originalEstimateMax: 1899,
-    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा (Visit Free)।',
-    customerRequirement: 'कैमरा 10x ज़ूम व नाइट मोड में अत्यधिक ब्लर हो रहा है। ग्राहक का सवाल: क्या ओरिजिनल 200MP सेंसर रिप्लेस होगा या ग्लास री-अलाइनमेंट?',
-    customerDoubtResolved: 'सूरत BGA लैब डायग्नोस्टिक: केवल टॉप सफायर लेंस ग्लास व OIS मोटर री-अलाइनमेंट आवश्यक। 12% स्पेशल ऑफ के साथ ₹1,600 का फाइनल बिल व 6 माह वारंटी जारी।',
-    phonePhotos: [
-      'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=600&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=600&auto=format&fit=crop&q=80'
-    ],
-    finalQuoteAmount: 1600,
-    discountOfferedPct: 12,
-    invoiceSentToCustomer: true,
-    invoiceNumber: 'STP-INV-2026-9941',
-    paymentQrGenerated: true,
-    cloudSyncStatus: 'synced'
-  },
-  {
-    id: 'ord-101',
-    orderNumber: 'STP-SURAT-8921',
-    type: 'sell',
-    title: 'iPhone 13 (128 GB)',
-    subtitle: 'Flawless Condition • Box & Bill Included',
-    amount: 32400,
-    status: 'technician_assigned',
-    statusHindi: 'टेक्नीशियन असाइन हुआ (आज पिकअप)',
-    locality: 'Adajan, Surat',
-    fullAddress: 'Flat 402, Shivalik Residency, Near Anand Mahal Road, Adajan, Surat',
-    customerName: 'Rahul Patel',
-    customerPhone: '9825012345',
-    date: 'Today, 2:30 PM',
-    timeSlot: '2:00 PM - 4:00 PM',
-    technicianName: 'Sanjay Prajapati (सस्ताफोन हब ओनर)',
-    technicianPhone: '9372802044',
-    videoUploaded: true,
-    customerRequirement: 'ग्राहक को तत्काल कैश/UPI चाहिए। बिल व ओरिजिनल केबल बॉक्स के साथ है। बैटरी हेल्थ 88% है।',
-    customerDoubtResolved: 'सूरत हब अप्रूवल: 32-पॉइंट टेस्ट पास होने पर ₹32,400 का ऑन-स्पॉट UPI ट्रांसफर होगा।',
-    phonePhotos: [
-      'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600&auto=format&fit=crop&q=80'
-    ],
-    cloudSyncStatus: 'synced'
-  },
-  {
-    id: 'ord-102',
-    orderNumber: 'STP-SURAT-7742',
-    type: 'repair',
-    title: 'OnePlus 10R 5G (Screen Repair)',
-    subtitle: 'Display Touch Issue • Doorstep 30 Min Fix',
-    amount: 199,
-    status: 'technician_assigned',
-    statusHindi: '₹199 विज़िट टोकन पेड (टेक्नीशियन रवाना)',
-    locality: 'Vesu, Surat',
-    fullAddress: 'B-701, Green City, VIP Road, Vesu, Surat',
-    customerName: 'Kavita Shah',
-    customerPhone: '9879098765',
-    date: 'Today, 10:15 AM',
-    timeSlot: '11:00 AM - 12:00 PM',
-    technicianName: 'Sanjay Prajapati (सस्ताफोन डोरस्टेप लीड)',
-    technicianPhone: '9372802044',
-    visitCharge: 199,
-    paymentMethod: 'सुरक्षित डिजिटल भुगतान (Sastaphone Network)',
-    paymentStatus: 'paid',
-    refundPolicyNote: 'फोन रिपेयर होने पर ₹199 फाइनल बिल में एडजस्ट होगा। यदि फोन नहीं बन सका तो ₹99 रिफंड होगा।',
-    customerRequirement: 'स्क्रीन पर वर्टिकल ग्रीन लाइन आ रही है, टच कभी-कभी फ्रीज होता है।',
-    customerDoubtResolved: 'ओरिजिनल 120Hz AMOLED डिस्प्ले पैनल टेस्टेड व तैयार। 10% डिस्काउंट दिया गया।',
-    phonePhotos: [
-      'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=600&auto=format&fit=crop&q=80'
-    ],
-    cloudSyncStatus: 'synced'
-  }
-];
+const initialSampleOrders: OrderItem[] = [];
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    return (localStorage.getItem('sastaphone_lang') as Language) || 'hi';
+    return (localStorage.getItem('sastafone_lang') as Language) || 'hi';
   });
 
   const [selectedLocality, setSelectedLocalityState] = useState<string>(() => {
-    return localStorage.getItem('sastaphone_locality') || DEFAULT_SURAT_LOCALITY;
+    return localStorage.getItem('sastafone_locality') || DEFAULT_SURAT_LOCALITY;
   });
 
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
+
+  useEffect(() => {
+    const unsub = subscribeToSiteSettings(setSiteSettings);
+    return () => unsub();
+  }, []);
+
   const [user, setUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('sastaphone_user');
+    const saved = localStorage.getItem('sastafone_user') || localStorage.getItem('sastaphone_user');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed.isLoggedIn === 'boolean') {
           return parsed;
         }
-      } catch (e) {
+      } catch {
         // fallback
       }
     }
@@ -249,89 +182,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [orders, setOrders] = useState<OrderItem[]>(() => {
-    const saved = localStorage.getItem('sastaphone_orders');
+    const saved = localStorage.getItem('sastafone_orders');
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch (e) {
+      } catch {
         // fallback
       }
     }
     return initialSampleOrders;
   });
 
-  const [p2pListings, setP2PListings] = useState<P2PListing[]>(() => {
-    const saved = localStorage.getItem('sastaphone_p2p_listings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // fallback
-      }
-    }
-    return INITIAL_P2P_LISTINGS;
-  });
-
-  const [unlockedContactIds, setUnlockedContactIds] = useState<string[]>(() => {
-    const saved = localStorage.getItem('sastaphone_unlocked_contacts');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // fallback
-      }
-    }
-    return [];
-  });
-
-  // Buyer Unlock Pass Credits & Plan: ₹99 for 10 unlocks, ₹299 for 50 unlocks
-  const [buyerCredits, setBuyerCredits] = useState<number>(() => {
-    const saved = localStorage.getItem('sastaphone_buyer_credits');
-    return saved !== null ? Number(saved) : 0;
-  });
-
-  const [buyerPlan, setBuyerPlan] = useState<'none' | 'basic_99' | 'pro_299'>(() => {
-    return (localStorage.getItem('sastaphone_buyer_plan') as 'none' | 'basic_99' | 'pro_299') || 'none';
-  });
-
-  // Seller Post Credits: ₹99 for 1 post, ₹799 for 10 posts. Without payment, ad cannot be published!
-  const [sellerPostCredits, setSellerPostCredits] = useState<number>(() => {
-    const saved = localStorage.getItem('sastaphone_seller_post_credits');
-    return saved !== null ? Number(saved) : 0;
-  });
-
-  // In-app chat messages per listing
-  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>(() => {
-    const saved = localStorage.getItem('sastaphone_chat_messages');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // fallback
-      }
-    }
-    // Default initial mock conversations
-    return {
-      'p2p-1': [
-        {
-          id: 'init-1',
-          listingId: 'p2p-1',
-          sender: 'seller',
-          text: 'नमस्ते! iPhone 15 Pro के संबंध में आपका स्वागत है। आप सुरक्षित इन-ऐप चैट से कोई भी सवाल पूछ सकते हैं।',
-          timestamp: '2 घंटे पहले'
-        }
-      ],
-      'p2p-2': [
-        {
-          id: 'init-2',
-          listingId: 'p2p-2',
-          sender: 'seller',
-          text: 'नमस्ते! Samsung S24 Ultra बिल व वारंटी के साथ उपलब्ध है।',
-          timestamp: '3 घंटे पहले'
-        }
-      ]
-    };
-  });
+  const [p2pListings, setP2PListings] = useState<P2PListing[]>([]);
+  const [unlockedContactIds, setUnlockedContactIds] = useState<string[]>([]);
+  const [buyerCredits, setBuyerCredits] = useState<number>(0);
+  const [buyerPlan, setBuyerPlan] = useState<'none' | 'basic_99' | 'pro_299'>('none');
+  const [sellerPostCredits, setSellerPostCredits] = useState<number>(0);
+  const [chatMessages, setChatMessages] = useState<Record<string, ChatMessage[]>>({});
 
   const [sellSelection, setSellSelection] = useState<SellSelection>(initialSellSelection);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -353,25 +220,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  const [activeTab, setActiveTab] = useState<MainTabType>('sell');
+  const [activeTab, setActiveTab] = useState<MainTabType>('repair');
   const [legalModal, setLegalModal] = useState<'terms' | 'privacy' | 'cookies' | 'trademark' | null>(null);
 
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<OrderItem | null>(null);
   const [isBrandCentersModalOpen, setIsBrandCentersModalOpen] = useState(false);
 
-  // Happy Customers Reviews & Feedback
-  const [reviews, setReviews] = useState<CustomerReview[]>(() => {
-    const saved = localStorage.getItem('sastaphone_reviews');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // fallback
-      }
-    }
-    return INITIAL_CUSTOMER_REVIEWS;
-  });
+  // Real reviews only (no hardcoded initial fake testimonials)
+  const [reviews, setReviews] = useState<CustomerReview[]>([]);
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [prefillReviewOrder, setPrefillReviewOrder] = useState<OrderItem | null>(null);
@@ -389,29 +246,97 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsEmailSupportModalOpen(true);
   };
 
-  // Admin & Pro-Audit states
+  // Admin & Verified Claims states
+  const [adminSettings, setAdminSettings] = useState<AdminSettings>(DEFAULT_ADMIN_SETTINGS);
+  const [authClaimsLoading, setAuthClaimsLoading] = useState<boolean>(true);
+  const [sessionSecondsRemaining, setSessionSecondsRemaining] = useState<number | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isProAuditModalOpen, setIsProAuditModalOpen] = useState(false);
   const [selectedAuditOrder, setSelectedAuditOrder] = useState<OrderItem | null>(null);
 
-  const loginAsAdmin = (email: string = 'support@sastafone.in') => {
-    setUser(prev => ({
-      ...prev,
-      name: 'सस्ताफोन ओनर (अधिकृत एडमिन)',
-      email: email,
-      phone: '9372802044',
-      role: 'admin',
-      isAdmin: true
-    }));
-  };
+  const resetSessionTimer = useCallback(() => {
+    lastActivityRef.current = Date.now();
+  }, []);
 
-  const switchToCustomerRole = () => {
-    setUser(prev => ({
+  const applyVerifiedFirebaseUser = useCallback(async (fbUser: import('firebase/auth').User) => {
+    const claimsResult = await syncAndRefreshUserClaims('auth_session_verify');
+    let profileData: Record<string, any> = {};
+    try {
+      const userSnap = await getDoc(doc(db, 'users', fbUser.uid));
+      if (userSnap.exists()) {
+        profileData = userSnap.data() || {};
+      }
+    } catch {
+      // fallback safely to auth fields
+    }
+
+    setUser((prev) => ({
       ...prev,
-      role: 'customer',
-      isAdmin: false
+      uid: fbUser.uid,
+      name: profileData.name || fbUser.displayName || prev.name || 'Sastafone User',
+      phone: profileData.phone || fbUser.phoneNumber || prev.phone || '',
+      email: fbUser.email || profileData.email || '',
+      avatarUrl: fbUser.photoURL || prev.avatarUrl,
+      address: profileData.address || prev.address || 'Surat, Gujarat',
+      locality: profileData.area || profileData.locality || prev.locality || selectedLocality,
+      isLoggedIn: true,
+      emailVerified: fbUser.emailVerified,
+      role: claimsResult.role,
+      isAdmin: claimsResult.admin,
+      isPartner: claimsResult.partner,
+      partnerId: claimsResult.partnerId
     }));
-  };
+  }, [selectedLocality]);
+
+  const refreshUserClaims = useCallback(async () => {
+    if (!auth.currentUser) return;
+    setAuthClaimsLoading(true);
+    try {
+      await applyVerifiedFirebaseUser(auth.currentUser);
+    } finally {
+      setAuthClaimsLoading(false);
+    }
+  }, [applyVerifiedFirebaseUser]);
+
+  // Listen to Firebase Auth state and enforce server-verified custom claims
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, async (fbUser) => {
+      if (!fbUser) {
+        setUser((prev) => ({
+          ...prev,
+          uid: undefined,
+          isLoggedIn: false,
+          role: 'customer',
+          isAdmin: false,
+          isPartner: false,
+          partnerId: null,
+          emailVerified: false
+        }));
+        setAuthClaimsLoading(false);
+        return;
+      }
+
+      setAuthClaimsLoading(true);
+      try {
+        await applyVerifiedFirebaseUser(fbUser);
+      } finally {
+        setAuthClaimsLoading(false);
+      }
+    });
+
+    return () => unsubAuth();
+  }, [applyVerifiedFirebaseUser]);
+
+  // Load Admin Settings when authenticated as verified Admin
+  useEffect(() => {
+    if (!user.isLoggedIn || !user.isAdmin) {
+      setAdminSettings(DEFAULT_ADMIN_SETTINGS);
+      return;
+    }
+    const unsub = subscribeToAdminSettings(setAdminSettings);
+    return () => unsub();
+  }, [user.isLoggedIn, user.isAdmin]);
 
   const updateOrder = (orderId: string, updates: Partial<OrderItem>) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o));
@@ -549,44 +474,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   useEffect(() => {
-    localStorage.setItem('sastaphone_lang', language);
+    localStorage.setItem('sastafone_lang', language);
   }, [language]);
 
   useEffect(() => {
-    localStorage.setItem('sastaphone_locality', selectedLocality);
+    localStorage.setItem('sastafone_locality', selectedLocality);
   }, [selectedLocality]);
 
   useEffect(() => {
-    localStorage.setItem('sastaphone_user', JSON.stringify(user));
+    localStorage.setItem('sastafone_user', JSON.stringify(user));
   }, [user]);
 
   useEffect(() => {
-    localStorage.setItem('sastaphone_orders', JSON.stringify(orders));
+    localStorage.setItem('sastafone_orders', JSON.stringify(orders));
   }, [orders]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_p2p_listings', JSON.stringify(p2pListings));
-  }, [p2pListings]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_unlocked_contacts', JSON.stringify(unlockedContactIds));
-  }, [unlockedContactIds]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_buyer_credits', String(buyerCredits));
-  }, [buyerCredits]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_buyer_plan', buyerPlan);
-  }, [buyerPlan]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_seller_post_credits', String(sellerPostCredits));
-  }, [sellerPostCredits]);
-
-  useEffect(() => {
-    localStorage.setItem('sastaphone_chat_messages', JSON.stringify(chatMessages));
-  }, [chatMessages]);
 
   // Real-time synchronization from Firebase Firestore database
   useEffect(() => {
@@ -656,18 +557,79 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const logoutUser = () => {
+  const logoutUser = useCallback(async () => {
+    if (user.isAdmin || user.isPartner) {
+      await recordAuditLog({
+        action: 'privileged_logout',
+        targetType: 'auth_user',
+        targetId: user.uid || '',
+        reason: 'Manual sign out'
+      });
+    }
+    try {
+      await signOut(auth);
+    } catch {
+      // ignore if already signed out
+    }
+    setSessionSecondsRemaining(null);
     setUser({
       name: 'Guest User',
       phone: '',
       locality: selectedLocality,
       address: '',
       isLoggedIn: false,
+      role: 'customer',
+      isAdmin: false,
+      isPartner: false,
+      partnerId: null,
+      emailVerified: false,
       sellerPostCredits: sellerPostCredits,
       buyerCredits: buyerCredits,
       buyerPlan: buyerPlan
     });
-  };
+  }, [user.isAdmin, user.isPartner, user.uid, selectedLocality, sellerPostCredits, buyerCredits, buyerPlan]);
+
+  // Inactivity Session Timeout for Admin & Partner accounts
+  useEffect(() => {
+    const isPrivileged = user.isLoggedIn && (user.isAdmin || user.isPartner);
+    if (!isPrivileged) {
+      setSessionSecondsRemaining(null);
+      return;
+    }
+
+    const timeoutMs = Math.max(5, Number(adminSettings.sessionTimeoutMinutes || 30)) * 60 * 1000;
+    lastActivityRef.current = Date.now();
+
+    const bumpActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'] as const;
+    events.forEach((evt) => window.addEventListener(evt, bumpActivity, { passive: true }));
+
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - lastActivityRef.current;
+      const remainingSec = Math.max(0, Math.ceil((timeoutMs - elapsed) / 1000));
+      setSessionSecondsRemaining(remainingSec);
+
+      if (remainingSec <= 0) {
+        window.clearInterval(interval);
+        recordAuditLog({
+          action: 'session_timeout_logout',
+          targetType: 'auth_user',
+          targetId: user.uid || '',
+          reason: `Inactivity timeout (${adminSettings.sessionTimeoutMinutes} min)`
+        }).finally(() => {
+          logoutUser();
+        });
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(interval);
+      events.forEach((evt) => window.removeEventListener(evt, bumpActivity));
+    };
+  }, [user.isLoggedIn, user.isAdmin, user.isPartner, user.uid, adminSettings.sessionTimeoutMinutes, logoutUser]);
 
   const addOrder = (orderData: Omit<OrderItem, 'id' | 'orderNumber' | 'date'>): OrderItem => {
     const newOrder: OrderItem = {
@@ -688,41 +650,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
-  const addP2PListing = (listingData: Omit<P2PListing, 'id' | 'date' | 'viewsCount' | 'maskedPhone'>) => {
-    const masked = listingData.sellerPhone.slice(0, 5) + ' •••••';
-    const newListing: P2PListing = {
-      ...listingData,
-      id: 'p2p-' + Date.now(),
-      maskedPhone: masked,
-      date: 'Just now',
-      viewsCount: 1
-    };
-    setP2PListings(prev => [newListing, ...prev]);
-
-    // Send all services to Jobs in Admin Dashboard & Firebase ("jitni serivse hain o sab ko job me bejho")
-    addOrder({
-      type: 'bazaar',
-      title: `सस्ता बाज़ार विज्ञापन: ${listingData.brand} ${listingData.modelName}`,
-      subtitle: `मांग मूल्य: ₹${listingData.price.toLocaleString('en-IN')} • स्थिति: ${listingData.condition} • फोटो: ${listingData.images.length}`,
-      amount: listingData.price,
-      status: 'pending',
-      statusHindi: 'सस्ता बाज़ार लिस्टिंग जॉब • समीक्षा में',
-      locality: listingData.locality || selectedLocality,
-      fullAddress: `${listingData.locality || selectedLocality}, Surat`,
-      customerName: listingData.sellerName,
-      customerPhone: listingData.sellerPhone,
-      timeSlot: 'Listing Active 24x7',
-      paymentMethod: listingData.planType === 'pro_799' ? 'Pro Seller Pass (₹799)' : 'Single Post Pass (₹99)',
-      paymentStatus: 'paid'
-    });
-
-    if (sellerPostCredits > 0) {
-      setSellerPostCredits(prev => Math.max(0, prev - 1));
-      setUser(prev => ({
-        ...prev,
-        sellerPostCredits: Math.max(0, (prev.sellerPostCredits || 1) - 1)
-      }));
-    }
+  const addP2PListing = (_listingData: Omit<P2PListing, 'id' | 'date' | 'viewsCount' | 'maskedPhone'>) => {
+    // Removed SastaBazaar marketplace
   };
 
   const buySellerPostPass = (plan: 'single_99' | 'pro_799') => {
@@ -785,7 +714,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const sendChatMessage = (
-    listingId: string,
+    _listingId: string,
     text: string,
     isQuickOption: boolean = false
   ): { success: boolean; error?: string } => {
@@ -795,48 +724,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { success: false, error: securityCheck.errorMessage };
       }
     }
-
-    const userMessage: ChatMessage = {
-      id: 'msg-' + Date.now(),
-      listingId,
-      sender: 'buyer',
-      text,
-      timestamp: 'Just now',
-      isQuickOption
-    };
-
-    setChatMessages(prev => {
-      const existing = prev[listingId] || [];
-      return {
-        ...prev,
-        [listingId]: [...existing, userMessage]
-      };
-    });
-
-    // Simulate realistic seller response
-    const targetListing = p2pListings.find(l => l.id === listingId);
-    const sellerName = targetListing?.sellerName || 'सेलर';
-    const locality = targetListing?.locality || 'सूरत';
-
-    setTimeout(() => {
-      const replyText = getAutomatedSellerReply(text, sellerName, locality);
-      const sellerReply: ChatMessage = {
-        id: 'reply-' + Date.now(),
-        listingId,
-        sender: 'seller',
-        text: replyText,
-        timestamp: 'Just now'
-      };
-
-      setChatMessages(prev => {
-        const existing = prev[listingId] || [];
-        return {
-          ...prev,
-          [listingId]: [...existing, sellerReply]
-        };
-      });
-    }, 900);
-
     return { success: true };
   };
 
@@ -855,6 +742,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLanguage,
         selectedLocality,
         setSelectedLocality,
+        siteSettings,
         user,
         loginUser,
         logoutUser,
@@ -910,15 +798,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsEmailSupportModalOpen,
         emailSupportPresetTopic,
         openEmailSupportWithPreset,
-        // Admin & Pro-Audit
+        // Admin, Partner & Verified Claims
+        adminSettings,
+        authClaimsLoading,
+        sessionSecondsRemaining,
+        resetSessionTimer,
+        refreshUserClaims,
         isAdminModalOpen,
         setIsAdminModalOpen,
         isProAuditModalOpen,
         setIsProAuditModalOpen,
         selectedAuditOrder,
         setSelectedAuditOrder,
-        loginAsAdmin,
-        switchToCustomerRole,
         updateOrder,
         setOrderAdminQuote,
         confirmOrderPaymentAndHandover,

@@ -205,7 +205,7 @@ export function calculateValuation(selection: SellSelection): ValuationQuote {
     };
   }
 
-  // Margin Protection Strategy for Sastaphone:
+  // Margin Protection Strategy for Sastafone:
   // When purchasing from customers, we deduct costs for reconditioning, testing, 6-month warranty & profit:
   // Budget models: ~₹5,000 baseline target buy-in
   // Midrange models: ~₹8,000 baseline target buy-in
@@ -288,7 +288,7 @@ export function generateWhatsAppLink(
   const type = typeOrCustomText;
 
   if (type === 'sell') {
-    message = `नमस्ते Sastaphone Surat टीम! 📱\n\nमैं अपना पुराना फोन बेचना चाहता हूँ:\n` +
+    message = `नमस्ते Sastafone Surat टीम! 📱\n\nमैं अपना पुराना फोन बेचना चाहता हूँ:\n` +
       `• फोन: *${details.modelName || 'Mobile'}*\n` +
       `• वेरिएंट: *${details.variant || 'Standard'}*\n` +
       `• कंडीशन: *${details.condition || 'Good'}*\n` +
@@ -296,20 +296,20 @@ export function generateWhatsAppLink(
       `• सूरत लोकेशन: *${details.locality || 'Surat'}*\n\n` +
       `कृपया सूरत में फ्री होम पिकअप और इंस्टेंट कैश पेमेंट कन्फर्म करें। धन्यवाद!`;
   } else if (type === 'repair') {
-    message = `नमस्ते Sastaphone Surat टीम! 🔧\n\nमुझे अपने फोन का डोरस्टेप रिपेयर बुक करना है:\n` +
+    message = `नमस्ते Sastafone Surat टीम! 🔧\n\nमुझे अपने फोन का डोरस्टेप रिपेयर बुक करना है:\n` +
       `• फोन: *${details.modelName || 'Mobile'}*\n` +
       `• समस्या: *${details.issue || 'General Repair'}*\n` +
       `• होम विज़िट चार्ज: *₹199* (रिपेयर होने पर फाइनल बिल में एडजस्ट, फोन न बनने पर ₹99 रिफंड)\n` +
       `• सूरत लोकेशन: *${details.locality || 'Surat'}*\n\n` +
       `कृपया मेरे पते पर टेक्नीशियन विज़िट स्लॉट कन्फर्म करें।`;
   } else if (type === 'buy') {
-    message = `नमस्ते Sastaphone Surat! 🛒\n\nमुझे यह सेकंड-हैंड सर्टिफाइड फोन खरीदना है:\n` +
+    message = `नमस्ते Sastafone Surat! 🛒\n\nमुझे यह सेकंड-हैंड सर्टिफाइड फोन खरीदना है:\n` +
       `• मॉडल: *${details.phoneName || 'Phone'}*\n` +
       `• प्राइस: *${details.quotePrice ? formatINR(details.quotePrice) : 'Offer Price'}*\n` +
       `• डिलीवरी सूरत: *${details.locality || 'Surat'}*\n\n` +
       `कृपया 6 महीने वारंटी और सूरत फ्री डिलीवरी के साथ ऑर्डर बुक करें।`;
   } else {
-    message = `नमस्ते Sastaphone Surat टीम! मुझे फोन बेचने / खरीदने / रिपेयरिंग के बारे में जानकारी चाहिए।`;
+    message = `नमस्ते Sastafone Surat टीम! मुझे फोन बेचने / खरीदने / रिपेयरिंग के बारे में जानकारी चाहिए।`;
   }
 
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;

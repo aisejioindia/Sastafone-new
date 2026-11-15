@@ -93,7 +93,7 @@ export interface PendingJobRecord {
     reviewStatus: 'pending_review' | 'in_inspection' | 'technician_assigned' | 'completed' | 'cancelled';
     assignedTechnician?: string;
     priority: 'high' | 'normal' | 'urgent';
-    source: 'sastaphone_customer_portal';
+    source: 'sastafone_customer_portal';
     createdAt: string;
     updatedAt: string;
   };
@@ -226,9 +226,9 @@ export async function pushJobToPendingJobs(
       imeiNumber: order.imeiNumber || '',
       advanceTokenAmount: order.advanceTokenAmount || order.visitCharge || (order.type === 'repair' ? 199 : 0),
       onlinePaymentUtr: order.onlinePaymentUtr || '',
-      paymentMethod: order.paymentMethod || 'सुरक्षित डिजिटल भुगतान (Sastaphone)',
+      paymentMethod: order.paymentMethod || 'सुरक्षित डिजिटल भुगतान (Sastafone)',
       paymentStatus: order.paymentStatus || 'pending',
-      timeSlot: order.timeSlot || 'Today (Express 30 Mins)',
+      timeSlot: order.timeSlot || 'Today Doorstep Slot',
       date: order.date || new Date().toLocaleDateString('hi-IN'),
       customModelDetails: order.customModelDetails || null,
       originalEstimateMin: order.originalEstimateMin || 0,
@@ -271,7 +271,7 @@ export async function pushJobToPendingJobs(
         reviewStatus: 'pending_review',
         assignedTechnician: order.technicianName || 'Sanjay Prajapati (सस्ताफोन डोरस्टेप लीड)',
         priority: order.type === 'repair' ? 'high' : 'normal',
-        source: 'sastaphone_customer_portal',
+        source: 'sastafone_customer_portal',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       },

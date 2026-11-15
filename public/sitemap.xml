@@ -31,6 +31,26 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://sastafone.in/contact</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
+    <loc>https://sastafone.in/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://sastafone.in/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://sastafone.in/refund-policy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://sastafone.in/mobile-repair-surat</loc>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>

@@ -3,105 +3,21 @@ import { useApp } from '../context/AppContext';
 import { SeoHead } from './SeoHead';
 import { InventoryPhone } from '../types';
 import { subscribeToAvailableInventory, updateInventoryPhoneInFirestore } from '../services/firestoreRepairService';
+import { startRazorpayCheckout } from '../services/paymentService';
+import { trackEvent } from '../utils/analytics';
 import {
   ShoppingBag,
   ShieldCheck,
   BatteryCharging,
   CheckCircle2,
-  Filter,
   Search,
   ArrowRight,
   ArrowLeft,
-  X,
   CreditCard,
   AlertCircle,
-  Clock,
-  Sparkles
+  Smartphone
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-
-// Default initial inventory items to ensure immediate browsing experience
-const DEFAULT_INVENTORY_ITEMS: InventoryPhone[] = [
-  {
-    id: 'inv_ip13_128_blue',
-    slug: 'apple-iphone-13-128gb-blue',
-    brand: 'Apple',
-    model: 'iPhone 13',
-    storage: '128GB',
-    colour: 'Sierra Blue',
-    grade: 'A+ Like New',
-    batteryHealth: 92,
-    imei: '358941092837461',
-    photos: [
-      'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=800&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&auto=format&fit=crop&q=80'
-    ],
-    price: 36999,
-    tokenAmount: 499,
-    warrantyMonths: 6,
-    status: 'available',
-    specs: {
-      ram: '4GB',
-      display: '6.1" Super Retina XDR OLED',
-      camera: '12MP + 12MP Dual Ultra-Wide',
-      processor: 'A15 Bionic 5G'
-    },
-    description: 'सूरत में सर्टिफाइड 32-पॉइंट टेस्टेड iPhone 13। ओरिजिनल डिस्प्ले, 92% बैटरी हेल्थ और 6 महीने की वारंटी।',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'inv_s22_128_phantom',
-    slug: 'samsung-galaxy-s22-5g-128gb',
-    brand: 'Samsung',
-    model: 'Galaxy S22 5G',
-    storage: '128GB',
-    colour: 'Phantom Black',
-    grade: 'A Excellent',
-    batteryHealth: 90,
-    imei: '359871029384756',
-    photos: [
-      'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800&auto=format&fit=crop&q=80'
-    ],
-    price: 26499,
-    tokenAmount: 499,
-    warrantyMonths: 6,
-    status: 'available',
-    specs: {
-      ram: '8GB',
-      display: '6.1" Dynamic AMOLED 2X 120Hz',
-      camera: '50MP + 10MP Tele + 12MP UW',
-      processor: 'Snapdragon 8 Gen 1'
-    },
-    description: 'सैमसंग का फ्लैगशिप स्मार्टफोन, स्क्रैचलेस कंडीशन, बॉक्स व बिल के साथ।',
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'inv_op11r_256_silver',
-    slug: 'oneplus-11r-5g-256gb-silver',
-    brand: 'OnePlus',
-    model: 'OnePlus 11R 5G',
-    storage: '256GB',
-    colour: 'Galactic Silver',
-    grade: 'A+ Like New',
-    batteryHealth: 95,
-    imei: '354928109283745',
-    photos: [
-      'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=800&auto=format&fit=crop&q=80'
-    ],
-    price: 24999,
-    tokenAmount: 499,
-    warrantyMonths: 6,
-    status: 'available',
-    specs: {
-      ram: '16GB',
-      display: '6.74" 1.5K Super Fluid AMOLED',
-      camera: '50MP Sony IMX890 OIS',
-      processor: 'Snapdragon 8+ Gen 1'
-    },
-    description: '100W सुपरवूक चार्जर सहित, 16GB रैम वाला हाई-स्पीड गेमिंग फोन। 6 माह वारंटी।',
-    createdAt: new Date().toISOString()
-  }
-];
 
 interface BuyPhonesInventoryViewProps {
   initialSlug?: string;
@@ -114,9 +30,10 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
 }) => {
   const { user, setIsAuthModalOpen } = useApp();
 
-  const [inventory, setInventory] = useState<InventoryPhone[]>(DEFAULT_INVENTORY_ITEMS);
+  const [inventory, setInventory] = useState<InventoryPhone[]>([]);
+  const [isLoadingInventory, setIsLoadingInventory] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
-  const [selectedGrade, setSelectedGrade] = useState<string>('all');
+  const [selectedGrade] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [priceRange, setPriceRange] = useState<'all' | 'under_20k' | '20k_to_35k' | 'above_35k'>('all');
 
@@ -132,16 +49,15 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
   // Subscribe to real Firestore inventory
   useEffect(() => {
     const unsub = subscribeToAvailableInventory((items) => {
-      if (items.length > 0) {
-        setInventory(items as InventoryPhone[]);
-      }
+      setInventory((items || []) as InventoryPhone[]);
+      setIsLoadingInventory(false);
     });
     return () => unsub();
   }, []);
 
   // Handle initial slug navigation
   useEffect(() => {
-    if (initialSlug) {
+    if (initialSlug && inventory.length > 0) {
       const found = inventory.find(p => p.slug === initialSlug);
       if (found) {
         setActivePhone(found);
@@ -169,7 +85,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
     return matchesBrand && matchesGrade && matchesSearch && matchesPrice;
   });
 
-  // Handle Token Booking (₹499 server verified)
+  // Handle Token Booking (₹499 server-verified via Razorpay)
   const handleBookWithToken = async () => {
     if (!user.isLoggedIn || !user.uid) {
       setIsAuthModalOpen(true);
@@ -181,69 +97,51 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
     setIsBookingToken(true);
     setBookingError(null);
 
-    try {
-      // 1. Call server-side create-order endpoint for ₹499 token
-      const res = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: activePhone.tokenAmount || 499,
-          currency: 'INR',
-          receipt: `token_${activePhone.id}_${Date.now()}`,
-          notes: {
-            purpose: `Booking Token for ${activePhone.brand} ${activePhone.model}`,
-            phoneId: activePhone.id,
-            userId: user.uid
-          }
-        })
-      });
+    const tokenAmt = activePhone.tokenAmount || 499;
+    trackEvent('buy_phone_token_initiated', {
+      phone_id: activePhone.id,
+      model: `${activePhone.brand} ${activePhone.model}`,
+      amount: tokenAmt
+    });
 
-      const orderData = await res.json();
-      if (!orderData.success) {
-        throw new Error(orderData.error || 'टोकन ऑर्डर बनाने में विफल');
+    await startRazorpayCheckout({
+      amount: tokenAmt,
+      jobId: `INV_${activePhone.id}`,
+      customerName: user.name || 'Sastafone Customer',
+      customerPhone: user.phone || '',
+      customerEmail: user.email || undefined,
+      description: `${activePhone.brand} ${activePhone.model} बुकिंग टोकन (₹${tokenAmt})`,
+      onSuccess: async (paymentId: string) => {
+        try {
+          await updateInventoryPhoneInFirestore(activePhone.id, {
+            status: 'booked',
+            bookedBy: user.uid,
+            razorpayPaymentId: paymentId
+          });
+
+          trackEvent('buy_phone_reserved', {
+            phone_id: activePhone.id,
+            payment_id: paymentId,
+            amount: tokenAmt
+          });
+
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+          setBookingSuccessNote(
+            `✓ ₹${tokenAmt} टोकन सफलतापूर्वक प्राप्त हुआ! ${activePhone.brand} ${activePhone.model} आपके नाम पर बुक कर दिया गया है। हमारा प्रतिनिधि डिलीवरी स्लॉट समन्वय के लिए आपसे संपर्क करेगा।`
+          );
+          setActivePhone({ ...activePhone, status: 'booked' });
+        } catch (err: any) {
+          console.error('Inventory update error:', err);
+          setBookingError(err?.message || 'फोन रिजर्व करने में समस्या आई। कृपया पुनः प्रयास करें।');
+        } finally {
+          setIsBookingToken(false);
+        }
+      },
+      onFailure: (errorMsg: string) => {
+        setBookingError(errorMsg);
+        setIsBookingToken(false);
       }
-
-      // 2. Open Razorpay Checkout or Verified Simulation
-      const paymentId = `pay_sst_${Date.now()}`;
-
-      // 3. Server-side verify payment
-      const verifyRes = await fetch('/api/razorpay/verify-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpay_order_id: orderData.orderId,
-          razorpay_payment_id: paymentId,
-          jobId: activePhone.id
-        })
-      });
-
-      const verifyData = await verifyRes.json();
-      if (verifyData.verified) {
-        // 4. Update status in Firestore to 'booked'
-        await updateInventoryPhoneInFirestore(activePhone.id, {
-          status: 'booked',
-          bookedBy: {
-            userId: user.uid,
-            name: user.name || 'ग्राहक',
-            phone: user.phone || '',
-            address: user.address || '',
-            area: user.locality || 'Surat',
-            razorpayPaymentId: paymentId,
-            bookedAt: new Date().toISOString()
-          }
-        });
-
-        confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-        setBookingSuccessNote(
-          `✓ ₹499 टोकन सफलतापूर्वक प्राप्त हुआ! ${activePhone.brand} ${activePhone.model} आपके नाम पर बुक कर दिया गया है। हमारा प्रतिनिधि डिलीवरी स्लॉट समन्वय के लिए आपसे संपर्क करेगा।`
-        );
-      }
-    } catch (err: any) {
-      console.error('Token booking error:', err);
-      setBookingError(err.message || 'टोकन भुगतान में समस्या आई। कृपया पुनः प्रयास करें।');
-    } finally {
-      setIsBookingToken(false);
-    }
+    });
   };
 
   // Structured Data for Detail view
@@ -288,7 +186,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
       <div className="container mx-auto px-4 max-w-5xl">
         {/* Detail Modal View */}
         {activePhone ? (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="space-y-6 step-transition">
             {/* Back button */}
             <button
               type="button"
@@ -300,7 +198,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                   window.history.pushState({}, '', '/buy-phones');
                 }
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-red-600 cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-[#D5151B] cursor-pointer transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>सभी फोन स्टॉक देखें (Back to all)</span>
@@ -311,17 +209,24 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
               {/* Photo Gallery */}
               <div className="space-y-3">
                 <div className="aspect-4/3 rounded-2xl overflow-hidden bg-gray-50 border border-gray-100 flex items-center justify-center relative">
-                  <img
-                    src={activePhone.photos[selectedPhotoIdx] || activePhone.photos[0]}
-                    alt={`${activePhone.brand} ${activePhone.model}`}
-                    className="w-full h-full object-contain p-4"
-                  />
-                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#DC2626] text-white text-xs font-black">
+                  {activePhone.photos?.[selectedPhotoIdx] || activePhone.photos?.[0] ? (
+                    <img
+                      src={activePhone.photos[selectedPhotoIdx] || activePhone.photos[0]}
+                      alt={`${activePhone.brand} ${activePhone.model}`}
+                      className="w-full h-full object-contain p-4"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-gray-400 gap-2 p-6">
+                      <Smartphone className="w-12 h-12 text-gray-300" />
+                      <span className="text-xs font-medium">{activePhone.brand} {activePhone.model}</span>
+                    </div>
+                  )}
+                  <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-[#D5151B] text-white text-xs font-bold">
                     {activePhone.grade}
                   </span>
                 </div>
 
-                {activePhone.photos.length > 1 && (
+                {activePhone.photos && activePhone.photos.length > 1 && (
                   <div className="flex gap-2">
                     {activePhone.photos.map((ph, idx) => (
                       <button
@@ -329,10 +234,10 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                         type="button"
                         onClick={() => setSelectedPhotoIdx(idx)}
                         className={`w-16 h-16 rounded-xl border-2 overflow-hidden cursor-pointer ${
-                          selectedPhotoIdx === idx ? 'border-[#DC2626]' : 'border-gray-200 opacity-60'
+                          selectedPhotoIdx === idx ? 'border-[#D5151B]' : 'border-gray-200 opacity-60'
                         }`}
                       >
-                        <img src={ph} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+                        <img src={ph} alt={`${activePhone.model} ${idx + 1}`} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
@@ -342,10 +247,10 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
               {/* Specs & Booking CTA */}
               <div className="space-y-5">
                 <div>
-                  <span className="text-xs font-bold text-[#DC2626] uppercase tracking-wider block">
+                  <span className="text-xs font-bold text-[#D5151B] uppercase tracking-wider block">
                     {activePhone.brand} • सर्टिफाइड स्टॉक
                   </span>
-                  <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mt-0.5">
+                  <h1 className="text-2xl sm:text-3xl font-bold text-[#132032] tracking-tight mt-0.5">
                     {activePhone.model}
                   </h1>
                   <p className="text-xs text-gray-500 mt-1">
@@ -354,7 +259,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                 </div>
 
                 <div className="flex items-baseline gap-3">
-                  <span className="text-2xl sm:text-3xl font-black text-gray-900">
+                  <span className="text-2xl sm:text-3xl font-bold text-[#132032]">
                     ₹{activePhone.price.toLocaleString('en-IN')}
                   </span>
                   <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
@@ -366,28 +271,28 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
                     <span className="text-[10px] text-gray-400 block">बैटरी हेल्थ</span>
-                    <strong className="text-gray-900 flex items-center gap-1">
+                    <strong className="text-[#132032] flex items-center gap-1">
                       <BatteryCharging className="w-3.5 h-3.5 text-emerald-600" />
                       {activePhone.batteryHealth}% ओरिजिनल
                     </strong>
                   </div>
                   <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100">
                     <span className="text-[10px] text-gray-400 block">वारंटी अवधि</span>
-                    <strong className="text-gray-900 flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5 text-[#DC2626]" />
+                    <strong className="text-[#132032] flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#D5151B]" />
                       {activePhone.warrantyMonths} महीने Sastafone
                     </strong>
                   </div>
                   {activePhone.specs?.display && (
                     <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 col-span-2">
                       <span className="text-[10px] text-gray-400 block">डिस्प्ले व स्क्रीन</span>
-                      <strong className="text-gray-900">{activePhone.specs.display}</strong>
+                      <strong className="text-[#132032]">{activePhone.specs.display}</strong>
                     </div>
                   )}
                   {activePhone.specs?.processor && (
                     <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 col-span-2">
                       <span className="text-[10px] text-gray-400 block">प्रोसेसर</span>
-                      <strong className="text-gray-900">{activePhone.specs.processor}</strong>
+                      <strong className="text-[#132032]">{activePhone.specs.processor}</strong>
                     </div>
                   )}
                 </div>
@@ -418,7 +323,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                         type="button"
                         onClick={handleBookWithToken}
                         disabled={isBookingToken}
-                        className="w-full py-3.5 rounded-2xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
+                        className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
                       >
                         <CreditCard className="w-4 h-4" />
                         <span>मात्र ₹499 टोकन देकर बुक करें</span>
@@ -438,11 +343,11 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
           /* Public Grid with Filters */
           <div className="space-y-6">
             <header className="text-center max-w-2xl mx-auto mb-6">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#DC2626] text-xs font-bold mb-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FEF2F2] border border-red-200 text-[#D5151B] text-xs font-bold mb-2">
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span>सूरत सर्टिफाइड सेकंड-हैंड स्टॉक</span>
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-[#132032] tracking-tight">
                 सर्टिफाइड फोन खरीदें (Buy Certified Phones)
               </h1>
               <p className="text-xs sm:text-sm text-gray-600 mt-1">
@@ -461,7 +366,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="मॉडल या ब्रांड खोजें (उदा. iPhone 13, OnePlus)..."
-                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs outline-none focus:border-red-500"
+                    className="w-full pl-10 pr-3 py-2 rounded-xl border border-gray-200 bg-white text-xs outline-none focus:border-[#D5151B]"
                   />
                 </div>
 
@@ -474,7 +379,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                       onClick={() => setSelectedBrand(b)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 ${
                         selectedBrand === b
-                          ? 'bg-[#DC2626] text-white shadow-2xs'
+                          ? 'bg-[#D5151B] text-white shadow-2xs'
                           : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-100'
                       }`}
                     >
@@ -499,7 +404,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                     onClick={() => setPriceRange(p.id as any)}
                     className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
                       priceRange === p.id
-                        ? 'bg-red-100 text-[#DC2626] font-bold border border-red-300'
+                        ? 'bg-red-100 text-[#D5151B] font-bold border border-red-300'
                         : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
                     }`}
                   >
@@ -510,13 +415,39 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
             </div>
 
             {/* Inventory Grid */}
-            {filteredPhones.length === 0 ? (
-              <div className="p-12 text-center rounded-2xl border border-gray-200 bg-white space-y-2">
+            {isLoadingInventory ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                {[1, 2, 3].map((sk) => (
+                  <div key={sk} className="p-4 rounded-2xl border border-gray-200 bg-white space-y-3 animate-pulse">
+                    <div className="aspect-4/3 rounded-xl bg-gray-100" />
+                    <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    <div className="h-4 bg-gray-200 rounded w-2/3" />
+                    <div className="h-5 bg-gray-100 rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredPhones.length === 0 ? (
+              <div className="p-10 text-center rounded-2xl border border-gray-200 bg-white space-y-3">
                 <ShoppingBag className="w-10 h-10 text-gray-300 mx-auto" />
-                <h3 className="text-sm font-bold text-gray-800">कोई फोन नहीं मिला</h3>
-                <p className="text-xs text-gray-500">
-                  कृपया अपने फिल्टर बदलें या नया सर्च प्रयास करें।
+                <h3 className="text-sm font-bold text-[#132032]">
+                  {inventory.length === 0
+                    ? 'अभी सर्टिफाइड स्टॉक अपडेट हो रहा है'
+                    : 'इस फ़िल्टर में कोई फोन उपलब्ध नहीं है'}
+                </h3>
+                <p className="text-xs text-gray-500 max-w-md mx-auto">
+                  {inventory.length === 0
+                    ? 'हम केवल 32-पॉइंट QC पास वास्तविक फोन ही सूचीबद्ध करते हैं। नया स्टॉक जुड़ते ही यहाँ दिखेगा।'
+                    : 'कृपया अपने फिल्टर बदलें या नया सर्च प्रयास करें।'}
                 </p>
+                {onNavigateHome && (
+                  <button
+                    type="button"
+                    onClick={onNavigateHome}
+                    className="px-4 py-2 rounded-xl bg-[#FEF2F2] text-[#D5151B] font-bold text-xs border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
+                  >
+                    होम पर जाएं
+                  </button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
@@ -532,16 +463,20 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                     }}
                     role="button"
                     tabIndex={0}
-                    className="p-4 rounded-2xl border border-gray-200 bg-white hover:border-red-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
+                    className="p-4 rounded-2xl border border-gray-200 bg-white hover:border-red-300 hover:shadow-md transition-all duration-150 cursor-pointer flex flex-col justify-between group"
                   >
                     <div>
                       <div className="aspect-4/3 rounded-xl overflow-hidden bg-gray-50 mb-3 flex items-center justify-center relative">
-                        <img
-                          src={phone.photos[0]}
-                          alt={`${phone.brand} ${phone.model}`}
-                          className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform"
-                        />
-                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#DC2626] text-white text-[10px] font-bold">
+                        {phone.photos?.[0] ? (
+                          <img
+                            src={phone.photos[0]}
+                            alt={`${phone.brand} ${phone.model}`}
+                            className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <Smartphone className="w-10 h-10 text-gray-300" />
+                        )}
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-[#D5151B] text-white text-[10px] font-bold">
                           {phone.grade}
                         </span>
                         {phone.status === 'booked' && (
@@ -555,7 +490,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                         <span className="text-[10px] font-bold text-gray-400 uppercase">
                           {phone.brand} • {phone.storage}
                         </span>
-                        <h2 className="text-sm font-bold text-gray-900 group-hover:text-red-600 transition-colors">
+                        <h2 className="text-sm font-bold text-[#132032] group-hover:text-[#D5151B] transition-colors">
                           {phone.model}
                         </h2>
                         <p className="text-xs text-gray-500 flex items-center gap-1">
@@ -567,13 +502,13 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
 
                     <div className="pt-3 border-t border-gray-100 flex items-center justify-between mt-3">
                       <div>
-                        <span className="text-base font-black text-gray-900">
+                        <span className="text-base font-bold text-[#132032] tabular-nums">
                           ₹{phone.price.toLocaleString('en-IN')}
                         </span>
                         <span className="text-[10px] text-gray-400 block">6 माह वारंटी</span>
                       </div>
 
-                      <span className="text-xs font-bold text-[#DC2626] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      <span className="text-xs font-bold text-[#D5151B] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                         विवरण देखें <ArrowRight className="w-3.5 h-3.5" />
                       </span>
                     </div>

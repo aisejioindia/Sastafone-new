@@ -180,7 +180,7 @@ export async function startRazorpayCheckout({
       email: customerEmail || `${customerPhone}@sastafone.in`
     },
     theme: {
-      color: '#DC2626' // Brand Red
+      color: '#D5151B'
     },
     modal: {
       ondismiss: () => {
@@ -233,21 +233,7 @@ export const PAYMENT_TIERS: Record<string, any> = {
     amount: 199,
     title: 'सूरत डोरस्टेप पिकअप व QC विज़िट टोकन',
     subtitle: 'फाइनल बिल में 100% एडजस्टेबल',
-    benefits: ['60 मिनट स्लॉट पिकअप', '11-पॉइंट QC इंस्पेक्शन', 'ओरिजिनल पार्ट्स वारंटी']
-  },
-  basic_99: {
-    id: 'basic_99',
-    amount: 99,
-    title: 'सस्ता बाज़ार P2P बायर पास',
-    subtitle: 'डायरेक्ट सेलर कॉन्टैक्ट',
-    benefits: ['डायरेक्ट सेलर चैट', 'वेरिफाइड ओनरशिप']
-  },
-  p2p_pass: {
-    id: 'p2p_pass',
-    amount: 99,
-    title: 'सस्ता बाज़ार P2P बायर पास',
-    subtitle: 'डायरेक्ट सेलर कॉन्टैक्ट',
-    benefits: ['डायरेक्ट सेलर चैट', 'वेरिफाइड ओनरशिप']
+    benefits: ['डोरस्टेप पिकअप स्लॉट', '11-पॉइंट QC इंस्पेक्शन', '₹1000+ बिल पर 6 माह वारंटी']
   }
 };
 

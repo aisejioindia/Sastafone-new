@@ -1,19 +1,31 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
-import { SURAT_LOCALITIES, WHATSAPP_NUMBER } from '../data/mockData';
-import { ShieldCheck, MapPin, MessageCircle, Clock, Mail, Phone, CheckCircle2 } from 'lucide-react';
+import {
+  ShieldCheck,
+  MapPin,
+  MessageCircle,
+  Clock,
+  Mail,
+  Phone,
+  Instagram,
+  ExternalLink,
+  Shield
+} from 'lucide-react';
+import {
+  buildWhatsappHref,
+  normalizeTelHref,
+  INSTAGRAM_URL,
+  GOOGLE_MAPS_URL
+} from '../services/siteSettingsService';
+import { trackEvent } from '../utils/analytics';
 
 export const Footer: React.FC = () => {
-  const {
-    setLegalModal,
-    setSelectedLocality,
-    setActiveTab,
-    openEmailSupportWithPreset
-  } = useApp();
+  const { setSelectedLocality, siteSettings, user } = useApp();
+  const isVerifiedAdmin = Boolean(user.isLoggedIn && user.isAdmin && user.role === 'admin');
+  const isVerifiedPartner = Boolean(user.isLoggedIn && user.isPartner && user.role === 'partner');
 
-  const handleNav = (tab: any, path: string) => {
-    setActiveTab(tab);
+  const handleNav = (path: string) => {
     if (window.location.pathname !== path) {
       window.history.pushState({}, '', path);
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -21,138 +33,145 @@ export const Footer: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const whatsappHref = buildWhatsappHref(
+    siteSettings.whatsappNumber,
+    'नमस्ते Sastafone Surat! मुझे मोबाइल सेवा के बारे में जानकारी चाहिए।'
+  );
+  const telHref = normalizeTelHref(siteSettings.supportPhone);
+  const instagramHref = siteSettings.instagramUrl || INSTAGRAM_URL;
+  const mapsHref = siteSettings.googleMapsUrl || GOOGLE_MAPS_URL;
+
   return (
-    <footer className="bg-white border-t border-red-100 text-gray-800 pt-10 pb-8 text-xs">
+    <footer className="bg-white border-t border-gray-200 text-[#132032] pt-10 pb-24 md:pb-10 text-xs">
       <div className="container mx-auto px-4 max-w-6xl">
-        {/* Surat Assurance Banner (Light Red Tint) */}
+        {/* Clean Light Red Support Banner */}
         <div className="mb-8 p-5 sm:p-6 rounded-2xl bg-[#FEF2F2] border border-red-200/80">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-            <div className="space-y-1.5 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white text-red-700 text-[11px] font-bold border border-red-200">
-                <ShieldCheck className="w-3.5 h-3.5 text-red-600" />
-                <span>Sastafone Certified Technician Network • सूरत डोरस्टेप सेवा</span>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1 max-w-2xl">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D5151B]">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Sastafone Certified Technician Network</span>
               </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
-                पारदर्शी व प्रामाणिक मोबाइल रिपेयरिंग व बाय-बैक
+              <h3 className="text-lg font-bold text-[#132032] tracking-tight">
+                सूरत में पारदर्शी डोरस्टेप मोबाइल रिपेयरिंग व बाय-बैक
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                सूरत में ₹199 विज़िट टोकन के साथ घर बैठे पिकअप व डिलीवरी। ₹199 टोकन फाइनल बिल में एडजस्ट हो जाता है (निरीक्षण बाद मना करने पर ₹99 रिफंड, ₹100 इंस्पेक्शन चार्ज)। ₹1000+ के बिल पर 6 महीने वारंटी।
+                ₹199 विज़िट टोकन फाइनल बिल में एडजस्ट होता है (QC के बाद मना करने पर ₹99 रिफंड, ₹100 रखा जाता है)। ₹1,000+ के बिल पर 6 महीने की वारंटी।
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
               <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('नमस्ते Sastafone Surat! मुझे मोबाइल सेवा के बारे में जानकारी चाहिए।')}`}
+                href={whatsappHref}
                 target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2.5 rounded-xl bg-[#DC2626] hover:bg-[#B91C1C] text-white font-bold text-xs flex items-center gap-2 transition-colors shadow-sm cursor-pointer"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('whatsapp_click', { source: 'footer' })}
+                className="px-4 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs inline-flex items-center gap-2 transition-colors duration-150 shadow-xs"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp पर संपर्क करें</span>
+                <span>WhatsApp सहायता</span>
+              </a>
+
+              <a
+                href={telHref}
+                onClick={() => trackEvent('call_click', { source: 'footer' })}
+                className="px-4 py-2.5 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-[#132032] font-bold text-xs inline-flex items-center gap-2 transition-colors duration-150"
+              >
+                <Phone className="w-4 h-4 text-[#D5151B]" />
+                <span>कॉल करें</span>
               </a>
             </div>
           </div>
         </div>
 
-        {/* 4-Col Grid */}
+        {/* 4-Column Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 pb-8 border-b border-gray-100">
-          {/* Col 1: Brand & About */}
+          {/* Col 1: Brand & Contact Info */}
           <div className="space-y-3">
-            <SastafoneLogo variant="light" size="sm" showSubtitle={false} />
+            <SastafoneLogo size="sm" />
             <p className="text-gray-600 leading-relaxed text-xs">
-              सूरत की समर्पित डोरस्टेप मोबाइल सेवा। Sastafone Certified Technician Network द्वारा सुरक्षित पिकअप, पारदर्शी रिपेयर और सेकंड-हैंड फोन की प्रामाणिक सुविधा।
+              सूरत की डोरस्टेप मोबाइल रिपेयर, पुराना फोन बेचने और क्वालिटी-चेक्ड सेकंड-हैंड फोन की विश्वसनीय सेवा।
             </p>
-            <div className="space-y-1 pt-1 text-[11px] text-gray-500">
-              <p className="flex items-center gap-1.5 font-medium text-gray-700">
-                <Clock className="w-3.5 h-3.5 text-red-600" />
-                <span>कार्य समय: 9:00 AM – 9:30 PM (सोमवार - रविवार)</span>
+            <div className="space-y-1.5 pt-1 text-xs text-gray-700">
+              <p className="flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-[#D5151B] shrink-0" />
+                <span>9:00 AM – 9:30 PM</span>
               </p>
-              <p className="flex items-center gap-1.5 font-medium text-gray-700">
-                <Mail className="w-3.5 h-3.5 text-red-600" />
-                <span>support@sastafone.in</span>
+              <p className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-[#D5151B] shrink-0" />
+                <a href={`mailto:${siteSettings.supportEmail}`} className="hover:text-[#D5151B]">
+                  {siteSettings.supportEmail}
+                </a>
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-[#D5151B] shrink-0" />
+                <a
+                  href={telHref}
+                  onClick={() => trackEvent('call_click', { source: 'footer_link' })}
+                  className="hover:text-[#D5151B] tabular-nums"
+                >
+                  {siteSettings.supportPhone}
+                </a>
               </p>
             </div>
           </div>
 
           {/* Col 2: Navigation Links */}
           <div>
-            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3">
-              सेवाएं एवं लिंक
+            <h4 className="font-bold text-[#132032] uppercase tracking-wider text-xs mb-3">
+              सेवाएं व लिंक
             </h4>
             <ul className="space-y-2">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handleNav('repair', '/repair')}
-                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>मोबाइल रिपेयरिंग (Doorstep Repair)</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handleNav('sell', '/sell-phone')}
-                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>पुराना फोन बेचें (Sell Old Phone)</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handleNav('buy', '/buy-phones')}
-                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>सर्टिफाइड फोन खरीदें (Buy Phones)</span>
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => handleNav('repair', '/warranty')}
-                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>वारंटी जांचें व क्लेम करें (Warranty)</span>
-                </button>
-              </li>
-              <li>
-                <a
-                  href={`mailto:support@sastafone.in`}
-                  className="text-gray-600 hover:text-red-600 transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600" />
-                  <span>संपर्क करें (Contact Support)</span>
-                </a>
-              </li>
+              {[
+                { label: 'मोबाइल रिपेयर (Repair)', path: '/repair' },
+                { label: 'पुराना फोन बेचें (Sell Phone)', path: '/sell-phone' },
+                { label: 'सर्टिफाइड फोन खरीदें (Buy Phones)', path: '/buy-phones' },
+                { label: 'वारंटी जांचें (Warranty)', path: '/warranty' },
+                { label: 'संपर्क करें व लोकेशन (Contact)', path: '/contact' }
+              ].map((link) => (
+                <li key={link.path}>
+                  <button
+                    type="button"
+                    onClick={() => handleNav(link.path)}
+                    className="text-gray-600 hover:text-[#D5151B] transition-colors duration-150 cursor-pointer text-left"
+                  >
+                    {link.label}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Col 3: Surat Areas */}
+          {/* Col 3: Surat Service Areas */}
           <div>
-            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-3 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-red-600" />
-              <span>सूरत के प्रमुख क्षेत्र (Areas)</span>
+            <h4 className="font-bold text-[#132032] uppercase tracking-wider text-xs mb-3 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#D5151B]" />
+              <span>सूरत क्षेत्र (Areas)</span>
             </h4>
             <div className="flex flex-wrap gap-1.5">
-              {['Adajan', 'Vesu', 'Pal', 'Varachha', 'Katargam', 'Rander', 'Piplod', 'Citylight', 'Ghod Dod Road', 'Althan', 'Udhna', 'Dindoli'].map(areaName => (
+              {[
+                'Adajan',
+                'Vesu',
+                'Pal',
+                'Varachha',
+                'Katargam',
+                'Rander',
+                'Piplod',
+                'Citylight',
+                'Ghod Dod Road',
+                'Althan',
+                'Udhna',
+                'Dindoli'
+              ].map((areaName) => (
                 <button
                   key={areaName}
                   type="button"
                   onClick={() => {
                     setSelectedLocality(`${areaName}, Surat`);
                     const areaSlug = areaName.toLowerCase().replace(/\s+/g, '-');
-                    if (window.location.pathname !== `/areas/${areaSlug}`) {
-                      window.history.pushState({}, '', `/areas/${areaSlug}`);
-                      window.dispatchEvent(new PopStateEvent('popstate'));
-                    }
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    handleNav(`/areas/${areaSlug}`);
                   }}
-                  className="px-2 py-1 rounded-md bg-gray-50 hover:bg-red-50 text-gray-700 hover:text-red-700 text-[11px] font-medium transition-colors cursor-pointer border border-gray-200/80"
+                  className="px-2.5 py-1 rounded-lg bg-gray-50 hover:bg-[#FEF2F2] text-gray-700 hover:text-[#D5151B] text-[11px] font-medium transition-colors duration-150 cursor-pointer border border-gray-200/80"
                 >
                   {areaName}
                 </button>
@@ -160,55 +179,98 @@ export const Footer: React.FC = () => {
             </div>
           </div>
 
-          {/* Col 4: Support & Policies */}
+          {/* Col 4: Social & Map Links */}
           <div className="space-y-3">
-            <h4 className="font-bold text-gray-900 uppercase tracking-wider text-xs mb-2">
-              कस्टमर सहायता व गारंटी
+            <h4 className="font-bold text-[#132032] uppercase tracking-wider text-xs mb-2">
+              सोशल व मैप
             </h4>
-            <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>क्वालिटी-चेक्ड पार्ट्स व सेवा</span>
-              </div>
-              <p className="text-[11px] text-gray-600 leading-relaxed">
-                सभी रिपेयरिंग में ओरिजिनल/सर्टिफाइड ग्रेड पार्ट्स का इस्तेमाल होता है।
-              </p>
-              <div className="text-[11px] text-gray-600 space-y-1 pt-1 border-t border-gray-200">
-                <p>ईमेल: <span className="font-mono text-gray-800">support@sastafone.in</span></p>
-                <p>समय: सुबह 9:00 AM – 9:30 PM</p>
-              </div>
+            <div className="space-y-2">
+              <a
+                href={instagramHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-[#FEF2F2] border border-gray-200 text-[#132032] font-bold transition-colors duration-150"
+              >
+                <span className="flex items-center gap-2">
+                  <Instagram className="w-4 h-4 text-[#D5151B]" />
+                  <span>Instagram</span>
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+              </a>
+
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('google_maps_click', { source: 'footer' })}
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-[#FEF2F2] border border-gray-200 text-[#132032] font-bold transition-colors duration-150"
+              >
+                <span className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#D5151B]" />
+                  <span>Google Maps</span>
+                </span>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => handleNav('/contact')}
+                className="w-full text-left px-3 py-2 rounded-xl text-[11px] font-bold text-[#D5151B] hover:bg-[#FEF2F2] transition-colors duration-150 cursor-pointer"
+              >
+                मैप एम्बेड देखें (/contact)
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Bottom Bar & Legal Links */}
+        {/* Legal Permalinks */}
         <div className="pt-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-500 text-[11px]">
-          <p>
-            © {new Date().getFullYear()} Sastafone Surat (sastafone.in). सर्वाधिकार सुरक्षित।
-          </p>
+          <p>© {new Date().getFullYear()} Sastafone Surat (sastafone.in). All rights reserved.</p>
 
           <div className="flex flex-wrap items-center gap-4">
             <button
               type="button"
-              onClick={() => setLegalModal('terms')}
-              className="hover:text-red-600 transition-colors cursor-pointer"
+              onClick={() => handleNav('/terms')}
+              className="hover:text-[#D5151B] transition-colors cursor-pointer"
             >
               Terms & Conditions
             </button>
             <button
               type="button"
-              onClick={() => setLegalModal('privacy')}
-              className="hover:text-red-600 transition-colors cursor-pointer"
+              onClick={() => handleNav('/privacy')}
+              className="hover:text-[#D5151B] transition-colors cursor-pointer"
             >
               Privacy Policy
             </button>
             <button
               type="button"
-              onClick={() => handleNav('repair', '/warranty')}
-              className="hover:text-red-600 transition-colors cursor-pointer"
+              onClick={() => handleNav('/refund-policy')}
+              className="hover:text-[#D5151B] transition-colors cursor-pointer"
             >
               Refund & Warranty Policy
             </button>
+
+            {isVerifiedAdmin && (
+              <button
+                type="button"
+                onClick={() => handleNav('/admin')}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FEF2F2] border border-red-200 text-[#D5151B] font-bold hover:bg-red-100 transition-colors cursor-pointer"
+              >
+                <Shield className="w-3 h-3" />
+                <span>Admin Control Room</span>
+              </button>
+            )}
+
+            {isVerifiedPartner && !isVerifiedAdmin && (
+              <button
+                type="button"
+                onClick={() => handleNav('/partner')}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
+              >
+                <Shield className="w-3 h-3" />
+                <span>Partner Portal</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

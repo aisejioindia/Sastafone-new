@@ -1,116 +1,114 @@
 import React from 'react';
-import { Home, Wrench, Package, User, ShoppingBag, ArrowUpRight } from 'lucide-react';
+import { Home, Wrench, Package, User, Smartphone, ShoppingBag } from 'lucide-react';
 
 export type TabType = 'home' | 'repair' | 'orders' | 'profile';
 
 interface BottomTabBarProps {
-  activeTab: TabType;
+  currentTab: TabType;
   onTabChange: (tab: TabType) => void;
+  onNavigate?: (path: string) => void;
   activeOrdersCount?: number;
-  onShowComingSoon: (featureName: string) => void;
 }
 
 export const BottomTabBar: React.FC<BottomTabBarProps> = ({
-  activeTab,
+  currentTab,
   onTabChange,
-  activeOrdersCount = 0,
-  onShowComingSoon
+  onNavigate,
+  activeOrdersCount = 0
 }) => {
+  const handleQuickRoute = (path: string) => {
+    if (onNavigate) {
+      onNavigate(path);
+    } else if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  };
+
   return (
-    <nav 
-      aria-label="Bottom Navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]"
-    >
-      <div className="max-w-lg mx-auto grid grid-cols-4 px-2 py-1.5">
-        {/* Tab 1: Home */}
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg pb-safe">
+      {/* Direct Quick Action Strip (Sell / Buy / Contact) */}
+      <div className="bg-[#FEF2F2] border-b border-red-100 px-3 py-1 flex items-center justify-between text-[11px]">
+        <button
+          type="button"
+          onClick={() => handleQuickRoute('/sell-phone')}
+          className="inline-flex items-center gap-1 font-bold text-[#132032] hover:text-[#D5151B] cursor-pointer"
+        >
+          <Smartphone className="w-3 h-3 text-[#D5151B]" />
+          <span>पुराना फोन बेचें</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleQuickRoute('/buy-phones')}
+          className="inline-flex items-center gap-1 font-bold text-[#132032] hover:text-[#D5151B] cursor-pointer"
+        >
+          <ShoppingBag className="w-3 h-3 text-[#D5151B]" />
+          <span>सर्टिफाइड फोन</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleQuickRoute('/contact')}
+          className="font-bold text-[#D5151B] cursor-pointer"
+        >
+          संपर्क
+        </button>
+      </div>
+
+      {/* Main 4 Tabs */}
+      <nav className="flex items-center justify-around h-16 px-1">
         <button
           type="button"
           onClick={() => onTabChange('home')}
-          className={`flex flex-col items-center justify-center min-h-[52px] py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            activeTab === 'home'
-              ? 'text-red-600 font-bold'
-              : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex-1 flex flex-col items-center justify-center py-2 tap-target transition-colors duration-150 cursor-pointer ${
+            currentTab === 'home' ? 'text-[#D5151B]' : 'text-gray-500 hover:text-[#132032]'
           }`}
         >
-          <div className="relative">
-            <Home className={`w-5 h-5 transition-transform ${activeTab === 'home' ? 'scale-110' : ''}`} />
-          </div>
-          <span className="text-[11px] mt-0.5 tracking-tight">होम (Home)</span>
+          <Home className="w-5 h-5" />
+          <span className="text-[11px] font-bold mt-1">होम</span>
         </button>
 
-        {/* Tab 2: Repair (Brand Red Highlight) */}
         <button
           type="button"
           onClick={() => onTabChange('repair')}
-          className={`relative flex flex-col items-center justify-center min-h-[52px] py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            activeTab === 'repair'
-              ? 'text-red-600 font-black'
-              : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex-1 flex flex-col items-center justify-center py-2 tap-target transition-colors duration-150 cursor-pointer ${
+            currentTab === 'repair' ? 'text-[#D5151B]' : 'text-gray-500 hover:text-[#132032]'
           }`}
         >
-          <div className="relative">
-            <div className={`p-1 rounded-lg ${activeTab === 'repair' ? 'bg-red-50 text-red-600' : ''}`}>
-              <Wrench className={`w-5 h-5 transition-transform ${activeTab === 'repair' ? 'scale-110' : ''}`} />
-            </div>
-            <span className="absolute -top-1 -right-2 px-1 py-0.2 bg-red-600 text-white text-[8px] font-black rounded-full uppercase leading-none shadow-xs">
-              ₹199
-            </span>
-          </div>
-          <span className="text-[11px] mt-0.5 tracking-tight">रिपेयर (Repair)</span>
+          <Wrench className="w-5 h-5" />
+          <span className="text-[11px] font-bold mt-1">रिपेयर</span>
         </button>
 
-        {/* Tab 3: My Orders */}
         <button
           type="button"
           onClick={() => onTabChange('orders')}
-          className={`flex flex-col items-center justify-center min-h-[52px] py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            activeTab === 'orders'
-              ? 'text-red-600 font-bold'
-              : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex-1 flex flex-col items-center justify-center py-2 tap-target relative transition-colors duration-150 cursor-pointer ${
+            currentTab === 'orders' ? 'text-[#D5151B]' : 'text-gray-500 hover:text-[#132032]'
           }`}
         >
           <div className="relative">
-            <Package className={`w-5 h-5 transition-transform ${activeTab === 'orders' ? 'scale-110' : ''}`} />
+            <Package className="w-5 h-5" />
             {activeOrdersCount > 0 && (
-              <span className="absolute -top-1 -right-2 w-4 h-4 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center shadow-xs animate-pulse">
+              <span className="absolute -top-1.5 -right-2 w-4 h-4 rounded-full bg-[#D5151B] text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
                 {activeOrdersCount}
               </span>
             )}
           </div>
-          <span className="text-[11px] mt-0.5 tracking-tight">ऑर्डर्स (Orders)</span>
+          <span className="text-[11px] font-bold mt-1">ऑर्डर्स</span>
         </button>
 
-        {/* Tab 4: Profile & Admin */}
         <button
           type="button"
           onClick={() => onTabChange('profile')}
-          className={`flex flex-col items-center justify-center min-h-[52px] py-1 px-1 rounded-xl transition-all cursor-pointer ${
-            activeTab === 'profile'
-              ? 'text-red-600 font-bold'
-              : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex-1 flex flex-col items-center justify-center py-2 tap-target transition-colors duration-150 cursor-pointer ${
+            currentTab === 'profile' ? 'text-[#D5151B]' : 'text-gray-500 hover:text-[#132032]'
           }`}
         >
-          <div className="relative">
-            <User className={`w-5 h-5 transition-transform ${activeTab === 'profile' ? 'scale-110' : ''}`} />
-          </div>
-          <span className="text-[11px] mt-0.5 tracking-tight">प्रोफाइल (Profile)</span>
+          <User className="w-5 h-5" />
+          <span className="text-[11px] font-bold mt-1">प्रोफाइल</span>
         </button>
-      </div>
-
-      {/* Floating or Sub-strip for Sell/Buy Notice */}
-      <div className="bg-slate-50 border-t border-slate-100 px-3 py-1 flex items-center justify-between text-[11px] text-slate-500">
-        <span className="truncate">
-          सूरत पिकअप-डिलीवरी: <strong>Sastafone Certified Technician Network</strong>
-        </span>
-        <button
-          type="button"
-          onClick={() => onShowComingSoon('Sell & Buy (पुराना बेचें / खरीदें)')}
-          className="inline-flex items-center gap-0.5 text-red-600 hover:text-red-700 font-bold cursor-pointer shrink-0 ml-2"
-        >
-          <span>Sell / Buy</span>
-          <span className="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-800 rounded font-black ml-0.5">जल्द</span>
-        </button>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 };

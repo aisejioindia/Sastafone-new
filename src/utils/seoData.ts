@@ -3,11 +3,8 @@ export interface PageSeoConfig {
   name: string;
   url: string;
   metaTitle: string;
-  metaTitleCharCount: number;
   metaDescription: string;
-  metaDescriptionCharCount: number;
   metaDescriptionEn: string;
-  metaDescriptionEnCharCount: number;
   targetKeywords: string[];
   h1: string;
 }
@@ -17,140 +14,91 @@ export const SURAT_PAGES_SEO: Record<string, PageSeoConfig> = {
     key: 'home',
     name: 'Home / All Services',
     url: 'https://sastafone.in/',
-    metaTitle: 'Sastafone Surat – Sell Old Mobile, Buy & Doorstep Repair',
-    metaTitleCharCount: 57,
-    metaDescription: 'सूरत का #1 मोबाइल हब Sastafone: पुराना फोन तुरंत कैश में बेचें, ₹199 में 30 मिनट में घर बैठे रिपेयर, 6M वारंटी फोन खरीदें व 0% ब्रोकरेज सस्ता बाज़ार डील करें।',
-    metaDescriptionCharCount: 157,
-    metaDescriptionEn: 'Sell old mobile for instant cash in Surat, get doorstep phone repair in 30 mins at ₹199, buy 6M warranty certified refurbished phones & trade on Sasta Bazaar.',
-    metaDescriptionEnCharCount: 160,
+    metaTitle: 'Sastafone Surat – Doorstep Mobile Repair, Sell & Buy Certified Phones',
+    metaDescription:
+      'सूरत में Sastafone Certified Technician Network द्वारा डोरस्टेप फोन रिपेयर पिकअप व डिलीवरी (₹199 विज़िट टोकन), पुराना फोन बेचें और 6 माह वारंटी फोन खरीदें।',
+    metaDescriptionEn:
+      'Doorstep mobile repair pickup & delivery in Surat with ₹199 visit fee (adjusted in bill), sell old phone for instant payment, and buy quality-checked phones with 6-month warranty.',
     targetKeywords: [
       'sastafone surat',
-      'sastaphone surat',
-      'purana mobile beche surat',
+      'doorstep mobile repair surat',
       'mobile repair surat',
-      'second hand mobile surat',
-      'doorstep mobile repair surat'
+      'sell old phone surat',
+      'second hand mobile surat'
     ],
-    h1: 'सूरत का #1 विश्वसनीय मोबाइल हब – पुराना फोन बेचें, खरीदें व 30 मिनट में रिपेयर'
+    h1: 'सूरत में डोरस्टेप मोबाइल रिपेयरिंग, पुराना फोन बेचें व सर्टिफाइड फोन खरीदें'
   },
   sell: {
     key: 'sell',
-    name: 'Sell Old & Dead Phone',
-    url: 'https://sastafone.in/?service=sell',
-    metaTitle: 'Sell Old Phone in Surat – Instant Cash & Free Home Pickup',
-    metaTitleCharCount: 57,
-    metaDescription: 'सूरत में पुराना या डेड फोन तुरंत नकद में बेचें। फ्री 2-घंटे होम पिकअप, बेस्ट AI वैल्यूएशन, ऑन-द-स्पॉट UPI पेमेंट व स्क्रैप फोन का सबसे ज्यादा दाम Sastafone पर।',
-    metaDescriptionCharCount: 157,
-    metaDescriptionEn: 'Sell old or dead mobile for instant cash in Surat. Free 2-hour doorstep pickup across Adajan, Vesu & Varachha with spot UPI payment and guaranteed best rates.',
-    metaDescriptionEnCharCount: 159,
+    name: 'Sell Old Phone',
+    url: 'https://sastafone.in/sell-phone',
+    metaTitle: 'Sell Old Phone in Surat – Free Doorstep Pickup & Instant Payment',
+    metaDescription:
+      'सूरत में अपना पुराना या डेड स्मार्टफोन Sastafone पर बेचें। मॉडल और कंडीशन चुनकर भाव देखें, डोरस्टेप पिकअप बुक करें और तुरंत UPI/बैंक भुगतान पाएं।',
+    metaDescriptionEn:
+      'Sell your old or dead smartphone in Surat on Sastafone. Check valuation, schedule doorstep pickup across Surat, and receive instant UPI or bank payout after inspection.',
     targetKeywords: [
       'sell old phone surat',
       'purana phone beche surat',
-      'dead mobile scrap rate surat',
-      'cash for phone surat',
-      'used phone buyer surat'
+      'used phone buyer surat',
+      'cash for mobile surat'
     ],
-    h1: 'सूरत में पुराना या डेड मोबाइल बेचें – 2 घंटे में फ्री होम पिकअप व तुरंत नकद भुगतान'
+    h1: 'सूरत में पुराना फोन बेचें – डोरस्टेप पिकअप व तुरंत UPI/बैंक भुगतान'
   },
   buy: {
     key: 'buy',
-    name: 'Buy Certified Refurbished Phones',
-    url: 'https://sastafone.in/?service=buy',
-    metaTitle: 'Buy Refurbished Phones in Surat – 6M Warranty & Low Price',
-    metaTitleCharCount: 57,
-    metaDescription: 'सूरत में 6 महीने वारंटी वाले सर्टिफाइड सेकंड-हैंड iPhone, Samsung व OnePlus फोन खरीदें। 32-पॉइंट टेस्टिंग, 7 दिन रिप्लेसमेंट और GST इनवॉइस के साथ सबसे सस्ता भाव।',
-    metaDescriptionCharCount: 159,
-    metaDescriptionEn: 'Buy certified second-hand phones in Surat with 6 months warranty, 32-point inspection, 7-day replacement & GST invoice. Top deals on iPhone, Samsung & OnePlus.',
-    metaDescriptionEnCharCount: 160,
+    name: 'Buy Quality-Checked Phones',
+    url: 'https://sastafone.in/buy-phones',
+    metaTitle: 'Buy Quality-Checked Used Phones in Surat – 6 Month Warranty',
+    metaDescription:
+      'सूरत में Sastafone से क्वालिटी-चेक्ड सेकंड-हैंड iPhone, Samsung व OnePlus स्मार्टफोन खरीदें। पारदर्शी ग्रेडिंग, GST इनवॉइस और 6 महीने की वारंटी।',
+    metaDescriptionEn:
+      'Buy quality-checked pre-owned smartphones in Surat with transparent grading, invoice, and 6-month Sastafone warranty.',
     targetKeywords: [
       'buy second hand phone surat',
-      'refurbished iphone surat',
-      'certified used mobile surat',
-      'cheap 5g phone surat',
-      'samsung second hand surat'
+      'used iphone surat',
+      'quality checked phone surat'
     ],
-    h1: 'सर्टिफाइड सेकंड-हैंड मोबाइल खरीदें – 32-पॉइंट क्वालिटी चेक व 6 महीने वारंटी'
+    h1: 'सर्टिफाइड सेकंड-हैंड मोबाइल खरीदें – क्वालिटी-चेक्ड व 6 महीने वारंटी'
   },
   repair: {
     key: 'repair',
     name: 'Doorstep Mobile Repair',
-    url: 'https://sastafone.in/?service=repair',
-    metaTitle: 'Doorstep Mobile Repair in Surat – 30 Min Fix at Just ₹199',
-    metaTitleCharCount: 57,
-    metaDescription: 'सूरत में मात्र ₹199 में 30 मिनट में घर बैठे मोबाइल रिपेयर। ओरिजिनल डिस्प्ले, बैटरी व कैमरा रिपेयर, 90 दिन वारंटी और नो-फिक्स नो-फी गारंटी। आज ही स्लॉट बुक करें!',
-    metaDescriptionCharCount: 158,
-    metaDescriptionEn: 'Doorstep mobile repair in Surat in 30 mins! Expert screen replacement, battery & camera fix at ₹199 visit fee. 90-day warranty & genuine parts. Book tech now.',
-    metaDescriptionEnCharCount: 158,
+    url: 'https://sastafone.in/repair',
+    metaTitle: 'Doorstep Mobile Repair in Surat – ₹199 Visit Fee | Sastafone',
+    metaDescription:
+      'सूरत में ₹199 विज़िट टोकन पर डोरस्टेप पिकअप और डिलीवरी मोबाइल रिपेयर। फाइनल बिल में ₹199 एडजस्ट, ₹1000+ पर 6 माह वारंटी, 2 घंटे डिलीवरी लक्ष्य।',
+    metaDescriptionEn:
+      'Doorstep pickup & delivery mobile repair in Surat by Sastafone Certified Technician Network. ₹199 visit fee adjusted in final bill, 6-month warranty on ₹1000+ bills.',
     targetKeywords: [
       'doorstep mobile repair surat',
       'mobile screen repair surat',
-      'phone display change surat',
       'phone battery replacement surat',
-      'mobile repair near me surat'
+      'sastafone repair'
     ],
-    h1: 'डोरस्टेप मोबाइल रिपेयर सूरत – 30 मिनट में घर बैठे ओरिजिनल पार्ट्स के साथ रिपेयर'
-  },
-  bazaar: {
-    key: 'bazaar',
-    name: 'Sasta Bazaar (P2P Mobile Mandi)',
-    url: 'https://sastafone.in/?service=bazaar',
-    metaTitle: 'Sasta Bazaar Surat – Buy & Sell Mobile with 0% Brokerage',
-    metaTitleCharCount: 56,
-    metaDescription: 'सूरत की डायरेक्ट मोबाइल मंडी \'सस्ता बाज़ार\'। ₹99 में लिस्टिंग, 0% ब्रोकरेज, सीधे खरीदार-विक्रेता चैट और प्राइवेसी सुरक्षा के साथ सेकंड-हैंड फोन तुरंत डील करें।',
-    metaDescriptionCharCount: 158,
-    metaDescriptionEn: 'Surat\'s direct P2P mobile marketplace. Post phone ad for just ₹99, trade with 0% brokerage, enjoy secure in-app chat & privacy shield. Deal directly in Surat.',
-    metaDescriptionEnCharCount: 159,
-    targetKeywords: [
-      'sasta bazaar surat',
-      'buy sell mobile p2p surat',
-      'direct customer phone deal surat',
-      'second hand mobile olx surat',
-      'mobile mandi surat'
-    ],
-    h1: 'सस्ता बाज़ार सूरत – 0% ब्रोकरेज पर सीधे ग्राहक से फोन खरीदें व बेचें'
+    h1: 'डोरस्टेप मोबाइल रिपेयर सूरत – पिकअप, पारदर्शी QC कोट और 2 घंटे डिलीवरी लक्ष्य'
   }
 };
 
-/**
- * Updates DOM title, meta description, and OpenGraph tags dynamically based on tab
- */
 export function applyPageSeo(tabKey: string, lang: 'hi' | 'en' = 'hi') {
   const config = SURAT_PAGES_SEO[tabKey] || SURAT_PAGES_SEO.home;
-
-  // Title
   document.title = config.metaTitle;
-
-  // Meta description
   const metaDescTag = document.querySelector('meta[name="description"]');
   const descriptionContent = lang === 'en' ? config.metaDescriptionEn : config.metaDescription;
-  if (metaDescTag) {
-    metaDescTag.setAttribute('content', descriptionContent);
-  }
+  if (metaDescTag) metaDescTag.setAttribute('content', descriptionContent);
 
-  // OG Title & Description
   const ogTitleTag = document.querySelector('meta[property="og:title"]');
-  if (ogTitleTag) {
-    ogTitleTag.setAttribute('content', config.metaTitle);
-  }
+  if (ogTitleTag) ogTitleTag.setAttribute('content', config.metaTitle);
 
   const ogDescTag = document.querySelector('meta[property="og:description"]');
-  if (ogDescTag) {
-    ogDescTag.setAttribute('content', descriptionContent);
-  }
+  if (ogDescTag) ogDescTag.setAttribute('content', descriptionContent);
 
   const twitterTitleTag = document.querySelector('meta[name="twitter:title"]');
-  if (twitterTitleTag) {
-    twitterTitleTag.setAttribute('content', config.metaTitle);
-  }
+  if (twitterTitleTag) twitterTitleTag.setAttribute('content', config.metaTitle);
 
   const twitterDescTag = document.querySelector('meta[name="twitter:description"]');
-  if (twitterDescTag) {
-    twitterDescTag.setAttribute('content', descriptionContent);
-  }
+  if (twitterDescTag) twitterDescTag.setAttribute('content', descriptionContent);
 
-  // Canonical URL
   const canonicalTag = document.querySelector('link[rel="canonical"]');
-  if (canonicalTag) {
-    canonicalTag.setAttribute('href', config.url);
-  }
+  if (canonicalTag) canonicalTag.setAttribute('href', config.url);
 }

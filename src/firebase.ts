@@ -16,6 +16,7 @@ export const firebaseConfig = {
 
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
 
 // Initialize Firebase App safely (singleton instance)
 export const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -26,6 +27,9 @@ export const googleAuthProvider = new GoogleAuthProvider();
 
 // Firebase Firestore Database Instance
 export const db = getFirestore(app);
+
+// Firebase Cloud Functions Instance
+export const functions = getFunctions(app);
 
 // Initialize Analytics if supported in the browser environment
 export const initAnalytics = async () => {

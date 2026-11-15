@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Strictly server-verified custom claims + email_verified enforcement
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -12,121 +12,219 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
-        request.auth.token.email == 'aisejio99@gmail.com' ||
-        request.auth.token.role == 'admin'
-      );
+      return isAuthenticated() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.admin == true;
     }
 
-    // 1. Users collection
+    function isPartner() {
+      return isAuthenticated() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.partner == true &&
+             request.auth.token.partnerId is string;
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    // 0. Site Settings (public vs admin-private)
+    match /settings/public {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 1. Users collection (cannot self-escalate role/partnerId)
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role == 'customer' || isAdmin());
-      allow update: if (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))) || isAdmin();
+      allow create: if isOwner(userId) &&
+                    (!('role' in request.resource.data) || request.resource.data.role == 'customer' || isAdmin()) &&
+                    (!('partnerId' in request.resource.data) || request.resource.data.partnerId == null || isAdmin());
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'partnerId', 'admin', 'partner']))
+      );
       allow delete: if isAdmin();
     }
 
-    // 2. Repair prices collection (Customer read-only, Admin full access)
+    // 2. Repair prices collection (Public read, Admin write)
     match /repairPrices/{priceId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // 3. Sell rates table (Customer read-only, Admin full access)
+    // 3. Sell rates table (Public read, Admin write)
     match /sellRates/{rateId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // 4. Pickup slots collection (Customer read-only, Admin full access, atomic slot increment on booking)
+    // 4. Pickup slots collection
     match /slots/{slotId} {
       allow read: if true;
-      allow update: if (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['booked']) && request.resource.data.booked == resource.data.booked + 1) || isAdmin();
+      allow update: if isAdmin() || (
+        isAuthenticated() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['booked']) &&
+        request.resource.data.booked == resource.data.booked + 1 &&
+        resource.data.booked < resource.data.capacity
+      );
+      allow create, delete: if isAdmin();
+    }
+
+    // 5. Partners collection (Admin full; Partner can read own doc)
+    match /partners/{partnerId} {
+      allow read: if isAdmin() || (isPartner() && request.auth.token.partnerId == partnerId);
       allow write: if isAdmin();
     }
 
-    // 5. Partners collection (Admin only)
-    match /partners/{partnerId} {
-      allow read, write: if isAdmin();
+    // 6. Zero-PII Partner Jobs Projection (Partner sees Job ID + device only; NEVER customer name/phone/address)
+    match /partnerJobs/{jobId} {
+      allow read: if isAdmin() || (isPartner() && resource.data.partnerId == request.auth.token.partnerId);
+      allow update: if isAdmin() || (
+        isPartner() &&
+        resource.data.partnerId == request.auth.token.partnerId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['partnerSubmission', 'status', 'updatedAt']) &&
+        (request.resource.data.status in [resource.data.status, 'In repair', 'Ready'])
+      );
+      allow create, delete: if isAdmin();
     }
 
-    // 6. Partner Ledger entries (Admin only)
+    // 7. Partner Ledger entries (Admin write; Partner reads own ledger entries)
     match /ledger/{entryId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || (isPartner() && resource.data.partnerId == request.auth.token.partnerId);
+      allow write: if isAdmin();
     }
 
-    // 7. Sealed Bag Handovers (Admin only)
+    // 8. Sealed Bag Handovers (Admin write; Partner reads own assigned handovers)
     match /handovers/{handoverId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin() || (isPartner() && resource.data.partnerId == request.auth.token.partnerId);
+      allow write: if isAdmin();
     }
 
-    // 8. Repair Jobs collection
+    // 9. Repair Jobs collection (Customer own + Admin full; Partners explicitly excluded to protect PII)
     match /jobs/{jobId} {
       allow create: if isAuthenticated() &&
                     request.resource.data.userId == request.auth.uid &&
-                    request.resource.data.visitFeePaid == true;
+                    request.resource.data.visitFeePaid == true &&
+                    isNonEmptyString(request.resource.data.name, 100) &&
+                    isNonEmptyString(request.resource.data.phone, 20) &&
+                    isNonEmptyString(request.resource.data.brand, 60) &&
+                    isNonEmptyString(request.resource.data.model, 120);
 
       allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
 
       allow update: if isAdmin() || (
         isOwner(resource.data.userId) &&
         resource.data.status == 'Picked up' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['customerApproved', 'approvedAt', 'status', 'statusHistory', 'updatedAt', 'finalPrice', 'referralDiscountApplied']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'customerApproved', 'approvedAt', 'status', 'statusHistory', 'updatedAt', 'finalPrice', 'referralDiscountApplied'
+        ]) &&
         (request.resource.data.status in ['In repair', 'Cancelled'])
       );
 
       allow delete: if isAdmin();
     }
 
-    // 9. Sell Requests collection (Customer sells phone)
+    // 10. Sell Requests collection
     match /sellRequests/{requestId} {
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid &&
+                    isNonEmptyString(request.resource.data.brand, 60) &&
+                    isNonEmptyString(request.resource.data.model, 120);
       allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin();
       allow update: if isAdmin() || (isOwner(resource.data.userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
-    // 10. Certified Inventory collection (Buy phones)
+    // 11. Certified Inventory collection (Buy phones)
     match /inventory/{phoneId} {
       allow read: if true;
       allow update: if isAdmin() || (
         isAuthenticated() &&
         resource.data.status == 'available' &&
         request.resource.data.status == 'booked' &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'bookedBy', 'updatedAt'])
+        request.resource.data.bookedBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'bookedBy', 'razorpayPaymentId', 'updatedAt'])
       );
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
     }
 
-    // 11. Customer Reviews collection
-    match /reviews/{reviewId} {
-      allow read: if resource.data.status == 'approved' || isAdmin();
-      allow create: if isAuthenticated() && request.resource.data.status == 'pending';
+    // 12. Owner Listings Moderation collection
+    match /ownerListings/{listingId} {
+      allow read: if resource.data.status == 'approved' ||
+                  (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                  isAdmin();
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.status == 'pending';
       allow update, delete: if isAdmin();
     }
 
-    // 12. Referrals collection
+    // 13. Customer Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow create: if isAuthenticated() &&
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.status == 'pending' &&
+                    request.resource.data.rating is number &&
+                    request.resource.data.rating >= 1 &&
+                    request.resource.data.rating <= 5 &&
+                    isNonEmptyString(request.resource.data.reviewText, 1000);
+      allow update, delete: if isAdmin();
+    }
+
+    // 14. Referrals collection
     match /referrals/{referralId} {
       allow create: if isAuthenticated() && request.resource.data.referrerUserId == request.auth.uid;
       allow read, write: if isAdmin();
     }
 
-    // 13. Warranty Claims & Invoices
+    // 15. Warranty Claims & Invoices
     match /warrantyClaims/{claimId} {
-      allow create: if true;
-      allow read, write: if isAdmin();
+      allow create: if isNonEmptyString(request.resource.data.jobId, 80) &&
+                    isNonEmptyString(request.resource.data.phone, 20) &&
+                    isNonEmptyString(request.resource.data.issue, 1000);
+      allow read, update, delete: if isAdmin();
     }
 
     match /invoices/{invoiceId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isAdmin() ||
+                  (isAuthenticated() && resource.data.userId == request.auth.uid) ||
+                  (request.query.limit <= 3);
       allow write: if isAdmin();
+    }
+
+    // 16. Admin-only Customer Notes
+    match /customerNotes/{noteId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 17. Immutable Audit Logs (Append-only for Admin/Partner actions, Admin read-only, no update/delete)
+    match /auditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() || isPartner();
+      allow update, delete: if false;
+    }
+
+    // Legacy customer portal collections (strict owner or admin)
+    match /pendingJobs/{jobId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read, update: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /service_requests/{reqId} {
+      allow read, write: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
     }
 
     // Default deny all other collections
     match /{document=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if false;
     }
   }
 }
