@@ -15,6 +15,8 @@ import { SURAT_LOCALITIES, BRANDS } from '../data/mockData';
 import { COMPREHENSIVE_PHONE_MODELS } from '../data/phonesDatabase';
 import { buildWhatsappHref } from '../services/siteSettingsService';
 import { trackEvent } from '../utils/analytics';
+import { buildPaymentLinkUrl, submitToWeb3Forms } from '../services/web3formsService';
+import { PaymentLinkQrCard } from './PaymentLinkQrCard';
 import {
   Smartphone,
   Search,
@@ -36,7 +38,8 @@ import {
   Building,
   RefreshCw,
   MessageCircle,
-  Package
+  Package,
+  QrCode
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -84,8 +87,10 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
   const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
   const [deviceNotes, setDeviceNotes] = useState<string>('');
 
-  // Step 4: Payment & Completion
+  // Step 4: Payment, Web3Forms Inquiry & Completion
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
+  const [isSubmittingWeb3Form, setIsSubmittingWeb3Form] = useState<boolean>(false);
+  const [pendingQrJobId, setPendingQrJobId] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [completedJob, setCompletedJob] = useState<Job | null>(null);
 
@@ -189,8 +194,60 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
     });
   };
 
-  // Payment & Submit Handler
-  const handleProceedToPayment = async () => {
+  // Submit to Web3Forms first & Generate Payment Link / QR Code (Technician visit held until payment verification)
+  const handleSubmitAndGenerateQr = async () => {
+    if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
+      setPaymentError('कृपया मान्य 10-अंकों का मोबाइल नंबर दर्ज करें।');
+      return;
+    }
+    if (!streetAddress.trim()) {
+      setPaymentError('कृपया पिकअप का पूरा पता दर्ज करें।');
+      return;
+    }
+
+    setIsSubmittingWeb3Form(true);
+    setPaymentError(null);
+
+    const refJobId = pendingQrJobId || `JOB-STP-${Date.now().toString().slice(-6)}`;
+    const brandObj = BRANDS.find(b => b.id === selectedBrand);
+    const finalDeviceName = customModelInput.trim() || selectedModel;
+    const problemsSummary = selectedServices
+      .map(s => `${s.name_hi} (₹${s.minPrice}-₹${s.maxPrice})`)
+      .join(', ');
+    const pricingSummary = `₹${calculations.minSum} – ₹${calculations.maxSum} (${calculations.timeFormatted}, ${calculations.warrantyText})`;
+    const paymentLink = buildPaymentLinkUrl(refJobId, 199);
+
+    const w3Res = await submitToWeb3Forms({
+      formType: 'repair_booking',
+      subject: `New Repair Booking (Awaiting ₹199 Token): ${finalDeviceName} [${refJobId}]`,
+      name: customerName.trim() || user.name || 'Surat Resident',
+      phone: customerPhone.trim(),
+      email: user.email || undefined,
+      service: 'डोरस्टेप मोबाइल रिपेयर (Doorstep Mobile Repair)',
+      brand: brandObj?.name || selectedBrand,
+      model: finalDeviceName,
+      problems: problemsSummary,
+      dynamicPricing: pricingSummary,
+      visitTokenAmount: 199,
+      slotDate: pickupDate,
+      slotWindow: selectedSlotWindow || '10:00 AM - 01:00 PM',
+      area,
+      address: streetAddress.trim(),
+      referenceId: refJobId,
+      paymentStatus: 'Pending Payment Confirmation (QR & Link Generated)',
+      paymentLink,
+      message: deviceNotes.trim() || undefined
+    });
+
+    setIsSubmittingWeb3Form(false);
+    if (!w3Res.success) {
+      setPaymentError('इंक्वायरी भेजने में अस्थायी समस्या आई, लेकिन आप नीचे QR/लिंक से ₹199 पेमेंट पूरा कर सकते हैं।');
+    }
+    setPendingQrJobId(refJobId);
+  };
+
+  // Payment & Submit Handler (Existing Firestore + Razorpay flow preserved)
+  const handleProceedToPayment = async (overrideJobId?: string) => {
     if (!user.isLoggedIn) {
       setIsAuthModalOpen(true);
       return;
@@ -208,9 +265,13 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
     setIsProcessingPayment(true);
     setPaymentError(null);
 
-    const generatedJobId = `JOB-STP-${Date.now().toString().slice(-6)}`;
+    const generatedJobId = overrideJobId || pendingQrJobId || `JOB-STP-${Date.now().toString().slice(-6)}`;
     const brandObj = BRANDS.find(b => b.id === selectedBrand);
     const finalDeviceName = customModelInput.trim() || selectedModel;
+    const problemsSummary = selectedServices
+      .map(s => `${s.name_hi} (₹${s.minPrice}-₹${s.maxPrice})`)
+      .join(', ');
+    const pricingSummary = `₹${calculations.minSum} – ₹${calculations.maxSum} (${calculations.timeFormatted}, ${calculations.warrantyText})`;
 
     trackEvent('visit_fee_initiated', {
       job_id: generatedJobId,
@@ -258,6 +319,30 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
           await createJobInFirestore(newJob);
 
+          // Non-blocking Web3Forms verified payment notification
+          void submitToWeb3Forms({
+            formType: 'repair_booking',
+            subject: `CONFIRMED Repair Visit (₹199 Paid): ${finalDeviceName} [${generatedJobId}]`,
+            name: newJob.name,
+            phone: newJob.phone,
+            email: user.email || undefined,
+            service: 'डोरस्टेप मोबाइल रिपेयर (Doorstep Mobile Repair)',
+            brand: newJob.brand,
+            model: newJob.model,
+            problems: problemsSummary,
+            dynamicPricing: pricingSummary,
+            visitTokenAmount: 199,
+            slotDate: newJob.pickupSlot.date,
+            slotWindow: newJob.pickupSlot.window,
+            area: newJob.area,
+            address: newJob.address,
+            referenceId: generatedJobId,
+            paymentStatus: 'PAID & VERIFIED (Technician Visit Confirmed)',
+            paymentId,
+            paymentLink: buildPaymentLinkUrl(generatedJobId, 199),
+            message: newJob.deviceNotes || undefined
+          });
+
           trackEvent('visit_fee_paid', {
             job_id: generatedJobId,
             payment_id: paymentId,
@@ -282,6 +367,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             ]
           });
 
+          setPendingQrJobId(null);
           setIsProcessingPayment(false);
           setStep(4);
           if (onJobCreated) onJobCreated(generatedJobId);
@@ -758,37 +844,74 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
           </div>
 
           {/* Action Buttons (Sticky Mobile CTA) */}
-          <div className="sticky bottom-16 sm:static z-30 bg-white/95 backdrop-blur-xs border-t border-gray-200 sm:border-0 p-3 -mx-4 sm:mx-0 sm:p-0 flex items-center gap-3">
-            <button
-              type="button"
-              disabled={isProcessingPayment}
-              onClick={() => setStep(2)}
-              className="px-4 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-all duration-150 cursor-pointer flex items-center gap-1"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>पीछे</span>
-            </button>
+          <div className="sticky bottom-16 sm:static z-30 bg-white/95 backdrop-blur-xs border-t border-gray-200 sm:border-0 p-3 -mx-4 sm:mx-0 sm:p-0 space-y-2">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={isProcessingPayment || isSubmittingWeb3Form}
+                onClick={() => setStep(2)}
+                className="px-4 py-3.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-all duration-150 cursor-pointer flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>पीछे</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isProcessingPayment || isSubmittingWeb3Form}
+                onClick={() => handleProceedToPayment()}
+                className="flex-1 py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <span>Razorpay सुरक्षित सत्यापन चालू...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    <span>₹199 टोकन भुगतान करें व बुक करें</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
 
             <button
               type="button"
-              disabled={isProcessingPayment}
-              onClick={handleProceedToPayment}
-              className="flex-1 py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
+              disabled={isProcessingPayment || isSubmittingWeb3Form}
+              onClick={handleSubmitAndGenerateQr}
+              className="w-full py-2.5 rounded-xl bg-white hover:bg-[#FEF2F2] border border-[#D5151B]/40 text-[#132032] font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {isProcessingPayment ? (
+              {isSubmittingWeb3Form ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Razorpay सुरक्षित सत्यापन चालू...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D5151B]" />
+                  <span>बुकिंग भेजकर पेमेंट लिंक / QR तैयार किया जा रहा है...</span>
                 </>
               ) : (
                 <>
-                  <CreditCard className="w-4 h-4" />
-                  <span>₹199 टोकन भुगतान करें व बुक करें</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <QrCode className="w-3.5 h-3.5 text-[#D5151B]" />
+                  <span>पहले बुकिंग सबमिट करें और ₹199 पेमेंट लिंक / QR कोड जेनरेट करें</span>
                 </>
               )}
             </button>
           </div>
+
+          {/* Post-Submission Payment Link & QR Code Card (Visit held until payment verification) */}
+          {pendingQrJobId && (
+            <PaymentLinkQrCard
+              referenceId={pendingQrJobId}
+              amount={199}
+              serviceLabel="डोरस्टेप मोबाइल रिपेयर"
+              deviceModel={customModelInput.trim() || selectedModel}
+              problemsLabel={selectedServices.map(s => s.name_hi).join(', ')}
+              dynamicPricingLabel={`₹${calculations.minSum} – ₹${calculations.maxSum}`}
+              slotLabel={`${pickupDate} (${selectedSlotWindow || '10:00 AM - 01:00 PM'}) • ${area}`}
+              whatsappNumber={siteSettings.whatsappNumber}
+              isProcessingRazorpay={isProcessingPayment}
+              onPayViaRazorpay={() => handleProceedToPayment(pendingQrJobId)}
+            />
+          )}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import { SeoHead } from './SeoHead';
 import { getSlotsFromFirestore, createSellRequestInFirestore } from '../services/firestoreRepairService';
 import { uploadImageToStorage } from '../utils/storageUpload';
 import { trackEvent } from '../utils/analytics';
+import { submitToWeb3Forms } from '../services/web3formsService';
 import { Slot, SellRequest } from '../types';
 import {
   Smartphone,
@@ -309,6 +310,38 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
       };
 
       const docId = await createSellRequestInFirestore(payload);
+
+      const conditionSummary = [
+        `Screen OK: ${screenWorking ? 'Yes' : 'No'}`,
+        `Touch OK: ${touchWorking ? 'Yes' : 'No'}`,
+        `Body Scratches: ${bodyScratches}`,
+        `Battery: ${batteryHealth}`,
+        `Camera OK: ${cameraWorking ? 'Yes' : 'No'}`,
+        `Buttons OK: ${buttonsWorking ? 'Yes' : 'No'}`,
+        `Speaker/Mic OK: ${speakerMicWorking ? 'Yes' : 'No'}`,
+        `Biometrics OK: ${faceTouchIdWorking ? 'Yes' : 'No'}`,
+        isDeadPhone ? 'Dead Phone' : 'Working Phone'
+      ].join(' | ');
+
+      void submitToWeb3Forms({
+        formType: 'sell_phone',
+        subject: `New Sell Phone Request: ${payload.brand} ${payload.model} [${docId}]`,
+        name: payload.customerName,
+        phone: payload.customerPhone,
+        email: user.email || undefined,
+        service: 'पुराना फोन बेचें (Sell Old Phone Buyback)',
+        brand: payload.brand,
+        model: `${payload.model} (${payload.storage})`,
+        problems: conditionSummary,
+        dynamicPricing: `₹${estMin.toLocaleString('en-IN')} – ₹${estMax.toLocaleString('en-IN')} (Estimated Buyback)`,
+        slotDate: selectedSlotObj.date,
+        slotWindow: selectedSlotObj.window,
+        area: selectedSlotObj.area,
+        address: payload.address,
+        referenceId: docId,
+        paymentStatus: 'Free Inspection Pickup Scheduled'
+      });
+
       trackEvent('sell_phone_submitted', {
         request_id: docId,
         brand,

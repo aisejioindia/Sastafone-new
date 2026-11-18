@@ -5,6 +5,8 @@ import { InventoryPhone } from '../types';
 import { subscribeToAvailableInventory, updateInventoryPhoneInFirestore } from '../services/firestoreRepairService';
 import { startRazorpayCheckout } from '../services/paymentService';
 import { trackEvent } from '../utils/analytics';
+import { buildPaymentLinkUrl, submitToWeb3Forms } from '../services/web3formsService';
+import { PaymentLinkQrCard } from './PaymentLinkQrCard';
 import {
   ShoppingBag,
   ShieldCheck,
@@ -15,7 +17,8 @@ import {
   ArrowLeft,
   CreditCard,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  QrCode
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -28,7 +31,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
   initialSlug,
   onNavigateHome
 }) => {
-  const { user, setIsAuthModalOpen } = useApp();
+  const { user, setIsAuthModalOpen, siteSettings } = useApp();
 
   const [inventory, setInventory] = useState<InventoryPhone[]>([]);
   const [isLoadingInventory, setIsLoadingInventory] = useState(true);
@@ -43,6 +46,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
 
   // Booking with Token State
   const [isBookingToken, setIsBookingToken] = useState(false);
+  const [pendingBuyQrRef, setPendingBuyQrRef] = useState<string | null>(null);
   const [bookingSuccessNote, setBookingSuccessNote] = useState<string | null>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
@@ -125,10 +129,31 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
             amount: tokenAmt
           });
 
+          void submitToWeb3Forms({
+            formType: 'buy_phone',
+            subject: `CONFIRMED Certified Phone Booking: ${activePhone.brand} ${activePhone.model}`,
+            name: user.name || 'Sastafone Customer',
+            phone: user.phone || '',
+            email: user.email || undefined,
+            service: 'सर्टिफाइड फोन खरीदें (Buy Phone Reservation)',
+            brand: activePhone.brand,
+            model: `${activePhone.model} (${activePhone.storage}, ${activePhone.colour})`,
+            problems: `Grade: ${activePhone.grade}, Battery: ${activePhone.batteryHealth}%`,
+            dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} Paid Token)`,
+            visitTokenAmount: tokenAmt,
+            area: user.locality || 'Surat',
+            address: user.address || '',
+            referenceId: `INV_${activePhone.id}`,
+            paymentStatus: 'PAID & VERIFIED (Phone Reserved)',
+            paymentId,
+            paymentLink: buildPaymentLinkUrl(`INV_${activePhone.id}`, tokenAmt)
+          });
+
           confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
           setBookingSuccessNote(
             `✓ ₹${tokenAmt} टोकन सफलतापूर्वक प्राप्त हुआ! ${activePhone.brand} ${activePhone.model} आपके नाम पर बुक कर दिया गया है। हमारा प्रतिनिधि डिलीवरी स्लॉट समन्वय के लिए आपसे संपर्क करेगा।`
           );
+          setPendingBuyQrRef(null);
           setActivePhone({ ...activePhone, status: 'booked' });
         } catch (err: any) {
           console.error('Inventory update error:', err);
@@ -142,6 +167,35 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
         setIsBookingToken(false);
       }
     });
+  };
+
+  const handleGenerateBuyQr = async () => {
+    if (!activePhone) return;
+    if (!user.isLoggedIn || !user.uid) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const tokenAmt = activePhone.tokenAmount || 499;
+    const refId = `BUY-${activePhone.id.slice(-6)}-${Date.now().toString().slice(-4)}`;
+    await submitToWeb3Forms({
+      formType: 'buy_phone',
+      subject: `Buy Phone Inquiry (Awaiting ₹${tokenAmt} Token): ${activePhone.brand} ${activePhone.model}`,
+      name: user.name || 'Sastafone Customer',
+      phone: user.phone || '',
+      email: user.email || undefined,
+      service: 'सर्टिफाइड फोन खरीदें (Buy Phone Reservation)',
+      brand: activePhone.brand,
+      model: `${activePhone.model} (${activePhone.storage}, ${activePhone.colour})`,
+      problems: `Grade: ${activePhone.grade}, Battery: ${activePhone.batteryHealth}%`,
+      dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} Token)`,
+      visitTokenAmount: tokenAmt,
+      area: user.locality || 'Surat',
+      address: user.address || '',
+      referenceId: refId,
+      paymentStatus: 'Pending Token Payment Confirmation',
+      paymentLink: buildPaymentLinkUrl(refId, tokenAmt)
+    });
+    setPendingBuyQrRef(refId);
   };
 
   // Structured Data for Detail view
@@ -319,16 +373,44 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                         यह फोन किसी ग्राहक द्वारा टोकन देकर बुक किया जा चुका है।
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={handleBookWithToken}
-                        disabled={isBookingToken}
-                        className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        <span>मात्र ₹499 टोकन देकर बुक करें</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
+                      <div className="space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={handleBookWithToken}
+                          disabled={isBookingToken}
+                          className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>मात्र ₹{activePhone.tokenAmount || 499} टोकन देकर बुक करें</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleGenerateBuyQr}
+                          disabled={isBookingToken}
+                          className="w-full py-2.5 rounded-xl bg-white hover:bg-[#FEF2F2] border border-[#D5151B]/40 text-[#132032] font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                        >
+                          <QrCode className="w-3.5 h-3.5 text-[#D5151B]" />
+                          <span>बुकिंग इंक्वायरी भेजें व ₹{activePhone.tokenAmount || 499} पेमेंट लिंक / QR जेनरेट करें</span>
+                        </button>
+
+                        {pendingBuyQrRef && (
+                          <PaymentLinkQrCard
+                            referenceId={pendingBuyQrRef}
+                            amount={activePhone.tokenAmount || 499}
+                            serviceLabel="सर्टिफाइड फोन खरीदें"
+                            deviceModel={`${activePhone.brand} ${activePhone.model} (${activePhone.storage})`}
+                            problemsLabel={`Grade: ${activePhone.grade} • Battery ${activePhone.batteryHealth}%`}
+                            dynamicPricingLabel={`₹${activePhone.price.toLocaleString('en-IN')}`}
+                            slotLabel={user.locality || 'Surat Delivery'}
+                            whatsappNumber={siteSettings.whatsappNumber}
+                            isProcessingRazorpay={isBookingToken}
+                            onPayViaRazorpay={handleBookWithToken}
+                            title={`₹${activePhone.tokenAmount || 499} बुकिंग टोकन पेमेंट लिंक व QR`}
+                          />
+                        )}
+                      </div>
                     )}
 
                     <p className="text-[11px] text-gray-500 leading-relaxed text-center">

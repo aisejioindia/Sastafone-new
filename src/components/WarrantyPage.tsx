@@ -3,6 +3,7 @@ import { SeoHead } from './SeoHead';
 import { db } from '../firebase';
 import { collection, query, where, limit, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { trackEvent } from '../utils/analytics';
+import { submitToWeb3Forms } from '../services/web3formsService';
 import {
   ShieldCheck,
   Search,
@@ -180,6 +181,21 @@ export const WarrantyPage: React.FC<WarrantyPageProps> = ({
       };
 
       const claimRef = await addDoc(collection(db, 'warrantyClaims'), claimPayload);
+
+      void submitToWeb3Forms({
+        formType: 'warranty_claim',
+        subject: `Warranty Claim [${foundWarranty.invoiceNumber}]: ${foundWarranty.brand} ${foundWarranty.model}`,
+        name: foundWarranty.customerName,
+        phone: foundWarranty.customerPhone,
+        service: 'वारंटी क्लेम (6-Month Repair Warranty)',
+        brand: foundWarranty.brand,
+        model: foundWarranty.model,
+        problems: `${claimIssueText.trim()} | Covered Services: ${foundWarranty.services.join(', ')}`,
+        dynamicPricing: `Original Bill: ₹${foundWarranty.finalTotal} (Free Warranty Inspection)`,
+        visitTokenAmount: 0,
+        referenceId: claimRef.id,
+        paymentStatus: 'Valid Warranty Claim (Free Visit)'
+      });
 
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
       setClaimSuccessNote(`✓ वारंटी क्लेम अनुरोध #${claimRef.id.slice(-6).toUpperCase()} दर्ज कर लिया गया है। हमारे सर्टिफाइड टेक्नीशियन प्राथमिकता के साथ आपसे संपर्क करेंगे।`);
