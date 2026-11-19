@@ -6,13 +6,13 @@ import {
   Copy,
   Check,
   ShieldCheck,
-  CreditCard,
   Clock,
   AlertCircle,
   MessageCircle,
+  Smartphone,
   RefreshCw
 } from 'lucide-react';
-import { buildPaymentLinkUrl } from '../services/web3formsService';
+import { DIRECT_UPI_ID, buildUpiPaymentUri } from '../services/paymentService';
 import { buildWhatsappHref } from '../services/siteSettingsService';
 
 interface PaymentLinkQrCardProps {
@@ -23,9 +23,12 @@ interface PaymentLinkQrCardProps {
   problemsLabel: string;
   dynamicPricingLabel: string;
   slotLabel: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerAddress?: string;
   whatsappNumber: string;
-  isProcessingRazorpay?: boolean;
-  onPayViaRazorpay?: () => void;
+  isConfirming?: boolean;
+  onConfirmWhatsapp?: (utrNumber: string) => void;
   title?: string;
 }
 
@@ -37,19 +40,23 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
   problemsLabel,
   dynamicPricingLabel,
   slotLabel,
+  customerName,
+  customerPhone,
+  customerAddress,
   whatsappNumber,
-  isProcessingRazorpay = false,
-  onPayViaRazorpay,
-  title = 'विज़िट कन्फर्म करने के लिए पेमेंट लिंक व QR कोड'
+  isConfirming = false,
+  onConfirmWhatsapp,
+  title = `डायरेक्ट UPI पेमेंट (₹${amount}) व WhatsApp कन्फर्मेशन`
 }) => {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [copied, setCopied] = useState<boolean>(false);
+  const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
+  const [utrNumber, setUtrNumber] = useState<string>('');
 
-  const paymentUrl = buildPaymentLinkUrl(referenceId, amount);
+  const upiUri = buildUpiPaymentUri(referenceId, amount, `Sastafone ${referenceId}`);
 
   useEffect(() => {
     let active = true;
-    QRCode.toDataURL(paymentUrl, {
+    QRCode.toDataURL(upiUri, {
       width: 220,
       margin: 2,
       color: {
@@ -67,22 +74,37 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
     return () => {
       active = false;
     };
-  }, [paymentUrl]);
+  }, [upiUri]);
 
-  const handleCopy = async () => {
+  const handleCopyUpiId = async () => {
     try {
-      await navigator.clipboard.writeText(paymentUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(DIRECT_UPI_ID);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2500);
     } catch {
-      setCopied(false);
+      setCopiedUpi(false);
     }
   };
 
-  const whatsappPaymentShare = buildWhatsappHref(
-    whatsappNumber,
-    `नमस्ते Sastafone Surat! मैंने बुकिंग/इंक्वायरी सबमिट की है।\nRef ID: ${referenceId}\nसर्विस: ${serviceLabel}\nमॉडल: ${deviceModel}\nसमस्या: ${problemsLabel}\nअनुमानित कीमत: ${dynamicPricingLabel}\nस्लॉट: ${slotLabel}\n₹${amount} विज़िट टोकन पेमेंट लिंक: ${paymentUrl}`
-  );
+  const whatsappMessage = [
+    `नमस्ते Sastafone Surat! मैं ₹${amount} UPI टोकन पेमेंट के साथ अपनी बुकिंग कन्फर्म कर रहा/रही हूँ:`,
+    `• Ref ID: #${referenceId}`,
+    customerName ? `• नाम: ${customerName}` : null,
+    customerPhone ? `• मोबाइल: ${customerPhone}` : null,
+    `• सर्विस: ${serviceLabel}`,
+    `• मॉडल: ${deviceModel}`,
+    `• समस्या: ${problemsLabel}`,
+    `• अनुमानित कीमत: ${dynamicPricingLabel}`,
+    `• पिकअप स्लॉट: ${slotLabel}`,
+    customerAddress ? `• पता: ${customerAddress}` : null,
+    `• UPI ID: ${DIRECT_UPI_ID}`,
+    `• पेमेंट राशि: ₹${amount}`,
+    utrNumber.trim() ? `• UPI Ref / UTR: ${utrNumber.trim()}` : '• कृपया मेरा पेमेंट स्क्रीनशॉट देखें'
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const whatsappConfirmHref = buildWhatsappHref(whatsappNumber, whatsappMessage);
 
   return (
     <div className="p-5 sm:p-6 rounded-2xl bg-white border-2 border-[#D5151B]/30 shadow-xs space-y-4 text-left">
@@ -90,7 +112,7 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
         <div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#FEF2F2] text-[#D5151B] text-[11px] font-bold border border-red-200 mb-1">
             <Clock className="w-3 h-3" />
-            <span>पेमेंट पुष्टि लंबित (Visit Hold)</span>
+            <span>डायरेक्ट UPI पेमेंट + WhatsApp कन्फर्मेशन</span>
           </span>
           <h4 className="text-base font-bold text-[#132032]">{title}</h4>
         </div>
@@ -103,18 +125,18 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
       <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 leading-relaxed">
         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
         <span>
-          <strong>महत्वपूर्ण:</strong> आपकी जानकारी Web3Forms द्वारा सफलतापूर्वक प्राप्त हो गई है। <strong>टेक्नीशियन का दौरा केवल ₹{amount} पेमेंट की पुष्टि के बाद ही सुनिश्चित होगा।</strong>
+          <strong>महत्वपूर्ण:</strong> नीचे दिए गए QR कोड को स्कैन करें या UPI ID <strong>{DIRECT_UPI_ID}</strong> पर <strong>₹{amount}</strong> भेजकर WhatsApp पर स्क्रीनशॉट/UTR शेयर करें। <strong>टेक्नीशियन का दौरा केवल ₹{amount} पेमेंट की पुष्टि के बाद ही सुनिश्चित होगा।</strong>
         </span>
       </div>
 
-      {/* Summary & Scannable QR Grid */}
+      {/* Summary & Scannable UPI QR Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
-        {/* Generated QR Code */}
+        {/* Generated Direct UPI QR Code */}
         <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 border border-gray-200 text-center space-y-2">
           {qrDataUrl ? (
             <img
               src={qrDataUrl}
-              alt={`Sastafone ₹${amount} Payment QR Code`}
+              alt={`Sastafone UPI ₹${amount} QR (${DIRECT_UPI_ID})`}
               className="w-44 h-44 rounded-xl bg-white p-2 border border-gray-200"
             />
           ) : (
@@ -122,15 +144,18 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
               <QrCode className="w-16 h-16 text-[#132032] opacity-40" />
             </div>
           )}
-          <span className="text-[11px] font-bold text-[#132032]">
-            ₹{amount} टोकन पेमेंट QR स्कैन करें
+          <span className="text-xs font-bold text-[#132032]">
+            ₹{amount} स्कैन कर पे करें
+          </span>
+          <span className="text-[11px] font-mono font-bold text-[#D5151B] bg-white px-2.5 py-1 rounded-lg border border-red-200">
+            {DIRECT_UPI_ID}
           </span>
           <span className="text-[10px] text-gray-500">
-            Razorpay / UPI • फाइनल बिल में 100% एडजस्टेड
+            GPay • PhonePe • Paytm • BHIM • IDFC First Bank
           </span>
         </div>
 
-        {/* Captured Order Summary + Link Controls */}
+        {/* Order Summary + Direct UPI Copy / Deep Link */}
         <div className="space-y-3 text-xs">
           <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-1.5">
             <div className="flex justify-between gap-2">
@@ -155,76 +180,88 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
             </div>
           </div>
 
-          {/* Direct Payment Link Copy Box */}
+          {/* Copy Direct UPI ID */}
           <div className="flex items-center gap-1.5 p-2 rounded-xl bg-gray-50 border border-gray-200">
             <input
               type="text"
               readOnly
-              value={paymentUrl}
-              aria-label="Payment Link"
-              className="flex-1 bg-transparent text-[11px] font-mono text-gray-700 outline-none truncate"
+              value={DIRECT_UPI_ID}
+              aria-label="Direct UPI ID"
+              className="flex-1 bg-transparent text-xs font-mono font-bold text-[#132032] outline-none truncate"
             />
             <button
               type="button"
-              onClick={handleCopy}
+              onClick={handleCopyUpiId}
               className="px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 text-[#132032] text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer shrink-0"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'कॉपी हुआ' : 'कॉपी'}</span>
+              {copiedUpi ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copiedUpi ? 'कॉपी हुआ' : 'UPI कॉपी'}</span>
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={paymentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 py-2.5 px-3 rounded-xl bg-[#132032] hover:bg-black text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <span>पेमेंट लिंक खोलें (₹{amount})</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+          {/* Direct UPI App Launch */}
+          <a
+            href={upiUri}
+            className="w-full py-2.5 px-3 rounded-xl bg-[#132032] hover:bg-black text-white font-bold text-xs inline-flex items-center justify-center gap-2 transition-colors"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>UPI ऐप से ₹{amount} पे करें (GPay / PhonePe)</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
 
-            <a
-              href={whatsappPaymentShare}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <MessageCircle className="w-3.5 h-3.5" />
-              <span>WhatsApp</span>
-            </a>
+          {/* Optional UTR input */}
+          <div>
+            <label className="text-[10px] font-bold text-gray-600 block mb-1">
+              पेमेंट के बाद UPI Ref / UTR नंबर दर्ज करें (वैकल्पिक):
+            </label>
+            <input
+              type="text"
+              value={utrNumber}
+              onChange={(e) => setUtrNumber(e.target.value)}
+              placeholder="उदा. 432198765432 (12-अंकों का UTR)"
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-mono text-[#132032] focus:outline-none focus:border-emerald-600"
+            />
           </div>
         </div>
       </div>
 
-      {/* Primary Verified Razorpay Confirmation Action */}
-      {onPayViaRazorpay && (
-        <div className="pt-2 border-t border-gray-100">
+      {/* Primary WhatsApp Confirmation Action */}
+      <div className="pt-2 border-t border-gray-100 space-y-2">
+        {onConfirmWhatsapp ? (
           <button
             type="button"
-            disabled={isProcessingRazorpay}
-            onClick={onPayViaRazorpay}
-            className="w-full py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
+            disabled={isConfirming}
+            onClick={() => onConfirmWhatsapp(utrNumber.trim())}
+            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
           >
-            {isProcessingRazorpay ? (
+            {isConfirming ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Razorpay पेमेंट सत्यापित हो रहा है...</span>
+                <span>WhatsApp पर कन्फर्म हो रहा है...</span>
               </>
             ) : (
               <>
-                <CreditCard className="w-4 h-4" />
-                <span>अभी ₹{amount} पेमेंट कन्फर्म करें व टेक्नीशियन विज़िट पक्का करें</span>
+                <MessageCircle className="w-4 h-4" />
+                <span>पेमेंट कर दिया? WhatsApp पर बुकिंग कन्फर्म करें</span>
               </>
             )}
           </button>
-          <p className="text-[11px] text-gray-500 text-center mt-2 flex items-center justify-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>पेमेंट सत्यापन पूरा होते ही आपका पिकअप स्लॉट ऑटोमैटिक कन्फर्म हो जाएगा।</span>
-          </p>
-        </div>
-      )}
+        ) : (
+          <a
+            href={whatsappConfirmHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-all flex items-center justify-center gap-2 tap-target"
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span>WhatsApp पर ₹{amount} पेमेंट स्क्रीनशॉट व बुकिंग भेजें</span>
+          </a>
+        )}
+        <p className="text-[11px] text-gray-500 text-center flex items-center justify-center gap-1">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+          <span>कोई लॉगिन या पासवर्ड की जरूरत नहीं — सारा अपडेट सीधे आपके WhatsApp पर मिलेगा।</span>
+        </p>
+      </div>
     </div>
   );
 };

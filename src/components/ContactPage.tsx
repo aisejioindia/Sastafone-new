@@ -379,8 +379,10 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                 problemsLabel={problemsDisplayLabel}
                 dynamicPricingLabel={dynamicPricingText}
                 slotLabel={`${inqSlotDate} (${inqSlotWindow}) • ${inqArea}`}
+                customerName={inqName.trim()}
+                customerPhone={inqPhone.trim()}
+                customerAddress={`${inqMessage.trim()} (${inqArea})`}
                 whatsappNumber={siteSettings.whatsappNumber}
-                onPayViaRazorpay={onBookRepair}
               />
               <button
                 type="button"
@@ -594,7 +596,7 @@ export const ContactPage: React.FC<ContactPageProps> = ({
                 )}
               </button>
               <p className="text-[11px] text-gray-500 text-center">
-                नोट: सबमिशन के बाद आपको ₹199 टोकन पेमेंट लिंक व QR कोड मिलेगा — टेक्नीशियन का दौरा केवल पेमेंट पुष्टि के बाद ही सुनिश्चित होता है।
+                नोट: सबमिशन के बाद सीधे UPI ID <strong>9372802044@idfcfirst</strong> का ₹199 टोकन QR कोड व WhatsApp कन्फर्मेशन मिलेगा — टेक्नीशियन का दौरा केवल पेमेंट पुष्टि के बाद ही सुनिश्चित होता है।
               </p>
             </form>
           )}

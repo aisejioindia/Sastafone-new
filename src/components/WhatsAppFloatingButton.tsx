@@ -31,7 +31,7 @@ export const WhatsAppFloatingButton: React.FC = () => {
         onClick={() => trackEvent('whatsapp_click', { source: 'floating_button' })}
         aria-label="Chat on WhatsApp"
         title="WhatsApp Support"
-        className="w-12 h-12 rounded-full bg-[#D5151B] hover:bg-[#B31419] text-white shadow-lg flex items-center justify-center transition-all duration-150"
+        className="w-12 h-12 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg flex items-center justify-center transition-all duration-150"
       >
         <MessageCircle className="w-5 h-5" />
       </a>

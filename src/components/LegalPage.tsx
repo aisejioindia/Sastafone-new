@@ -88,7 +88,7 @@ export const LegalPage: React.FC<LegalPageProps> = ({
               <section className="space-y-2">
                 <h2 className="text-base font-bold text-[#132032]">2. ₹199 विज़िट टोकन एवं कोटेशन</h2>
                 <p>
-                  रिपेयर पिकअप स्लॉट कन्फर्म करने के लिए ₹199 विज़िट टोकन ऑनलाइन (Razorpay) लिया जाता है। यह ₹199 रिपेयर कराने पर फाइनल बिल में पूरी तरह एडजस्ट कर दिया जाता है।
+                  रिपेयर पिकअप स्लॉट कन्फर्म करने के लिए ₹199 विज़िट टोकन सीधे UPI ID (<strong className="font-mono">9372802044@idfcfirst</strong>) के माध्यम से लिया जाता है। यह ₹199 रिपेयर कराने पर फाइनल बिल में पूरी तरह एडजस्ट कर दिया जाता है।
                 </p>
               </section>
 
@@ -120,7 +120,7 @@ export const LegalPage: React.FC<LegalPageProps> = ({
               <section className="space-y-2">
                 <h2 className="text-base font-bold text-[#132032]">3. पार्टनर प्राइवेसी और भुगतान</h2>
                 <p>
-                  रिपेयर पार्टनर को केवल जॉब ID व रिपेयर विवरण साझा किया जाता है। सभी ऑनलाइन भुगतान Razorpay पेमेंट गेटवे के माध्यम से संसाधित होते हैं।
+                  रिपेयर पार्टनर को केवल जॉब ID व रिपेयर विवरण साझा किया जाता है। सभी ऑनलाइन टोकन भुगतान सीधे हमारे आधिकारिक UPI ID (<strong className="font-mono">9372802044@idfcfirst</strong>) पर स्वीकार किए जाते हैं और WhatsApp पर कन्फर्म होते हैं।
                 </p>
               </section>
             </>

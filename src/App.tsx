@@ -4,10 +4,6 @@ import { Header } from './components/Header';
 import { HeroSection } from './components/HeroSection';
 import { BottomTabBar, TabType } from './components/BottomTabBar';
 import { CustomerRepairBookingFlow } from './components/CustomerRepairBookingFlow';
-import { MyOrdersTimeline } from './components/MyOrdersTimeline';
-import { ProfileView } from './components/ProfileView';
-import { AdminControlRoom } from './components/admin/AdminControlRoom';
-import { PartnerPortalView } from './components/PartnerPortalView';
 import { SellPhoneFlow } from './components/SellPhoneFlow';
 import { BuyPhonesInventoryView } from './components/BuyPhonesInventoryView';
 import { WarrantyPage } from './components/WarrantyPage';
@@ -23,7 +19,6 @@ import { HappyCustomersSection } from './components/HappyCustomersSection';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
-import { FirebaseAuthModal } from './components/FirebaseAuthModal';
 import { InvoiceModal } from './components/InvoiceModal';
 import { SeoHead } from './components/SeoHead';
 import {
@@ -32,21 +27,25 @@ import {
   Clock,
   ArrowRight,
   CheckCircle2,
-  Lock,
   ChevronDown,
-  HelpCircle
+  HelpCircle,
+  MessageCircle,
+  QrCode
 } from 'lucide-react';
-import {
-  subscribeToCustomerJobs,
-  getRepairPricesFromFirestore
-} from './services/firestoreRepairService';
-import { Job, RepairPrice } from './types';
+import { getRepairPricesFromFirestore } from './services/firestoreRepairService';
+import { DIRECT_UPI_ID } from './services/paymentService';
+import { buildWhatsappHref } from './services/siteSettingsService';
+import { RepairPrice } from './types';
 import { trackEvent } from './utils/analytics';
 
 const HOME_FAQS = [
   {
+    q: 'क्या बुकिंग के लिए वेबसाइट पर लॉगिन या अकाउंट बनाना जरूरी है?',
+    a: 'नहीं! Sastafone Surat पर किसी भी प्रकार के लॉगिन, पासवर्ड या डैशबोर्ड की जरूरत नहीं है। आप सीधे मॉडल व समस्या चुनकर, ₹199 डायरेक्ट UPI पेमेंट (9372802044@idfcfirst) करके WhatsApp पर तुरंत बुकिंग व लाइव अपडेट पा सकते हैं।'
+  },
+  {
     q: '₹199 विज़िट टोकन कैसे काम करता है और QC के बाद मना करने पर क्या होगा?',
-    a: 'बुकिंग करते समय लिया गया ₹199 विज़िट टोकन आपके फाइनल रिपेयर बिल में पूरी तरह एडजस्ट (माइनस) हो जाता है। यदि 11-पॉइंट QC और अंतिम कोटेशन देखने के बाद आप रिपेयर नहीं कराना चाहते, तो ₹99 रिफंड कर दिए जाते हैं (₹100 पिकअप/निरीक्षण शुल्क रखा जाता है)।'
+    a: 'बुकिंग करते समय 9372802044@idfcfirst पर दिया गया ₹199 विज़िट टोकन आपके फाइनल रिपेयर बिल में पूरी तरह एडजस्ट (माइनस) हो जाता है। यदि 11-पॉइंट QC और अंतिम कोटेशन देखने के बाद आप रिपेयर नहीं कराना चाहते, तो ₹99 रिफंड कर दिए जाते हैं (₹100 पिकअप/निरीक्षण शुल्क रखा जाता है)।'
   },
   {
     q: '6 महीने की वारंटी किस पर और कब मिलती है?',
@@ -54,29 +53,22 @@ const HOME_FAQS = [
   },
   {
     q: 'डोरस्टेप पिकअप और रिपेयर में कितना समय लगता है?',
-    a: 'सूरत के सभी प्रमुख क्षेत्रों में आप 60-मिनट के सुविधाजनक पिकअप स्लॉट चुन सकते हैं। पिकअप और ग्राहक कोट अप्रूवल के बाद अधिकांश सामान्य रिपेयर 2 घंटे के डिलीवरी लक्ष्य (2-hour delivery target) में पूरे किए जाते हैं।'
+    a: 'सूरत के सभी प्रमुख क्षेत्रों में आप 60-मिनट के सुविधाजनक पिकअप स्लॉट चुन सकते हैं। पिकअप और WhatsApp पर कोट अप्रूवल के बाद अधिकांश सामान्य रिपेयर 2 घंटे के डिलीवरी लक्ष्य (2-hour delivery target) में पूरे किए जाते हैं।'
   },
   {
     q: 'सूरत में किन क्षेत्रों में पिकअप व डिलीवरी सेवा उपलब्ध है?',
     a: 'अडाजण, वेसु, पाल, वराछा, कतारगाम, रांदेर, पिपलोद, सिटीलाइट, घोड़ दौड़ रोड, अलथान, उधना, डिंडोली, मोटा वराछा, जहांगीरपुरा और अमरोली सहित पूरे सूरत में सेवा उपलब्ध है।'
-  },
-  {
-    q: 'रिपेयर के दौरान मेरा फोन और डेटा कैसे सुरक्षित रहता है?',
-    a: 'हर डिवाइस को पिकअप पर 11-पॉइंट QC और फोटो लॉगिंग के बाद सीलबंद बैग (Sealed Bag ID) के साथ Sastafone Certified Technician Network को सौंपा जाता है, और किसी भी ग्राहक का निजी फोन नंबर पार्टनर से साझा नहीं किया जाता।'
   }
 ];
 
 function MainApp() {
-  const { user, setIsAuthModalOpen, authClaimsLoading } = useApp();
+  const { siteSettings } = useApp();
 
   // Current URL path state
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname || '/');
 
-  // Bottom tab state
+  // Bottom tab state (WhatsApp-first, zero login/dashboard tabs)
   const [currentTab, setCurrentTab] = useState<TabType>('home');
-
-  // Active customer jobs count for live badge
-  const [activeJobsCount, setActiveJobsCount] = useState<number>(0);
 
   // Live Firestore repair prices for home section
   const [homeRepairPrices, setHomeRepairPrices] = useState<RepairPrice[]>([]);
@@ -84,9 +76,6 @@ function MainApp() {
 
   // Interactive FAQ state
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(0);
-
-  const isVerifiedAdmin = Boolean(user.isLoggedIn && user.isAdmin && user.role === 'admin');
-  const isVerifiedPartner = Boolean(user.isLoggedIn && user.isPartner && user.role === 'partner');
 
   // Listen to browser navigation (back/forward)
   useEffect(() => {
@@ -96,8 +85,8 @@ function MainApp() {
 
       if (path === '/' || path === '') setCurrentTab('home');
       else if (path.startsWith('/repair')) setCurrentTab('repair');
-      else if (path === '/orders') setCurrentTab('orders');
-      else if (path === '/profile') setCurrentTab('profile');
+      else if (path.startsWith('/sell-phone')) setCurrentTab('sell');
+      else if (path.startsWith('/contact')) setCurrentTab('contact');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -142,21 +131,6 @@ function MainApp() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Subscribe to customer jobs for live badge in bottom bar
-  useEffect(() => {
-    if (!user.isLoggedIn || !user.uid) {
-      setActiveJobsCount(0);
-      return;
-    }
-    const unsubscribe = subscribeToCustomerJobs(user.uid, (jobs: Job[]) => {
-      const active = jobs.filter(
-        (j) => j.status !== 'Delivered' && j.status !== 'Declined' && j.status !== 'Cancelled'
-      ).length;
-      setActiveJobsCount(active);
-    });
-    return () => unsubscribe();
-  }, [user.isLoggedIn, user.uid]);
-
   // Check if current route is an area page (/areas/:slug)
   const isAreaRoute = currentPath.startsWith('/areas/');
   const currentAreaSlug = isAreaRoute ? currentPath.replace('/areas/', '').split('/')[0] : '';
@@ -165,25 +139,29 @@ function MainApp() {
   const isBuyDetailRoute = currentPath.startsWith('/buy-phones/') && currentPath !== '/buy-phones';
   const currentBuySlug = isBuyDetailRoute ? currentPath.replace('/buy-phones/', '').split('/')[0] : '';
 
-  const isInsideControlRoom = currentPath === '/admin' && isVerifiedAdmin && !authClaimsLoading;
-  const isInsidePartnerPortal = currentPath === '/partner' && isVerifiedPartner && !authClaimsLoading;
-  const isFullScreenDesk = isInsideControlRoom || isInsidePartnerPortal;
+  // Legacy dashboard/login routes redirected cleanly to WhatsApp Order Desk
+  const isLegacyDashboardRoute =
+    currentPath === '/orders' ||
+    currentPath === '/profile' ||
+    currentPath === '/admin' ||
+    currentPath === '/partner';
+
+  const whatsappStatusHref = buildWhatsappHref(
+    siteSettings.whatsappNumber,
+    'नमस्ते Sastafone Surat! मुझे अपने ऑर्डर / रिपेयर स्टेटस की जानकारी चाहिए।'
+  );
 
   return (
-    <div
-      className={`min-h-screen flex flex-col bg-white text-[#132032] font-sans selection:bg-[#D5151B] selection:text-white ${
-        isFullScreenDesk ? '' : 'pb-20'
-      }`}
-    >
+    <div className="min-h-screen flex flex-col bg-white text-[#132032] font-sans selection:bg-[#D5151B] selection:text-white pb-20">
       {/* Default Homepage Meta via SeoHead */}
       <SeoHead
         title="Sastafone Surat – Doorstep Mobile Repair, Sell & Buy Certified Phones"
-        description="सूरत में Sastafone Certified Technician Network द्वारा डोरस्टेप फोन रिपेयर पिकअप व डिलीवरी (₹199 विज़िट टोकन), पुराना फोन बेचें और 6 माह वारंटी फोन।"
+        description="सूरत में बिना लॉगिन के सीधे WhatsApp व डायरेक्ट UPI (9372802044@idfcfirst) से डोरस्टेप फोन रिपेयर पिकअप व डिलीवरी (₹199 विज़िट टोकन), पुराना फोन बेचें और 6 माह वारंटी फोन।"
         canonicalPath="/"
       />
 
-      {/* Top Header (Hidden inside full-screen Admin Control Room / Partner Portal) */}
-      {!isFullScreenDesk && <Header />}
+      {/* Top Header */}
+      <Header />
 
       {/* Main Content Area */}
       <main className="flex-1">
@@ -234,7 +212,7 @@ function MainApp() {
         {currentPath === '/warranty' && (
           <WarrantyPage
             onNavigateHome={() => navigateTo('/')}
-            onNavigateOrders={() => navigateTo('/orders')}
+            onNavigateOrders={() => navigateTo('/contact')}
           />
         )}
 
@@ -270,12 +248,7 @@ function MainApp() {
 
         {/* ROUTE: /sell-phone */}
         {currentPath === '/sell-phone' && (
-          <SellPhoneFlow
-            onRequestCreated={() => {
-              navigateTo('/orders');
-            }}
-            onNavigateHome={() => navigateTo('/')}
-          />
+          <SellPhoneFlow onNavigateHome={() => navigateTo('/')} />
         )}
 
         {/* ROUTE: /buy-phones or /buy-phones/:slug */}
@@ -286,146 +259,53 @@ function MainApp() {
           />
         )}
 
-        {/* ROUTE: /orders */}
-        {currentPath === '/orders' && (
-          <div className="step-transition">
-            <MyOrdersTimeline onBookNew={() => navigateTo('/repair')} />
-          </div>
-        )}
-
-        {/* ROUTE: /profile */}
-        {currentPath === '/profile' && (
-          <div className="step-transition">
-            <ProfileView
-              onOpenAdmin={() => navigateTo('/admin')}
-              onOpenPartner={() => navigateTo('/partner')}
-              onNavigateToOrders={() => navigateTo('/orders')}
-              onNavigateToRepair={() => navigateTo('/repair')}
-            />
-          </div>
-        )}
-
         {/* ROUTE: /repair or /repair/book */}
         {(currentPath === '/repair' || currentPath === '/repair/book') && (
           <div className="step-transition">
-            <CustomerRepairBookingFlow
-              onJobCreated={() => {
-                navigateTo('/orders');
-              }}
-              onNavigateToOrders={() => {
-                navigateTo('/orders');
-              }}
-            />
+            <CustomerRepairBookingFlow />
           </div>
         )}
 
-        {/* ROUTE: /admin (Email-locked Admin Control Room; plain 403 Access Denied + noindex for non-admins) */}
-        {currentPath === '/admin' && (
-          <>
-            <SeoHead
-              title={isVerifiedAdmin ? 'Admin Control Room | Sastafone' : '403 Access Denied | Sastafone'}
-              description="Restricted Sastafone administration desk"
-              canonicalPath="/admin"
-              noindex
-            />
-            {authClaimsLoading ? (
-              <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center gap-3">
-                <div className="w-8 h-8 border-2 border-[#D5151B] border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-medium text-gray-500">Verifying session access...</p>
+        {/* Legacy /orders, /profile, /admin, /partner -> Clean WhatsApp Direct Order Desk (No Login / No Dashboard) */}
+        {isLegacyDashboardRoute && (
+          <div className="max-w-lg mx-auto px-4 py-12 text-center step-transition">
+            <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-4">
+              <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                <MessageCircle className="w-7 h-7" />
               </div>
-            ) : isVerifiedAdmin ? (
-              <AdminControlRoom onNavigatePublicHome={() => navigateTo('/')} />
-            ) : (
-              <div className="min-h-[60vh] flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-white p-6 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
-                  <div className="w-11 h-11 rounded-xl bg-[#FEF2F2] text-[#D5151B] flex items-center justify-center mx-auto">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <h1 className="text-lg font-bold text-[#132032]">403 — Access Denied</h1>
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    You do not have permission to view this page.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                    {!user.isLoggedIn && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAuthModalOpen(true)}
-                        className="px-4 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Sign In
-                      </button>
-                    )}
-                    {isVerifiedPartner && (
-                      <button
-                        type="button"
-                        onClick={() => navigateTo('/partner')}
-                        className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Open Partner Portal
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/')}
-                      className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      Back to Home
-                    </button>
-                  </div>
-                </div>
+              <h1 className="text-xl font-bold text-[#132032]">
+                सीधे WhatsApp पर लाइव ऑर्डर स्टेटस पाएं
+              </h1>
+              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                अब किसी वेबसाइट लॉगिन या डैशबोर्ड की जरूरत नहीं है। बुकिंग, ₹199 डायरेक्ट UPI पेमेंट (<strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong>) और रिपेयर का हर अपडेट सीधे आपके WhatsApp पर मिलेगा।
+              </p>
+              <div className="space-y-2.5 pt-2">
+                <a
+                  href={whatsappStatusHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm flex items-center justify-center gap-2 transition-colors tap-target"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp पर स्टेटस पूछें</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('/repair')}
+                  className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer tap-target"
+                >
+                  नया रिपेयर पिकअप बुक करें (₹199)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('/')}
+                  className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-colors cursor-pointer"
+                >
+                  होम पर लौटें
+                </button>
               </div>
-            )}
-          </>
-        )}
-
-        {/* ROUTE: /partner (Zero-PII Technician Partner Portal) */}
-        {currentPath === '/partner' && (
-          <>
-            <SeoHead
-              title="Partner Portal | Sastafone"
-              description="Sastafone Certified Technician Partner Portal"
-              canonicalPath="/partner"
-              noindex
-            />
-            {authClaimsLoading ? (
-              <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center gap-3">
-                <div className="w-8 h-8 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-xs font-medium text-gray-500">Verifying partner access...</p>
-              </div>
-            ) : isVerifiedPartner ? (
-              <PartnerPortalView />
-            ) : (
-              <div className="min-h-[60vh] flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-white p-6 rounded-2xl border border-gray-200 shadow-xs text-center space-y-3">
-                  <div className="w-11 h-11 rounded-xl bg-[#FEF2F2] text-[#D5151B] flex items-center justify-center mx-auto">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <h1 className="text-lg font-bold text-[#132032]">403 — Partner Access Required</h1>
-                  <p className="text-xs text-gray-600 leading-relaxed">
-                    This portal is restricted to verified Sastafone technician partners.
-                  </p>
-                  <div className="flex items-center justify-center gap-2 pt-2">
-                    {!user.isLoggedIn && (
-                      <button
-                        type="button"
-                        onClick={() => setIsAuthModalOpen(true)}
-                        className="px-4 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Partner Sign In
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => navigateTo('/')}
-                      className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] text-xs font-bold transition-colors cursor-pointer"
-                    >
-                      Back to Home
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
 
         {/* ROUTE: / (Home) */}
@@ -440,13 +320,13 @@ function MainApp() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-5 mb-6">
                   <div>
                     <span className="px-3 py-1 rounded-full bg-[#FEF2F2] text-[#D5151B] text-xs font-bold uppercase tracking-wider border border-red-200">
-                      कैसे काम करता है (How It Works)
+                      कैसे काम करता है (WhatsApp Fast Booking)
                     </span>
                     <h2 className="text-xl sm:text-2xl font-bold text-[#132032] mt-2">
-                      4 आसान चरणों में डोरस्टेप मोबाइल रिपेयर
+                      बिना लॉगिन, 4 आसान चरणों में डोरस्टेप मोबाइल रिपेयर
                     </h2>
                     <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                      Sastafone Certified Technician Network द्वारा सूरत के सभी प्रमुख क्षेत्रों में पारदर्शी सेवा।
+                      Sastafone Certified Technician Network द्वारा सूरत में सीधे WhatsApp व डायरेक्ट UPI सेवा।
                     </p>
                   </div>
 
@@ -467,22 +347,22 @@ function MainApp() {
                     {
                       step: '01',
                       title: 'मॉडल व समस्या चुनें',
-                      desc: 'अपना फोन मॉडल व समस्या चुनें, लाइव अनुमानित खर्च देखें और ₹199 विज़िट टोकन बुक करें।'
+                      desc: 'बिना लॉगिन के अपना फोन मॉडल, समस्या और पिकअप स्लॉट चुनें व लाइव अनुमानित खर्च देखें।'
                     },
                     {
                       step: '02',
-                      title: 'डोरस्टेप पिकअप व QC',
-                      desc: 'सर्टिफाइड पार्टनर आपके पते से फोन पिकअप कर 11-पॉइंट QC और फोटो लॉगिंग करता है।'
+                      title: 'डायरेक्ट UPI व WhatsApp',
+                      desc: `सीधे UPI (${DIRECT_UPI_ID}) पर ₹199 टोकन पेमेंट करें और WhatsApp पर 1 क्लिक में कन्फर्म करें।`
                     },
                     {
                       step: '03',
-                      title: 'पारदर्शी कोट अप्रूवल',
-                      desc: 'आपकी मंज़ूरी के बाद ही रिपेयर शुरू होता है। मना करने पर ₹99 रिफंड (₹100 रखा जाता है)।'
+                      title: 'डोरस्टेप पिकअप व QC',
+                      desc: 'सर्टिफाइड पार्टनर आपके पते से फोन पिकअप कर 11-पॉइंट QC और WhatsApp पर फाइनल कोट भेजता है।'
                     },
                     {
                       step: '04',
                       title: '2-घंटे डिलीवरी लक्ष्य',
-                      desc: 'रिपेयर और टेस्टिंग के बाद सुरक्षित डिलीवरी व ₹1,000+ बिल पर 6 महीने की वारंटी।'
+                      desc: 'रिपेयर व टेस्टिंग के बाद सुरक्षित डिलीवरी और ₹1,000+ बिल पर 6 महीने की वारंटी।'
                     }
                   ].map((item) => (
                     <div
@@ -505,6 +385,10 @@ function MainApp() {
                     <span>Sastafone Certified Technician Network</span>
                   </div>
                   <div className="flex items-center gap-1.5">
+                    <QrCode className="w-4 h-4 text-[#D5151B]" />
+                    <span>Direct UPI: <strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-[#D5151B]" />
                     <span>₹199 विज़िट टोकन फाइनल बिल में एडजस्टेड</span>
                   </div>
@@ -521,7 +405,7 @@ function MainApp() {
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
                 <div>
                   <span className="text-xs font-bold text-[#D5151B] uppercase tracking-wider">
-                    लाइव रिपेयर रेट लिस्ट (Firestore Live)
+                    लाइव रिपेयर रेट लिस्ट
                   </span>
                   <h2 className="text-xl sm:text-2xl font-bold text-[#132032] mt-1">
                     पारदर्शी रिपेयर कीमतें और समय
@@ -648,31 +532,27 @@ function MainApp() {
         )}
       </main>
 
-      {/* Mobile-first PWA Bottom Tab Bar (Hidden inside Admin Control Room / Partner Portal) */}
-      {!isFullScreenDesk && (
-        <BottomTabBar
-          currentTab={currentTab}
-          onTabChange={(tab) => {
-            setCurrentTab(tab);
-            if (tab === 'home') navigateTo('/');
-            else if (tab === 'repair') navigateTo('/repair');
-            else if (tab === 'orders') navigateTo('/orders');
-            else if (tab === 'profile') navigateTo('/profile');
-          }}
-          onNavigate={navigateTo}
-          activeOrdersCount={activeJobsCount}
-        />
-      )}
+      {/* Mobile-first WhatsApp Bottom Tab Bar */}
+      <BottomTabBar
+        currentTab={currentTab}
+        onTabChange={(tab) => {
+          setCurrentTab(tab);
+          if (tab === 'home') navigateTo('/');
+          else if (tab === 'repair') navigateTo('/repair');
+          else if (tab === 'sell') navigateTo('/sell-phone');
+          else if (tab === 'contact') navigateTo('/contact');
+        }}
+        onNavigate={navigateTo}
+      />
 
-      {/* Modals & Overlays */}
+      {/* Lightweight Public Modals */}
       <LocationSelectorModal />
       <LegalModals />
-      <FirebaseAuthModal />
       <InvoiceModal />
 
       {/* Floating WhatsApp Support Button & Public Footer */}
-      {!isFullScreenDesk && <WhatsAppFloatingButton />}
-      {!isFullScreenDesk && <Footer />}
+      <WhatsAppFloatingButton />
+      <Footer />
     </div>
   );
 }

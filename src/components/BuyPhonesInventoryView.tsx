@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { SeoHead } from './SeoHead';
 import { InventoryPhone } from '../types';
-import { subscribeToAvailableInventory, updateInventoryPhoneInFirestore } from '../services/firestoreRepairService';
-import { startRazorpayCheckout } from '../services/paymentService';
+import { subscribeToAvailableInventory } from '../services/firestoreRepairService';
+import { DIRECT_UPI_ID } from '../services/paymentService';
+import { buildWhatsappHref } from '../services/siteSettingsService';
 import { trackEvent } from '../utils/analytics';
 import { buildPaymentLinkUrl, submitToWeb3Forms } from '../services/web3formsService';
 import { PaymentLinkQrCard } from './PaymentLinkQrCard';
@@ -15,10 +16,10 @@ import {
   Search,
   ArrowRight,
   ArrowLeft,
-  CreditCard,
   AlertCircle,
   Smartphone,
-  QrCode
+  QrCode,
+  MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -31,7 +32,7 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
   initialSlug,
   onNavigateHome
 }) => {
-  const { user, setIsAuthModalOpen, siteSettings } = useApp();
+  const { selectedLocality, siteSettings } = useApp();
 
   const [inventory, setInventory] = useState<InventoryPhone[]>([]);
   const [isLoadingInventory, setIsLoadingInventory] = useState(true);
@@ -44,7 +45,9 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
   const [activePhone, setActivePhone] = useState<InventoryPhone | null>(null);
   const [selectedPhotoIdx, setSelectedPhotoIdx] = useState(0);
 
-  // Booking with Token State
+  // Guest WhatsApp + Direct UPI Booking State (No Login Needed)
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
   const [isBookingToken, setIsBookingToken] = useState(false);
   const [pendingBuyQrRef, setPendingBuyQrRef] = useState<string | null>(null);
   const [bookingSuccessNote, setBookingSuccessNote] = useState<string | null>(null);
@@ -89,113 +92,84 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
     return matchesBrand && matchesGrade && matchesSearch && matchesPrice;
   });
 
-  // Handle Token Booking (₹499 server-verified via Razorpay)
-  const handleBookWithToken = async () => {
-    if (!user.isLoggedIn || !user.uid) {
-      setIsAuthModalOpen(true);
+  // Generate Direct UPI QR (9372802044@idfcfirst) & Send Web3Forms Inquiry (No Login Needed)
+  const handleGenerateBuyQr = async () => {
+    if (!activePhone) return;
+    setBookingError(null);
+
+    if (!buyerName.trim() || buyerPhone.replace(/\D/g, '').length < 10) {
+      setBookingError('कृपया अपना नाम और 10 अंकों का WhatsApp / मोबाइल नंबर दर्ज करें।');
       return;
     }
 
-    if (!activePhone) return;
-
     setIsBookingToken(true);
-    setBookingError(null);
-
     const tokenAmt = activePhone.tokenAmount || 499;
+    const refId = `BUY-${activePhone.id.slice(-6)}-${Date.now().toString().slice(-4)}`;
+
     trackEvent('buy_phone_token_initiated', {
       phone_id: activePhone.id,
       model: `${activePhone.brand} ${activePhone.model}`,
       amount: tokenAmt
     });
 
-    await startRazorpayCheckout({
-      amount: tokenAmt,
-      jobId: `INV_${activePhone.id}`,
-      customerName: user.name || 'Sastafone Customer',
-      customerPhone: user.phone || '',
-      customerEmail: user.email || undefined,
-      description: `${activePhone.brand} ${activePhone.model} बुकिंग टोकन (₹${tokenAmt})`,
-      onSuccess: async (paymentId: string) => {
-        try {
-          await updateInventoryPhoneInFirestore(activePhone.id, {
-            status: 'booked',
-            bookedBy: user.uid,
-            razorpayPaymentId: paymentId
-          });
-
-          trackEvent('buy_phone_reserved', {
-            phone_id: activePhone.id,
-            payment_id: paymentId,
-            amount: tokenAmt
-          });
-
-          void submitToWeb3Forms({
-            formType: 'buy_phone',
-            subject: `CONFIRMED Certified Phone Booking: ${activePhone.brand} ${activePhone.model}`,
-            name: user.name || 'Sastafone Customer',
-            phone: user.phone || '',
-            email: user.email || undefined,
-            service: 'सर्टिफाइड फोन खरीदें (Buy Phone Reservation)',
-            brand: activePhone.brand,
-            model: `${activePhone.model} (${activePhone.storage}, ${activePhone.colour})`,
-            problems: `Grade: ${activePhone.grade}, Battery: ${activePhone.batteryHealth}%`,
-            dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} Paid Token)`,
-            visitTokenAmount: tokenAmt,
-            area: user.locality || 'Surat',
-            address: user.address || '',
-            referenceId: `INV_${activePhone.id}`,
-            paymentStatus: 'PAID & VERIFIED (Phone Reserved)',
-            paymentId,
-            paymentLink: buildPaymentLinkUrl(`INV_${activePhone.id}`, tokenAmt)
-          });
-
-          confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-          setBookingSuccessNote(
-            `✓ ₹${tokenAmt} टोकन सफलतापूर्वक प्राप्त हुआ! ${activePhone.brand} ${activePhone.model} आपके नाम पर बुक कर दिया गया है। हमारा प्रतिनिधि डिलीवरी स्लॉट समन्वय के लिए आपसे संपर्क करेगा।`
-          );
-          setPendingBuyQrRef(null);
-          setActivePhone({ ...activePhone, status: 'booked' });
-        } catch (err: any) {
-          console.error('Inventory update error:', err);
-          setBookingError(err?.message || 'फोन रिजर्व करने में समस्या आई। कृपया पुनः प्रयास करें।');
-        } finally {
-          setIsBookingToken(false);
-        }
-      },
-      onFailure: (errorMsg: string) => {
-        setBookingError(errorMsg);
-        setIsBookingToken(false);
-      }
-    });
-  };
-
-  const handleGenerateBuyQr = async () => {
-    if (!activePhone) return;
-    if (!user.isLoggedIn || !user.uid) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-    const tokenAmt = activePhone.tokenAmount || 499;
-    const refId = `BUY-${activePhone.id.slice(-6)}-${Date.now().toString().slice(-4)}`;
     await submitToWeb3Forms({
       formType: 'buy_phone',
-      subject: `Buy Phone Inquiry (Awaiting ₹${tokenAmt} Token): ${activePhone.brand} ${activePhone.model}`,
-      name: user.name || 'Sastafone Customer',
-      phone: user.phone || '',
-      email: user.email || undefined,
+      subject: `Buy Phone Inquiry (Direct UPI ₹${tokenAmt}): ${activePhone.brand} ${activePhone.model}`,
+      name: buyerName.trim(),
+      phone: buyerPhone.trim(),
       service: 'सर्टिफाइड फोन खरीदें (Buy Phone Reservation)',
       brand: activePhone.brand,
       model: `${activePhone.model} (${activePhone.storage}, ${activePhone.colour})`,
       problems: `Grade: ${activePhone.grade}, Battery: ${activePhone.batteryHealth}%`,
-      dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} Token)`,
+      dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} UPI Token)`,
       visitTokenAmount: tokenAmt,
-      area: user.locality || 'Surat',
-      address: user.address || '',
+      area: selectedLocality || 'Surat',
       referenceId: refId,
-      paymentStatus: 'Pending Token Payment Confirmation',
+      paymentStatus: `Pending Direct UPI (${DIRECT_UPI_ID}) Confirmation`,
       paymentLink: buildPaymentLinkUrl(refId, tokenAmt)
     });
+
     setPendingBuyQrRef(refId);
+    setIsBookingToken(false);
+  };
+
+  // Confirm Direct UPI Payment + Open WhatsApp Summary
+  const handleConfirmDirectBuyWhatsapp = async (utrNumber: string) => {
+    if (!activePhone || !pendingBuyQrRef) return;
+    setIsBookingToken(true);
+    const tokenAmt = activePhone.tokenAmount || 499;
+
+    await submitToWeb3Forms({
+      formType: 'buy_phone',
+      subject: `WhatsApp + UPI Buy Phone Confirmation [${pendingBuyQrRef}]: ${activePhone.brand} ${activePhone.model}`,
+      name: buyerName.trim() || 'Sastafone Customer',
+      phone: buyerPhone.trim(),
+      service: 'सर्टिफाइड फोन खरीदें (Buy Phone Reservation)',
+      brand: activePhone.brand,
+      model: `${activePhone.model} (${activePhone.storage}, ${activePhone.colour})`,
+      problems: `Grade: ${activePhone.grade}, Battery: ${activePhone.batteryHealth}%`,
+      dynamicPricing: `₹${activePhone.price.toLocaleString('en-IN')} (₹${tokenAmt} Token -> ${DIRECT_UPI_ID})`,
+      visitTokenAmount: tokenAmt,
+      area: selectedLocality || 'Surat',
+      referenceId: pendingBuyQrRef,
+      paymentStatus: utrNumber
+        ? `UPI Payment Submitted (UTR: ${utrNumber}) -> ${DIRECT_UPI_ID}`
+        : `WhatsApp Confirmation Ready -> ${DIRECT_UPI_ID}`,
+      paymentId: utrNumber || `UPI-${DIRECT_UPI_ID}`,
+      paymentLink: buildPaymentLinkUrl(pendingBuyQrRef, tokenAmt)
+    });
+
+    trackEvent('buy_phone_reserved', {
+      phone_id: activePhone.id,
+      payment_id: utrNumber || DIRECT_UPI_ID,
+      amount: tokenAmt
+    });
+
+    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+    setBookingSuccessNote(
+      `बुकिंग अनुरोध #${pendingBuyQrRef} दर्ज हो गया है! कृपया नीचे दिए गए बटन से WhatsApp पर ₹${tokenAmt} UPI (${DIRECT_UPI_ID}) पेमेंट स्क्रीनशॉट भेजकर डिलीवरी स्लॉट कन्फर्म करें।`
+    );
+    setIsBookingToken(false);
   };
 
   // Structured Data for Detail view
@@ -352,12 +326,24 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                 </div>
 
                 {bookingSuccessNote ? (
-                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-2">
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs space-y-3">
                     <p className="font-bold text-sm flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>फोन सफलतापूर्वक बुक हुआ!</span>
+                      <span>बुकिंग अनुरोध दर्ज हुआ!</span>
                     </p>
                     <p>{bookingSuccessNote}</p>
+                    <a
+                      href={buildWhatsappHref(
+                        siteSettings.whatsappNumber,
+                        `नमस्ते Sastafone Surat! मुझे सर्टिफाइड फोन बुक करना है:\n• Ref ID: ${pendingBuyQrRef || activePhone.id}\n• नाम: ${buyerName} (${buyerPhone})\n• फोन: ${activePhone.brand} ${activePhone.model} (${activePhone.storage}, ${activePhone.colour})\n• कीमत: ₹${activePhone.price.toLocaleString('en-IN')}\n• ₹${activePhone.tokenAmount || 499} टोकन UPI ID: ${DIRECT_UPI_ID}`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      <span>WhatsApp पर पेमेंट स्क्रीनशॉट व बुकिंग भेजें</span>
+                    </a>
                   </div>
                 ) : (
                   <div className="space-y-3 pt-2">
@@ -374,26 +360,46 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                       </div>
                     ) : (
                       <div className="space-y-2.5">
-                        <button
-                          type="button"
-                          onClick={handleBookWithToken}
-                          disabled={isBookingToken}
-                          className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          <span>मात्र ₹{activePhone.tokenAmount || 499} टोकन देकर बुक करें</span>
-                          <ArrowRight className="w-4 h-4" />
-                        </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={buyerName}
+                            onChange={(e) => setBuyerName(e.target.value)}
+                            placeholder="आपका नाम *"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs outline-none focus:border-[#D5151B]"
+                          />
+                          <input
+                            type="tel"
+                            value={buyerPhone}
+                            onChange={(e) => setBuyerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                            placeholder="WhatsApp / मोबाइल नंबर *"
+                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-xs font-mono outline-none focus:border-[#D5151B]"
+                          />
+                        </div>
 
                         <button
                           type="button"
                           onClick={handleGenerateBuyQr}
                           disabled={isBookingToken}
-                          className="w-full py-2.5 rounded-xl bg-white hover:bg-[#FEF2F2] border border-[#D5151B]/40 text-[#132032] font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                          className="w-full py-3.5 rounded-2xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer tap-target disabled:opacity-50"
                         >
-                          <QrCode className="w-3.5 h-3.5 text-[#D5151B]" />
-                          <span>बुकिंग इंक्वायरी भेजें व ₹{activePhone.tokenAmount || 499} पेमेंट लिंक / QR जेनरेट करें</span>
+                          <QrCode className="w-4 h-4" />
+                          <span>₹{activePhone.tokenAmount || 499} UPI QR ({DIRECT_UPI_ID}) पाएं व बुक करें</span>
+                          <ArrowRight className="w-4 h-4" />
                         </button>
+
+                        <a
+                          href={buildWhatsappHref(
+                            siteSettings.whatsappNumber,
+                            `नमस्ते Sastafone Surat! मुझे यह सर्टिफाइड फोन खरीदना है: ${activePhone.brand} ${activePhone.model} (${activePhone.storage}, ₹${activePhone.price.toLocaleString('en-IN')})। कृपया उपलब्धता बताएं।`
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>सीधे WhatsApp पर पूछें (बिना लॉगिन)</span>
+                        </a>
 
                         {pendingBuyQrRef && (
                           <PaymentLinkQrCard
@@ -403,18 +409,20 @@ export const BuyPhonesInventoryView: React.FC<BuyPhonesInventoryViewProps> = ({
                             deviceModel={`${activePhone.brand} ${activePhone.model} (${activePhone.storage})`}
                             problemsLabel={`Grade: ${activePhone.grade} • Battery ${activePhone.batteryHealth}%`}
                             dynamicPricingLabel={`₹${activePhone.price.toLocaleString('en-IN')}`}
-                            slotLabel={user.locality || 'Surat Delivery'}
+                            slotLabel={selectedLocality || 'Surat Delivery'}
+                            customerName={buyerName.trim()}
+                            customerPhone={buyerPhone.trim()}
                             whatsappNumber={siteSettings.whatsappNumber}
-                            isProcessingRazorpay={isBookingToken}
-                            onPayViaRazorpay={handleBookWithToken}
-                            title={`₹${activePhone.tokenAmount || 499} बुकिंग टोकन पेमेंट लिंक व QR`}
+                            isConfirming={isBookingToken}
+                            onConfirmWhatsapp={handleConfirmDirectBuyWhatsapp}
+                            title={`₹${activePhone.tokenAmount || 499} डायरेक्ट UPI टोकन QR व WhatsApp कन्फर्म`}
                           />
                         )}
                       </div>
                     )}
 
                     <p className="text-[11px] text-gray-500 leading-relaxed text-center">
-                      *टोकन राशि (₹499) 100% रिफंडेबल है यदि फोन डिलीवरी के समय लिस्टिंग से मेल नहीं खाता। शेष राशि (₹{(activePhone.price - 499).toLocaleString('en-IN')}) फोन देखकर डिलीवरी पर दें।
+                      *टोकन राशि (₹499) सीधे <strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong> पर स्वीकार्य है व 100% रिफंडेबल है। शेष राशि (₹{(activePhone.price - 499).toLocaleString('en-IN')}) फोन देखकर डिलीवरी पर दें।
                     </p>
                   </div>
                 )}

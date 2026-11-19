@@ -10,7 +10,7 @@ import {
   getAvailableSlots,
   createJobInFirestore
 } from '../services/firestoreRepairService';
-import { startRazorpayCheckout } from '../services/paymentService';
+import { DIRECT_UPI_ID } from '../services/paymentService';
 import { SURAT_LOCALITIES, BRANDS } from '../data/mockData';
 import { COMPREHENSIVE_PHONE_MODELS } from '../data/phonesDatabase';
 import { buildWhatsappHref } from '../services/siteSettingsService';
@@ -49,10 +49,9 @@ interface CustomerRepairBookingFlowProps {
 }
 
 export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps> = ({
-  onJobCreated,
-  onNavigateToOrders
+  onJobCreated
 }) => {
-  const { user, setIsAuthModalOpen, selectedLocality, setSelectedLocality, siteSettings } = useApp();
+  const { user, selectedLocality, setSelectedLocality, siteSettings } = useApp();
 
   // Wizard Steps: 1: Brand & Model, 2: Select Issues, 3: Address & Slot, 4: Pay & Confirm
   const [step, setStep] = useState<number>(1);
@@ -194,7 +193,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
     });
   };
 
-  // Submit to Web3Forms first & Generate Payment Link / QR Code (Technician visit held until payment verification)
+  // Submit to Web3Forms first & Generate Direct UPI (9372802044@idfcfirst) QR Code (No Login Needed)
   const handleSubmitAndGenerateQr = async () => {
     if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
       setPaymentError('कृपया मान्य 10-अंकों का मोबाइल नंबर दर्ज करें।');
@@ -219,7 +218,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
     const w3Res = await submitToWeb3Forms({
       formType: 'repair_booking',
-      subject: `New Repair Booking (Awaiting ₹199 Token): ${finalDeviceName} [${refJobId}]`,
+      subject: `New Repair Booking (Awaiting ₹199 UPI): ${finalDeviceName} [${refJobId}]`,
       name: customerName.trim() || user.name || 'Surat Resident',
       phone: customerPhone.trim(),
       email: user.email || undefined,
@@ -234,25 +233,20 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       area,
       address: streetAddress.trim(),
       referenceId: refJobId,
-      paymentStatus: 'Pending Payment Confirmation (QR & Link Generated)',
+      paymentStatus: `Pending Direct UPI (${DIRECT_UPI_ID}) Confirmation`,
       paymentLink,
       message: deviceNotes.trim() || undefined
     });
 
     setIsSubmittingWeb3Form(false);
     if (!w3Res.success) {
-      setPaymentError('इंक्वायरी भेजने में अस्थायी समस्या आई, लेकिन आप नीचे QR/लिंक से ₹199 पेमेंट पूरा कर सकते हैं।');
+      setPaymentError(`नीचे दिए गए QR कोड से ${DIRECT_UPI_ID} पर ₹199 UPI पेमेंट कर WhatsApp पर कन्फर्म करें।`);
     }
     setPendingQrJobId(refJobId);
   };
 
-  // Payment & Submit Handler (Existing Firestore + Razorpay flow preserved)
-  const handleProceedToPayment = async (overrideJobId?: string) => {
-    if (!user.isLoggedIn) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
+  // Direct UPI + WhatsApp Confirmation Handler (Zero Login Required)
+  const handleConfirmDirectUpiBooking = async (utrOrRef: string = '', overrideJobId?: string) => {
     if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
       setPaymentError('कृपया मान्य 10-अंकों का मोबाइल नंबर दर्ज करें।');
       return;
@@ -272,6 +266,8 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       .map(s => `${s.name_hi} (₹${s.minPrice}-₹${s.maxPrice})`)
       .join(', ');
     const pricingSummary = `₹${calculations.minSum} – ₹${calculations.maxSum} (${calculations.timeFormatted}, ${calculations.warrantyText})`;
+    const cleanPhone = customerPhone.replace(/\D/g, '').slice(-10);
+    const paymentRef = utrOrRef.trim() || `UPI-${DIRECT_UPI_ID}`;
 
     trackEvent('visit_fee_initiated', {
       job_id: generatedJobId,
@@ -280,109 +276,93 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       services_count: selectedServices.length
     });
 
-    // Start Server-Side Verified Razorpay Checkout
-    startRazorpayCheckout({
-      amount: 199,
+    const newJob: Omit<Job, 'createdAt' | 'statusHistory'> = {
       jobId: generatedJobId,
-      customerName: customerName.trim() || 'Surat Resident',
-      customerPhone: customerPhone.trim(),
-      description: `Sastafone Surat ₹199 विज़िट टोकन: ${finalDeviceName}`,
-      onSuccess: async (paymentId: string) => {
-        try {
-          // Create the job in Firestore ONLY AFTER PAYMENT IS VERIFIED!
-          const newJob: Omit<Job, 'createdAt' | 'statusHistory'> = {
-            jobId: generatedJobId,
-            userId: user.uid || `anon_${customerPhone}`,
-            name: customerName.trim() || 'Surat Resident',
-            phone: customerPhone.trim(),
-            address: streetAddress.trim(),
-            area,
-            brand: brandObj?.name || selectedBrand,
-            model: finalDeviceName,
-            services: selectedServices.map(s => s.name_hi),
-            serviceDetails: selectedServices,
-            estMin: calculations.minSum,
-            estMax: calculations.maxSum,
-            estMinutes: calculations.totalMinutes,
-            pickupSlot: {
-              date: pickupDate,
-              window: selectedSlotWindow || '10:00 AM - 01:00 PM',
-              area
-            },
-            status: 'Booked',
-            visitFeePaid: true,
-            razorpayPaymentId: paymentId,
-            pickupCost: 70,
-            customerApproved: false,
-            deviceNotes: deviceNotes.trim()
-          };
-
-          await createJobInFirestore(newJob);
-
-          // Non-blocking Web3Forms verified payment notification
-          void submitToWeb3Forms({
-            formType: 'repair_booking',
-            subject: `CONFIRMED Repair Visit (₹199 Paid): ${finalDeviceName} [${generatedJobId}]`,
-            name: newJob.name,
-            phone: newJob.phone,
-            email: user.email || undefined,
-            service: 'डोरस्टेप मोबाइल रिपेयर (Doorstep Mobile Repair)',
-            brand: newJob.brand,
-            model: newJob.model,
-            problems: problemsSummary,
-            dynamicPricing: pricingSummary,
-            visitTokenAmount: 199,
-            slotDate: newJob.pickupSlot.date,
-            slotWindow: newJob.pickupSlot.window,
-            area: newJob.area,
-            address: newJob.address,
-            referenceId: generatedJobId,
-            paymentStatus: 'PAID & VERIFIED (Technician Visit Confirmed)',
-            paymentId,
-            paymentLink: buildPaymentLinkUrl(generatedJobId, 199),
-            message: newJob.deviceNotes || undefined
-          });
-
-          trackEvent('visit_fee_paid', {
-            job_id: generatedJobId,
-            payment_id: paymentId,
-            amount: 199
-          });
-
-          confetti({
-            particleCount: 80,
-            spread: 70,
-            origin: { y: 0.6 }
-          });
-
-          setCompletedJob({
-            ...newJob,
-            createdAt: new Date().toISOString(),
-            statusHistory: [
-              {
-                status: 'Booked',
-                timestamp: new Date().toISOString(),
-                note: 'बुकिंग दर्ज की गई। ₹199 विज़िट टोकन वेरिफाइड।'
-              }
-            ]
-          });
-
-          setPendingQrJobId(null);
-          setIsProcessingPayment(false);
-          setStep(4);
-          if (onJobCreated) onJobCreated(generatedJobId);
-        } catch (err: any) {
-          console.error('Error saving verified job to Firestore:', err);
-          setPaymentError(`भुगतान सफल रहा, किंतु जॉब सेव करने में त्रुटि: ${err.message}`);
-          setIsProcessingPayment(false);
-        }
+      userId: user.uid || `wa_${cleanPhone}`,
+      name: customerName.trim() || 'Surat Resident',
+      phone: customerPhone.trim(),
+      address: streetAddress.trim(),
+      area,
+      brand: brandObj?.name || selectedBrand,
+      model: finalDeviceName,
+      services: selectedServices.map(s => s.name_hi),
+      serviceDetails: selectedServices,
+      estMin: calculations.minSum,
+      estMax: calculations.maxSum,
+      estMinutes: calculations.totalMinutes,
+      pickupSlot: {
+        date: pickupDate,
+        window: selectedSlotWindow || '10:00 AM - 01:00 PM',
+        area
       },
-      onFailure: (errorMsg: string) => {
-        trackEvent('visit_fee_failed', { job_id: generatedJobId, reason: errorMsg });
-        setIsProcessingPayment(false);
-        setPaymentError(errorMsg);
-      }
+      status: 'Booked',
+      visitFeePaid: Boolean(utrOrRef.trim()),
+      razorpayPaymentId: paymentRef,
+      pickupCost: 70,
+      customerApproved: false,
+      deviceNotes: deviceNotes.trim()
+    };
+
+    // Best-effort Firestore write when allowed; never blocks WhatsApp guest booking
+    try {
+      await createJobInFirestore(newJob);
+    } catch {
+      // Guest / WhatsApp-first flow continues cleanly via Web3Forms & WhatsApp
+    }
+
+    await submitToWeb3Forms({
+      formType: 'repair_booking',
+      subject: `WhatsApp + UPI Booking [${generatedJobId}]: ${finalDeviceName}`,
+      name: newJob.name,
+      phone: newJob.phone,
+      email: user.email || undefined,
+      service: 'डोरस्टेप मोबाइल रिपेयर (Doorstep Mobile Repair)',
+      brand: newJob.brand,
+      model: newJob.model,
+      problems: problemsSummary,
+      dynamicPricing: pricingSummary,
+      visitTokenAmount: 199,
+      slotDate: newJob.pickupSlot.date,
+      slotWindow: newJob.pickupSlot.window,
+      area: newJob.area,
+      address: newJob.address,
+      referenceId: generatedJobId,
+      paymentStatus: utrOrRef.trim()
+        ? `UPI Payment Submitted (UTR: ${utrOrRef.trim()}) -> ${DIRECT_UPI_ID}`
+        : `WhatsApp Confirmation Ready -> Pay ₹199 to ${DIRECT_UPI_ID}`,
+      paymentId: paymentRef,
+      paymentLink: buildPaymentLinkUrl(generatedJobId, 199),
+      message: newJob.deviceNotes || undefined
     });
+
+    trackEvent('visit_fee_paid', {
+      job_id: generatedJobId,
+      payment_id: paymentRef,
+      amount: 199
+    });
+
+    confetti({
+      particleCount: 80,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
+
+    setCompletedJob({
+      ...newJob,
+      createdAt: new Date().toISOString(),
+      statusHistory: [
+        {
+          status: 'Booked',
+          timestamp: new Date().toISOString(),
+          note: `बुकिंग दर्ज की गई। UPI ID (${DIRECT_UPI_ID}) व WhatsApp कन्फर्मेशन तैयार।`
+        }
+      ]
+    });
+
+    setPendingQrJobId(null);
+    setIsProcessingPayment(false);
+    setStep(4);
+    if (onJobCreated) onJobCreated(generatedJobId);
   };
 
   return (
@@ -832,14 +812,14 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             </div>
           </div>
 
-          {/* ₹199 Token Explainer Card (Light Theme) */}
+          {/* ₹199 Direct UPI Token Explainer Card */}
           <div className="p-4 rounded-2xl bg-[#FEF2F2] border border-red-200 text-[#132032] space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#132032]">डोरस्टेप विज़िट व पिकअप टोकन:</span>
+              <span className="text-xs font-bold text-[#132032]">डोरस्टेप विज़िट टोकन (Direct UPI):</span>
               <span className="text-lg font-bold text-[#D5151B] tabular-nums">₹199</span>
             </div>
             <p className="text-[11px] text-gray-600 leading-relaxed">
-              यह ₹199 विज़िट शुल्क आपके फाइनल बिल में पूरा एडजस्ट होगा। यदि QC के बाद आप रिपेयर रद्द करते हैं तो ₹99 रिफंड होगा (₹100 विज़िट शुल्क रखा जाएगा)।
+              बिना किसी लॉगिन के सीधे <strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong> पर ₹199 UPI पेमेंट कर WhatsApp पर कन्फर्म करें। यह ₹199 फाइनल बिल में पूरा एडजस्ट होगा (QC के बाद मना करने पर ₹99 रिफंड)।
             </p>
           </div>
 
@@ -859,45 +839,39 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
               <button
                 type="button"
                 disabled={isProcessingPayment || isSubmittingWeb3Form}
-                onClick={() => handleProceedToPayment()}
+                onClick={handleSubmitAndGenerateQr}
                 className="flex-1 py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target disabled:opacity-70"
               >
-                {isProcessingPayment ? (
+                {isSubmittingWeb3Form ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                    <span>Razorpay सुरक्षित सत्यापन चालू...</span>
+                    <span>UPI QR कोड तैयार हो रहा है...</span>
                   </>
                 ) : (
                   <>
-                    <CreditCard className="w-4 h-4" />
-                    <span>₹199 टोकन भुगतान करें व बुक करें</span>
+                    <QrCode className="w-4 h-4" />
+                    <span>₹199 UPI QR (9372802044@idfcfirst) पाएं व बुक करें</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </div>
 
-            <button
-              type="button"
-              disabled={isProcessingPayment || isSubmittingWeb3Form}
-              onClick={handleSubmitAndGenerateQr}
-              className="w-full py-2.5 rounded-xl bg-white hover:bg-[#FEF2F2] border border-[#D5151B]/40 text-[#132032] font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
-            >
-              {isSubmittingWeb3Form ? (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#D5151B]" />
-                  <span>बुकिंग भेजकर पेमेंट लिंक / QR तैयार किया जा रहा है...</span>
-                </>
-              ) : (
-                <>
-                  <QrCode className="w-3.5 h-3.5 text-[#D5151B]" />
-                  <span>पहले बुकिंग सबमिट करें और ₹199 पेमेंट लिंक / QR कोड जेनरेट करें</span>
-                </>
+            <a
+              href={buildWhatsappHref(
+                siteSettings.whatsappNumber,
+                `नमस्ते Sastafone Surat! मुझे ${customModelInput.trim() || selectedModel} रिपेयर बुक करना है।\n• नाम: ${customerName || 'ग्राहक'}\n• मोबाइल: ${customerPhone || 'N/A'}\n• समस्या: ${selectedServices.map(s => s.name_hi).join(', ')}\n• अनुमानित कीमत: ₹${calculations.minSum}–₹${calculations.maxSum}\n• स्लॉट: ${pickupDate} (${selectedSlotWindow || '10:00 AM - 01:00 PM'}) • ${area}\n• पता: ${streetAddress || area}\n• टोकन UPI ID: ${DIRECT_UPI_ID} (₹199)`
               )}
-            </button>
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>सीधे WhatsApp पर यह पूरी बुकिंग भेजें (बिना लॉगिन)</span>
+            </a>
           </div>
 
-          {/* Post-Submission Payment Link & QR Code Card (Visit held until payment verification) */}
+          {/* Post-Submission Direct UPI QR & WhatsApp Card */}
           {pendingQrJobId && (
             <PaymentLinkQrCard
               referenceId={pendingQrJobId}
@@ -907,16 +881,19 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
               problemsLabel={selectedServices.map(s => s.name_hi).join(', ')}
               dynamicPricingLabel={`₹${calculations.minSum} – ₹${calculations.maxSum}`}
               slotLabel={`${pickupDate} (${selectedSlotWindow || '10:00 AM - 01:00 PM'}) • ${area}`}
+              customerName={customerName.trim() || 'Surat Customer'}
+              customerPhone={customerPhone.trim()}
+              customerAddress={`${streetAddress.trim()}, ${area}`}
               whatsappNumber={siteSettings.whatsappNumber}
-              isProcessingRazorpay={isProcessingPayment}
-              onPayViaRazorpay={() => handleProceedToPayment(pendingQrJobId)}
+              isConfirming={isProcessingPayment}
+              onConfirmWhatsapp={(utr) => handleConfirmDirectUpiBooking(utr, pendingQrJobId)}
             />
           )}
         </div>
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* STEP 4: CONFIRMATION SCREEN WITH JOB ID & LIVE TIMELINE LINK */}
+      {/* STEP 4: CONFIRMATION SCREEN WITH DIRECT WHATSAPP & UPI CARD   */}
       {/* ------------------------------------------------------------- */}
       {step === 4 && completedJob && (
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-emerald-200 text-center space-y-4 step-transition">
@@ -926,20 +903,20 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
 
           <div>
             <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase tracking-wider">
-              सत्यापित बुकिंग कन्फर्म
+              बुकिंग व UPI विवरण तैयार
             </span>
             <h2 className="text-xl sm:text-2xl font-bold text-[#132032] mt-2">
               आपकी रिपेयर बुकिंग सफलतापूर्वक दर्ज हो गई है!
             </h2>
             <p className="text-xs text-gray-600 mt-1">
-              ₹199 विज़िट टोकन Razorpay द्वारा सत्यापित हो चुका है (आईडी: {completedJob.razorpayPaymentId})
+              ₹199 विज़िट टोकन UPI ID: <strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong> ({completedJob.razorpayPaymentId})
             </p>
           </div>
 
           {/* Job Card Details */}
           <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-left text-xs space-y-2 text-[#132032] font-medium">
             <div className="flex items-center justify-between pb-2 border-b border-gray-200">
-              <span className="text-gray-500 font-bold">जॉब आईडी (Job ID):</span>
+              <span className="text-gray-500 font-bold">जॉब आईडी (Ref ID):</span>
               <span className="font-mono font-bold text-[#D5151B] text-sm">{completedJob.jobId}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -964,36 +941,32 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
             </div>
           </div>
 
-          {/* Action CTAs */}
+          {/* Direct WhatsApp Confirmation Action */}
           <div className="space-y-2.5 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (onNavigateToOrders) {
-                  onNavigateToOrders();
-                } else {
-                  window.history.pushState({}, '', '/orders');
-                }
-              }}
-              className="w-full py-3.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm shadow-xs transition-all duration-150 cursor-pointer flex items-center justify-center gap-2 tap-target"
-            >
-              <Package className="w-4 h-4" />
-              <span>&apos;My Orders&apos; में लाइव स्टेटस टाइमलाइन देखें</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-
             <a
               href={buildWhatsappHref(
                 siteSettings.whatsappNumber,
-                `नमस्ते Sastafone Surat! मैंने ₹199 टोकन के साथ रिपेयर बुक किया है। जॉब आईडी: ${completedJob.jobId}, फोन: ${completedJob.model}, क्षेत्र: ${completedJob.area}`
+                `नमस्ते Sastafone Surat! मेरी रिपेयर बुकिंग कन्फर्म करें:\n• Job ID: ${completedJob.jobId}\n• नाम: ${completedJob.name} (${completedJob.phone})\n• डिवाइस: ${completedJob.model}\n• समस्याएं: ${completedJob.services.join(', ')}\n• अनुमानित कीमत: ₹${completedJob.estMin} – ₹${completedJob.estMax}\n• स्लॉट: ${completedJob.pickupSlot.date} (${completedJob.pickupSlot.window})\n• पता: ${completedJob.address}, ${completedJob.area}\n• Direct UPI ID: ${DIRECT_UPI_ID} (${completedJob.razorpayPaymentId || '₹199'})`
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all duration-150"
+              className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all duration-150 tap-target"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>WhatsApp पर अपडेट्स प्राप्त करें</span>
+              <span>WhatsApp पर बुकिंग व पेमेंट स्क्रीनशॉट भेजें</span>
+              <ArrowRight className="w-4 h-4" />
             </a>
+
+            <button
+              type="button"
+              onClick={() => {
+                setStep(1);
+                setCompletedJob(null);
+              }}
+              className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-all duration-150 cursor-pointer"
+            >
+              नई रिपेयर बुकिंग करें
+            </button>
           </div>
         </div>
       )}

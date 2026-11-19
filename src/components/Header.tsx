@@ -1,8 +1,14 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { SastafoneLogo } from './SastafoneLogo';
-import { MapPin, User, Instagram, ExternalLink, Shield, Wrench } from 'lucide-react';
-import { INSTAGRAM_URL, GOOGLE_MAPS_URL } from '../services/siteSettingsService';
+import { MapPin, Instagram, ExternalLink, MessageCircle, Phone } from 'lucide-react';
+import {
+  INSTAGRAM_URL,
+  GOOGLE_MAPS_URL,
+  buildWhatsappHref,
+  normalizeTelHref
+} from '../services/siteSettingsService';
+import { trackEvent } from '../utils/analytics';
 
 export const Header: React.FC = () => {
   const {
@@ -10,15 +16,8 @@ export const Header: React.FC = () => {
     setLanguage,
     selectedLocality,
     setIsLocationModalOpen,
-    orders,
-    siteSettings,
-    user,
-    setIsAuthModalOpen
+    siteSettings
   } = useApp();
-
-  const activeOrdersCount = orders.filter(
-    (o) => o.status !== 'completed' && o.status !== 'cancelled'
-  ).length;
 
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
 
@@ -32,6 +31,11 @@ export const Header: React.FC = () => {
 
   const instagramHref = siteSettings.instagramUrl || INSTAGRAM_URL;
   const mapsHref = siteSettings.googleMapsUrl || GOOGLE_MAPS_URL;
+  const whatsappHref = buildWhatsappHref(
+    siteSettings.whatsappNumber,
+    'नमस्ते Sastafone Surat! मुझे मोबाइल रिपेयर / सेवा बुक करनी है।'
+  );
+  const telHref = normalizeTelHref(siteSettings.supportPhone);
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-100">
@@ -137,64 +141,29 @@ export const Header: React.FC = () => {
           })}
         </nav>
 
-        {/* Right User Login / Profile Trigger + Admin Control Room (Verified Admin ONLY) */}
+        {/* Direct WhatsApp + Call CTA (No Website Login Needed) */}
         <div className="flex items-center gap-2 shrink-0">
-          {user.isLoggedIn && user.isAdmin && user.role === 'admin' && (
-            <button
-              type="button"
-              onClick={() => handleNav('/admin')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#132032] hover:bg-[#1e2f47] text-white text-xs font-bold shadow-xs transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 tap-target"
-              title="Open Admin Control Room"
-            >
-              <Shield className="w-3.5 h-3.5 text-[#D5151B] shrink-0" />
-              <span className="hidden sm:inline">Admin Control Room</span>
-              <span className="sm:hidden">Admin</span>
-            </button>
-          )}
+          <a
+            href={telHref}
+            onClick={() => trackEvent('call_click', { source: 'header' })}
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-50 hover:bg-[#FEF2F2] border border-gray-200 text-[#132032] hover:text-[#D5151B] text-xs font-bold transition-colors duration-150 whitespace-nowrap shrink-0 tap-target"
+            title={`Call ${siteSettings.supportPhone}`}
+          >
+            <Phone className="w-3.5 h-3.5 text-[#D5151B] shrink-0" />
+            <span>{language === 'hi' ? 'कॉल' : 'Call'}</span>
+          </a>
 
-          {user.isLoggedIn && user.isPartner && user.role === 'partner' && (
-            <button
-              type="button"
-              onClick={() => handleNav('/partner')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 tap-target"
-              title="Open Partner Portal"
-            >
-              <Wrench className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Partner Portal</span>
-              <span className="sm:hidden">Partner</span>
-            </button>
-          )}
-
-          {!user.isLoggedIn ? (
-            <button
-              type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white text-xs font-bold shadow-xs transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 tap-target"
-              title="लॉगिन करें"
-            >
-              <User className="w-3.5 h-3.5 shrink-0" />
-              <span>{language === 'hi' ? 'लॉगिन' : 'Login'}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleNav('/profile')}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#FEF2F2] hover:bg-red-100/70 border border-red-200 text-[#132032] text-xs font-bold transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 tap-target"
-              title="प्रोफाइल व ऑर्डर्स"
-            >
-              <span className="w-5 h-5 rounded-full bg-[#D5151B] text-white flex items-center justify-center shrink-0 text-[10px]">
-                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </span>
-              <span className="max-w-[76px] sm:max-w-[110px] truncate">
-                {user.name ? user.name.split(' ')[0] : 'प्रोफाइल'}
-              </span>
-              {activeOrdersCount > 0 && (
-                <span className="bg-[#D5151B] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold tabular-nums">
-                  {activeOrdersCount}
-                </span>
-              )}
-            </button>
-          )}
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackEvent('whatsapp_click', { source: 'header' })}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors duration-150 whitespace-nowrap shrink-0 tap-target"
+            title="सीधे WhatsApp पर बुक करें"
+          >
+            <MessageCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>{language === 'hi' ? 'WhatsApp बुकिंग' : 'WhatsApp'}</span>
+          </a>
         </div>
       </div>
     </header>

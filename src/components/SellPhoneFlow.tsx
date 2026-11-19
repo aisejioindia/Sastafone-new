@@ -5,6 +5,7 @@ import { getSlotsFromFirestore, createSellRequestInFirestore } from '../services
 import { uploadImageToStorage } from '../utils/storageUpload';
 import { trackEvent } from '../utils/analytics';
 import { submitToWeb3Forms } from '../services/web3formsService';
+import { buildWhatsappHref } from '../services/siteSettingsService';
 import { Slot, SellRequest } from '../types';
 import {
   Smartphone,
@@ -20,7 +21,8 @@ import {
   Search,
   Check,
   RefreshCw,
-  X
+  X,
+  MessageCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -63,7 +65,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
   onRequestCreated,
   onNavigateHome
 }) => {
-  const { user, selectedLocality, setIsAuthModalOpen } = useApp();
+  const { user, selectedLocality, siteSettings } = useApp();
 
   // Step state: 1 (Model) -> 2 (Specs & Age) -> 3 (Condition) -> 4 (Photos & IMEI) -> 5 (Pickup Slot & Address)
   const [currentStep, setCurrentStep] = useState<number>(1);
@@ -188,30 +190,31 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
 
   const { min: estMin, max: estMax } = calculateEstimate();
 
-  // Real Firebase Storage Photo Uploaders
+  // Optional Photo Uploader (Works without login via local preview fallback + WhatsApp photo sharing)
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (!user.isLoggedIn || !user.uid) {
-      setIsAuthModalOpen(true);
-      setUploadError('फ़ोटो अपलोड करने के लिए कृपया पहले लॉगिन करें।');
-      return;
-    }
-
     setUploadError(null);
     setIsUploadingPhotos(true);
     try {
-      const folder = `sellRequests/${user.uid}`;
       const limitCount = Math.min(files.length, 6 - photos.length);
       const uploadedUrls: string[] = [];
       for (let i = 0; i < limitCount; i++) {
-        const url = await uploadImageToStorage(files[i], folder);
-        uploadedUrls.push(url);
+        if (user.isLoggedIn && user.uid) {
+          try {
+            const url = await uploadImageToStorage(files[i], `sellRequests/${user.uid}`);
+            uploadedUrls.push(url);
+            continue;
+          } catch {
+            // Fall back to local object URL preview; user can send directly on WhatsApp
+          }
+        }
+        uploadedUrls.push(URL.createObjectURL(files[i]));
       }
       setPhotos(prev => [...prev, ...uploadedUrls]);
-    } catch (err: any) {
-      setUploadError(err?.message || 'फ़ोटो अपलोड करने में समस्या आई।');
+    } catch {
+      setUploadError('आप अगले स्टेप में फोन की फोटो सीधे WhatsApp पर भी भेज सकते हैं।');
     } finally {
       setIsUploadingPhotos(false);
       e.target.value = '';
@@ -222,19 +225,21 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!user.isLoggedIn || !user.uid) {
-      setIsAuthModalOpen(true);
-      setUploadError('बिल फ़ोटो अपलोड करने के लिए कृपया पहले लॉगिन करें।');
-      return;
-    }
-
     setUploadError(null);
     setIsUploadingBill(true);
     try {
-      const url = await uploadImageToStorage(file, `sellRequests/${user.uid}`);
-      setBillPhotoUrl(url);
-    } catch (err: any) {
-      setUploadError(err?.message || 'बिल अपलोड करने में समस्या आई।');
+      if (user.isLoggedIn && user.uid) {
+        try {
+          const url = await uploadImageToStorage(file, `sellRequests/${user.uid}`);
+          setBillPhotoUrl(url);
+          return;
+        } catch {
+          // Fall back cleanly
+        }
+      }
+      setBillPhotoUrl(URL.createObjectURL(file));
+    } catch {
+      setUploadError('आप बिल की फोटो सीधे WhatsApp पर भी साझा कर सकते हैं।');
     } finally {
       setIsUploadingBill(false);
       e.target.value = '';
@@ -242,12 +247,7 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
   };
 
   const handleSubmitSellRequest = async () => {
-    if (!user.isLoggedIn || !user.uid) {
-      setIsAuthModalOpen(true);
-      return;
-    }
-
-    if (!customerPhone || customerPhone.length < 10) {
+    if (!customerPhone || customerPhone.replace(/\D/g, '').length < 10) {
       setSubmissionError('कृपया अपना वैध 10-अंकीय मोबाइल नंबर दर्ज करें।');
       return;
     }
@@ -258,23 +258,25 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
     }
 
     const selectedSlotObj = slots.find(s => s.id === selectedSlotId);
-    if (!selectedSlotObj) {
-      setSubmissionError('कृपया पिकअप का स्लॉट चुनें।');
-      return;
-    }
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    const resolvedName = customerName.trim() || user.name || 'सूरत ग्राहक';
+    const resolvedModel = selectedModel || modelSearch.trim() || `${brand} Smartphone`;
+    const slotDateStr = selectedSlotObj?.date || new Date().toISOString().split('T')[0];
+    const slotWindowStr = selectedSlotObj?.window || '10:00 AM - 01:00 PM';
+    const slotAreaStr = selectedSlotObj?.area || selectedArea;
 
     setIsSubmitting(true);
     setSubmissionError(null);
 
     try {
       const payload: Omit<SellRequest, 'id'> = {
-        userId: user.uid,
-        customerName: customerName || user.name || 'सूरत ग्राहक',
-        customerPhone: customerPhone.replace(/\D/g, ''),
+        userId: user.uid || `wa_${cleanPhone}`,
+        customerName: resolvedName,
+        customerPhone: cleanPhone,
         address: address.trim(),
         area: selectedArea,
         brand,
-        model: selectedModel || modelSearch.trim() || `${brand} Smartphone`,
+        model: resolvedModel,
         storage,
         age,
         isDeadPhone,
@@ -288,13 +290,13 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
           speakerMicWorking,
           faceTouchIdWorking
         },
-        conditionPhotos: photos,
+        conditionPhotos: photos.filter(p => p.startsWith('http')),
         imei: imei.trim() || undefined,
-        billPhotoUrl: billPhotoUrl || undefined,
+        billPhotoUrl: billPhotoUrl.startsWith('http') ? billPhotoUrl : undefined,
         pickupSlot: {
-          date: selectedSlotObj.date,
-          window: selectedSlotObj.window,
-          area: selectedSlotObj.area
+          date: slotDateStr,
+          window: slotWindowStr,
+          area: slotAreaStr
         },
         estMin,
         estMax,
@@ -309,7 +311,12 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
         createdAt: new Date().toISOString()
       };
 
-      const docId = await createSellRequestInFirestore(payload);
+      let docId = `SELL-SST-${Date.now().toString().slice(-6)}`;
+      try {
+        docId = await createSellRequestInFirestore(payload);
+      } catch {
+        // Guest flow proceeds without requiring website login
+      }
 
       const conditionSummary = [
         `Screen OK: ${screenWorking ? 'Yes' : 'No'}`,
@@ -323,9 +330,9 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
         isDeadPhone ? 'Dead Phone' : 'Working Phone'
       ].join(' | ');
 
-      void submitToWeb3Forms({
+      await submitToWeb3Forms({
         formType: 'sell_phone',
-        subject: `New Sell Phone Request: ${payload.brand} ${payload.model} [${docId}]`,
+        subject: `New Sell Phone Request (WhatsApp): ${payload.brand} ${payload.model} [${docId}]`,
         name: payload.customerName,
         phone: payload.customerPhone,
         email: user.email || undefined,
@@ -334,12 +341,13 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
         model: `${payload.model} (${payload.storage})`,
         problems: conditionSummary,
         dynamicPricing: `₹${estMin.toLocaleString('en-IN')} – ₹${estMax.toLocaleString('en-IN')} (Estimated Buyback)`,
-        slotDate: selectedSlotObj.date,
-        slotWindow: selectedSlotObj.window,
-        area: selectedSlotObj.area,
+        visitTokenAmount: 0,
+        slotDate: slotDateStr,
+        slotWindow: slotWindowStr,
+        area: slotAreaStr,
         address: payload.address,
         referenceId: docId,
-        paymentStatus: 'Free Inspection Pickup Scheduled'
+        paymentStatus: 'Free Inspection Pickup Scheduled (WhatsApp)'
       });
 
       trackEvent('sell_phone_submitted', {
@@ -968,14 +976,26 @@ export const SellPhoneFlow: React.FC<SellPhoneFlowProps> = ({
               <p className="text-xs text-gray-600 leading-relaxed">
                 Sastafone Certified Technician आपके चुने हुए स्लॉट में ऑन-साइट निरीक्षण हेतु पहुंचेगा। निरीक्षण के तुरंत बाद UPI या बैंक ट्रांसफर से भुगतान किया जाएगा।
               </p>
-              <div className="pt-2">
+              <div className="pt-2 space-y-2.5">
+                <a
+                  href={buildWhatsappHref(
+                    siteSettings.whatsappNumber,
+                    `नमस्ते Sastafone Surat! मुझे अपना पुराना फोन बेचना है:\n• Ref ID: ${createdRequestId}\n• नाम: ${customerName || 'ग्राहक'} (${customerPhone})\n• फोन: ${brand} ${selectedModel || modelSearch || 'Smartphone'} (${storage})\n• अनुमानित मूल्य: ₹${estMin.toLocaleString('en-IN')} – ₹${estMax.toLocaleString('en-IN')}\n• क्षेत्र: ${selectedArea}\n• पता: ${address}\nमैं फोन की फोटो यहाँ भेज रहा/रही हूँ।`
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors tap-target"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>WhatsApp पर फोटो व अनुरोध भेजें</span>
+                </a>
                 <button
                   type="button"
                   onClick={() => {
                     setCreatedRequestId(null);
                     if (onNavigateHome) onNavigateHome();
                   }}
-                  className="w-full py-3 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs sm:text-sm transition-colors cursor-pointer tap-target"
+                  className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-[#132032] font-bold text-xs transition-colors cursor-pointer tap-target"
                 >
                   होम पर वापस जाएं
                 </button>

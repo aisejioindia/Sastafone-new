@@ -9,8 +9,7 @@ import {
   Mail,
   Phone,
   Instagram,
-  ExternalLink,
-  Shield
+  ExternalLink
 } from 'lucide-react';
 import {
   buildWhatsappHref,
@@ -18,12 +17,11 @@ import {
   INSTAGRAM_URL,
   GOOGLE_MAPS_URL
 } from '../services/siteSettingsService';
+import { DIRECT_UPI_ID } from '../services/paymentService';
 import { trackEvent } from '../utils/analytics';
 
 export const Footer: React.FC = () => {
-  const { setSelectedLocality, siteSettings, user } = useApp();
-  const isVerifiedAdmin = Boolean(user.isLoggedIn && user.isAdmin && user.role === 'admin');
-  const isVerifiedPartner = Boolean(user.isLoggedIn && user.isPartner && user.role === 'partner');
+  const { setSelectedLocality, siteSettings } = useApp();
 
   const handleNav = (path: string) => {
     if (window.location.pathname !== path) {
@@ -56,7 +54,7 @@ export const Footer: React.FC = () => {
                 सूरत में पारदर्शी डोरस्टेप मोबाइल रिपेयरिंग व बाय-बैक
               </h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                ₹199 विज़िट टोकन फाइनल बिल में एडजस्ट होता है (QC के बाद मना करने पर ₹99 रिफंड, ₹100 रखा जाता है)। ₹1,000+ के बिल पर 6 महीने की वारंटी।
+                बिना किसी लॉगिन के सीधे WhatsApp पर बुकिंग करें। ₹199 विज़िट टोकन डायरेक्ट UPI (<strong className="font-mono text-[#132032]">{DIRECT_UPI_ID}</strong>) द्वारा फाइनल बिल में एडजस्ट होता है। ₹1,000+ के बिल पर 6 महीने की वारंटी।
               </p>
             </div>
 
@@ -66,10 +64,10 @@ export const Footer: React.FC = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => trackEvent('whatsapp_click', { source: 'footer' })}
-                className="px-4 py-2.5 rounded-xl bg-[#D5151B] hover:bg-[#B31419] text-white font-bold text-xs inline-flex items-center gap-2 transition-colors duration-150 shadow-xs"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-2 transition-colors duration-150 shadow-xs"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>WhatsApp सहायता</span>
+                <span>WhatsApp बुकिंग व सहायता</span>
               </a>
 
               <a
@@ -249,28 +247,6 @@ export const Footer: React.FC = () => {
             >
               Refund & Warranty Policy
             </button>
-
-            {isVerifiedAdmin && (
-              <button
-                type="button"
-                onClick={() => handleNav('/admin')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FEF2F2] border border-red-200 text-[#D5151B] font-bold hover:bg-red-100 transition-colors cursor-pointer"
-              >
-                <Shield className="w-3 h-3" />
-                <span>Admin Control Room</span>
-              </button>
-            )}
-
-            {isVerifiedPartner && !isVerifiedAdmin && (
-              <button
-                type="button"
-                onClick={() => handleNav('/partner')}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-100 transition-colors cursor-pointer"
-              >
-                <Shield className="w-3 h-3" />
-                <span>Partner Portal</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
