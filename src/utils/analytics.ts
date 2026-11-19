@@ -22,7 +22,8 @@ export type GaEventName =
   | 'call_click'
   | 'google_maps_click'
   | 'google_review_click'
-  | 'warranty_lookup';
+  | 'warranty_lookup'
+  | 'order_status_lookup';
 
 export function trackEvent(eventName: GaEventName, params: Record<string, any> = {}): void {
   try {

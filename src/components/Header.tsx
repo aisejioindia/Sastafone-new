@@ -118,6 +118,7 @@ export const Header: React.FC = () => {
         <nav className="hidden md:flex items-center gap-1 lg:gap-2">
           {[
             { label: language === 'hi' ? 'रिपेयर (₹199)' : 'Repair (₹199)', path: '/repair' },
+            { label: language === 'hi' ? 'ऑर्डर ट्रैक' : 'Track Order', path: '/track' },
             { label: language === 'hi' ? 'फोन बेचें' : 'Sell Phone', path: '/sell-phone' },
             { label: language === 'hi' ? 'फोन खरीदें' : 'Buy Phones', path: '/buy-phones' },
             { label: language === 'hi' ? 'वारंटी' : 'Warranty', path: '/warranty' },

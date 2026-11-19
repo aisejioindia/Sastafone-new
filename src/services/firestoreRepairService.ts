@@ -11,6 +11,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   runTransaction
 } from 'firebase/firestore';
@@ -21,7 +22,8 @@ import {
   Job,
   JobStatus,
   JobQC,
-  FirestoreUser
+  FirestoreUser,
+  InvoiceRecord
 } from '../types';
 
 export const REPAIR_PRICES_COLLECTION = 'repairPrices';
@@ -607,6 +609,170 @@ export function subscribeToCustomerJobs(
     console.warn('Error in subscribeToCustomerJobs:', err);
     return () => {};
   }
+}
+
+const RECENT_GUEST_JOBS_KEY = 'sastafone_recent_jobs';
+
+export function normalizeIndianPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length >= 10) {
+    return digits.slice(-10);
+  }
+  return digits;
+}
+
+export function saveRecentGuestJobLocally(job: Job): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existingRaw = localStorage.getItem(RECENT_GUEST_JOBS_KEY);
+    const existing: Job[] = existingRaw ? JSON.parse(existingRaw) : [];
+    const filtered = existing.filter((j) => j.jobId !== job.jobId);
+    localStorage.setItem(RECENT_GUEST_JOBS_KEY, JSON.stringify([job, ...filtered].slice(0, 15)));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function getRecentGuestJobsByPhone(phone10: string): Job[] {
+  if (typeof window === 'undefined' || !phone10) return [];
+  try {
+    const raw = localStorage.getItem(RECENT_GUEST_JOBS_KEY);
+    if (!raw) return [];
+    const list: Job[] = JSON.parse(raw);
+    return list.filter((j) => normalizeIndianPhone(j.phone || '') === phone10);
+  } catch {
+    return [];
+  }
+}
+
+export interface PhoneLookupResult {
+  jobs: Job[];
+  permissionDenied: boolean;
+  source: 'firebase' | 'local' | 'mixed';
+}
+
+export async function fetchRepairJobsByPhoneFromFirestore(
+  rawPhone: string
+): Promise<PhoneLookupResult> {
+  const clean10 = normalizeIndianPhone(rawPhone);
+  if (clean10.length !== 10) {
+    return { jobs: [], permissionDenied: false, source: 'firebase' };
+  }
+
+  const candidates = Array.from(
+    new Set([clean10, `+91${clean10}`, `91${clean10}`, `0${clean10}`, `+91 ${clean10}`])
+  );
+
+  const jobsMap = new Map<string, Job>();
+  let permissionDenied = false;
+  let hasFirebaseResults = false;
+
+  // 1. Primary lookup in 'jobs' collection by phone (no auth required)
+  try {
+    const jobsQ = query(
+      collection(db, JOBS_COLLECTION),
+      where('phone', 'in', candidates),
+      limit(5)
+    );
+    const snap = await getDocs(jobsQ);
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() as Job;
+      const id = data.jobId || docSnap.id;
+      jobsMap.set(id, { ...data, jobId: id });
+      hasFirebaseResults = true;
+    });
+  } catch (err: any) {
+    const code = err?.code || '';
+    if (code === 'permission-denied' || String(err?.message || '').toLowerCase().includes('permission')) {
+      permissionDenied = true;
+    }
+    console.warn('Firestore jobs phone lookup notice:', err?.message || err);
+  }
+
+  // 2. Secondary lookup in 'invoices' collection (limit <= 3)
+  try {
+    const invQ = query(
+      collection(db, INVOICES_COLLECTION),
+      where('customerPhone', 'in', candidates),
+      limit(3)
+    );
+    const invSnap = await getDocs(invQ);
+    invSnap.forEach((docSnap) => {
+      const inv = { ...(docSnap.data() as InvoiceRecord), id: docSnap.id };
+      if (inv.status === 'voided') return;
+      const jId = inv.jobId || inv.invoiceNumber || docSnap.id;
+      if (!jobsMap.has(jId)) {
+        const isPaid = inv.paymentStatus === 'paid';
+        const syntheticStatus: JobStatus = isPaid ? 'Delivered' : 'Ready';
+        const syntheticJob: Job = {
+          jobId: jId,
+          userId: inv.userId || `wa_${clean10}`,
+          name: inv.customerName || 'Surat Customer',
+          phone: inv.customerPhone || clean10,
+          address: inv.customerAddress || `${inv.area || 'Surat'}, Gujarat`,
+          area: inv.area || 'Surat',
+          brand: inv.brand || 'Phone',
+          model: inv.model || 'Smartphone',
+          services: (inv.services || []).map((s) => s.name),
+          estMin: inv.subtotal || inv.finalTotal || 199,
+          estMax: inv.finalTotal || inv.subtotal || 199,
+          estMinutes: 60,
+          pickupSlot: {
+            date: inv.date || new Date().toLocaleDateString('hi-IN'),
+            window: 'Doorstep Slot',
+            area: inv.area || 'Surat'
+          },
+          status: syntheticStatus,
+          statusHistory: [
+            {
+              status: syntheticStatus,
+              timestamp: inv.createdAt || new Date().toISOString(),
+              note: `इनवॉइस #${inv.invoiceNumber || jId} जारी किया गया।`
+            }
+          ],
+          finalPrice: inv.finalTotal,
+          visitFeePaid: (inv.visitFeeAdjusted || 0) > 0,
+          pickupCost: 70,
+          customerApproved: true,
+          warrantyMonths: inv.warrantyMonths,
+          invoiceNumber: inv.invoiceNumber,
+          createdAt: inv.createdAt || new Date().toISOString(),
+          updatedAt: inv.createdAt || new Date().toISOString()
+        };
+        jobsMap.set(jId, syntheticJob);
+        hasFirebaseResults = true;
+      }
+    });
+  } catch (err: any) {
+    console.warn('Firestore invoices phone lookup notice:', err?.message || err);
+  }
+
+  // 3. Merge recent guest bookings saved locally in this browser (only if not already from Firebase)
+  const localJobs = getRecentGuestJobsByPhone(clean10);
+  let hasLocalResults = false;
+  localJobs.forEach((localJob) => {
+    if (!jobsMap.has(localJob.jobId)) {
+      jobsMap.set(localJob.jobId, localJob);
+      hasLocalResults = true;
+    }
+  });
+
+  const merged = Array.from(jobsMap.values()).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const source: PhoneLookupResult['source'] =
+    hasFirebaseResults && hasLocalResults
+      ? 'mixed'
+      : hasFirebaseResults
+      ? 'firebase'
+      : 'local';
+
+  return {
+    jobs: merged,
+    permissionDenied: permissionDenied && merged.length === 0,
+    source
+  };
 }
 
 export function subscribeToAllJobs(onJobsUpdate: (jobs: Job[]) => void): () => void {

@@ -20,6 +20,8 @@ import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { SuratLocalSeoSection } from './components/SuratLocalSeoSection';
 import { Footer } from './components/Footer';
 import { InvoiceModal } from './components/InvoiceModal';
+import { UpiPaymentModal } from './components/UpiPaymentModal';
+import { OrderStatusTracker } from './components/OrderStatusTracker';
 import { SeoHead } from './components/SeoHead';
 import {
   Wrench,
@@ -62,7 +64,12 @@ const HOME_FAQS = [
 ];
 
 function MainApp() {
-  const { siteSettings } = useApp();
+  const {
+    siteSettings,
+    isPaymentModalOpen,
+    paymentModalRequest,
+    closePaymentModal
+  } = useApp();
 
   // Current URL path state
   const [currentPath, setCurrentPath] = useState<string>(window.location.pathname || '/');
@@ -141,10 +148,11 @@ function MainApp() {
 
   // Legacy dashboard/login routes redirected cleanly to WhatsApp Order Desk
   const isLegacyDashboardRoute =
-    currentPath === '/orders' ||
     currentPath === '/profile' ||
     currentPath === '/admin' ||
     currentPath === '/partner';
+
+  const isTrackOrderRoute = currentPath === '/track' || currentPath === '/orders';
 
   const whatsappStatusHref = buildWhatsappHref(
     siteSettings.whatsappNumber,
@@ -266,7 +274,19 @@ function MainApp() {
           </div>
         )}
 
-        {/* Legacy /orders, /profile, /admin, /partner -> Clean WhatsApp Direct Order Desk (No Login / No Dashboard) */}
+        {/* ROUTE: /track or /orders -> Zero-Login Phone Number Order Status Tracker */}
+        {isTrackOrderRoute && (
+          <div className="step-transition">
+            <SeoHead
+              title="Track Repair Order Status – Sastafone Surat"
+              description="बिना लॉगिन के केवल अपना मोबाइल नंबर डालकर Sastafone Surat पर अपने मोबाइल रिपेयर का लाइव स्टेटस देखें।"
+              canonicalPath="/track"
+            />
+            <OrderStatusTracker onBookNew={() => navigateTo('/repair')} />
+          </div>
+        )}
+
+        {/* Legacy /profile, /admin, /partner -> Clean WhatsApp Direct Order Desk (No Login / No Dashboard) */}
         {isLegacyDashboardRoute && (
           <div className="max-w-lg mx-auto px-4 py-12 text-center step-transition">
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-4">
@@ -479,6 +499,9 @@ function MainApp() {
               )}
             </section>
 
+            {/* Phone-Number Order Status Tracker (Zero Login) */}
+            <OrderStatusTracker compact onBookNew={() => navigateTo('/repair')} />
+
             {/* Real Customer Reviews (Hidden until approved reviews exist) */}
             <HappyCustomersSection />
 
@@ -545,10 +568,26 @@ function MainApp() {
         onNavigate={navigateTo}
       />
 
-      {/* Lightweight Public Modals */}
+      {/* Lightweight Public Modals & Reusable Direct UPI Payment Modal */}
       <LocationSelectorModal />
       <LegalModals />
       <InvoiceModal />
+      <UpiPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={closePaymentModal}
+        amount={paymentModalRequest?.amount || 199}
+        referenceId={paymentModalRequest?.targetListingId}
+        title={paymentModalRequest?.titleHindi || paymentModalRequest?.title || 'तुरंत UPI पेमेंट कन्फर्मेशन'}
+        subtitle={paymentModalRequest?.descriptionHindi || paymentModalRequest?.description || 'स्कैन करें या 9372802044@idfcfirst पर भुगतान करें'}
+        serviceLabel={paymentModalRequest?.title}
+        deviceModel={paymentModalRequest?.repairDetails?.modelName || paymentModalRequest?.targetListingTitle}
+        problemsLabel={paymentModalRequest?.repairDetails?.issueName}
+        slotLabel={paymentModalRequest?.repairDetails?.timeSlot}
+        customerName={paymentModalRequest?.repairDetails?.customerName}
+        customerPhone={paymentModalRequest?.repairDetails?.customerPhone}
+        customerAddress={paymentModalRequest?.repairDetails?.address}
+        whatsappNumber={siteSettings.whatsappNumber}
+      />
 
       {/* Floating WhatsApp Support Button & Public Footer */}
       <WhatsAppFloatingButton />

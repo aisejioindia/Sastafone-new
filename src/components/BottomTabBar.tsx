@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Wrench, Smartphone, MessageCircle, ShoppingBag, ShieldCheck } from 'lucide-react';
+import { Home, Wrench, Smartphone, MessageCircle, ShoppingBag, ShieldCheck, Package } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { buildWhatsappHref } from '../services/siteSettingsService';
 import { trackEvent } from '../utils/analytics';
@@ -39,6 +39,15 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
       <div className="bg-[#FEF2F2] border-b border-red-100 px-3 py-1 flex items-center justify-between text-[11px]">
         <button
           type="button"
+          onClick={() => handleQuickRoute('/track')}
+          className="inline-flex items-center gap-1 font-bold text-[#D5151B] cursor-pointer"
+        >
+          <Package className="w-3 h-3 text-[#D5151B]" />
+          <span>ऑर्डर ट्रैक</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => handleQuickRoute('/buy-phones')}
           className="inline-flex items-center gap-1 font-bold text-[#132032] hover:text-[#D5151B] cursor-pointer"
         >
@@ -52,15 +61,15 @@ export const BottomTabBar: React.FC<BottomTabBarProps> = ({
           className="inline-flex items-center gap-1 font-bold text-[#132032] hover:text-[#D5151B] cursor-pointer"
         >
           <ShieldCheck className="w-3 h-3 text-[#D5151B]" />
-          <span>वारंटी जांचें</span>
+          <span>वारंटी</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleQuickRoute('/contact')}
-          className="font-bold text-[#D5151B] cursor-pointer"
+          className="font-bold text-[#132032] hover:text-[#D5151B] cursor-pointer"
         >
-          संपर्क / फॉर्म
+          संपर्क
         </button>
       </div>
 

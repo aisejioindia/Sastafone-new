@@ -122,6 +122,7 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2">
               {[
                 { label: 'मोबाइल रिपेयर (Repair)', path: '/repair' },
+                { label: 'ऑर्डर स्टेटस ट्रैक (Track Order)', path: '/track' },
                 { label: 'पुराना फोन बेचें (Sell Phone)', path: '/sell-phone' },
                 { label: 'सर्टिफाइड फोन खरीदें (Buy Phones)', path: '/buy-phones' },
                 { label: 'वारंटी जांचें (Warranty)', path: '/warranty' },

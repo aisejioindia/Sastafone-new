@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
+import React, { useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
-  QrCode,
   ExternalLink,
   Copy,
   Check,
@@ -10,10 +9,12 @@ import {
   AlertCircle,
   MessageCircle,
   Smartphone,
-  RefreshCw
+  RefreshCw,
+  Maximize2
 } from 'lucide-react';
 import { DIRECT_UPI_ID, buildUpiPaymentUri } from '../services/paymentService';
 import { buildWhatsappHref } from '../services/siteSettingsService';
+import { UpiPaymentModal } from './UpiPaymentModal';
 
 interface PaymentLinkQrCardProps {
   referenceId: string;
@@ -48,33 +49,11 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
   onConfirmWhatsapp,
   title = `डायरेक्ट UPI पेमेंट (₹${amount}) व WhatsApp कन्फर्मेशन`
 }) => {
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
   const [utrNumber, setUtrNumber] = useState<string>('');
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   const upiUri = buildUpiPaymentUri(referenceId, amount, `Sastafone ${referenceId}`);
-
-  useEffect(() => {
-    let active = true;
-    QRCode.toDataURL(upiUri, {
-      width: 220,
-      margin: 2,
-      color: {
-        dark: '#132032',
-        light: '#FFFFFF'
-      }
-    })
-      .then((url) => {
-        if (active) setQrDataUrl(url);
-      })
-      .catch(() => {
-        if (active) setQrDataUrl('');
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [upiUri]);
 
   const handleCopyUpiId = async () => {
     try {
@@ -129,30 +108,34 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
         </span>
       </div>
 
-      {/* Summary & Scannable UPI QR Grid */}
+      {/* Summary & Scannable UPI QR Grid (powered by qrcode.react) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
         {/* Generated Direct UPI QR Code */}
         <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-gray-50 border border-gray-200 text-center space-y-2">
-          {qrDataUrl ? (
-            <img
-              src={qrDataUrl}
-              alt={`Sastafone UPI ₹${amount} QR (${DIRECT_UPI_ID})`}
-              className="w-44 h-44 rounded-xl bg-white p-2 border border-gray-200"
+          <div className="p-2.5 rounded-xl bg-white border border-gray-200">
+            <QRCodeSVG
+              value={upiUri}
+              size={172}
+              level="M"
+              fgColor="#132032"
+              bgColor="#FFFFFF"
+              includeMargin={false}
             />
-          ) : (
-            <div className="w-44 h-44 rounded-xl bg-white border border-gray-200 flex items-center justify-center">
-              <QrCode className="w-16 h-16 text-[#132032] opacity-40" />
-            </div>
-          )}
+          </div>
           <span className="text-xs font-bold text-[#132032]">
             ₹{amount} स्कैन कर पे करें
           </span>
           <span className="text-[11px] font-mono font-bold text-[#D5151B] bg-white px-2.5 py-1 rounded-lg border border-red-200">
             {DIRECT_UPI_ID}
           </span>
-          <span className="text-[10px] text-gray-500">
-            GPay • PhonePe • Paytm • BHIM • IDFC First Bank
-          </span>
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="text-[11px] font-bold text-[#132032] hover:text-[#D5151B] inline-flex items-center gap-1 cursor-pointer pt-0.5"
+          >
+            <Maximize2 className="w-3 h-3" />
+            <span>बड़ा UPI पेमेंट पॉपअप खोलें</span>
+          </button>
         </div>
 
         {/* Order Summary + Direct UPI Copy / Deep Link */}
@@ -262,6 +245,33 @@ export const PaymentLinkQrCard: React.FC<PaymentLinkQrCardProps> = ({
           <span>कोई लॉगिन या पासवर्ड की जरूरत नहीं — सारा अपडेट सीधे आपके WhatsApp पर मिलेगा।</span>
         </p>
       </div>
+
+      {/* Reusable Fullscreen UPI Payment Modal */}
+      <UpiPaymentModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        amount={amount}
+        referenceId={referenceId}
+        title={title}
+        serviceLabel={serviceLabel}
+        deviceModel={deviceModel}
+        problemsLabel={problemsLabel}
+        dynamicPricingLabel={dynamicPricingLabel}
+        slotLabel={slotLabel}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        customerAddress={customerAddress}
+        whatsappNumber={whatsappNumber}
+        isSubmitting={isConfirming}
+        onConfirmPayment={
+          onConfirmWhatsapp
+            ? async (modalUtr) => {
+                await onConfirmWhatsapp(modalUtr || utrNumber.trim());
+                setIsModalOpen(false);
+              }
+            : undefined
+        }
+      />
     </div>
   );
 };

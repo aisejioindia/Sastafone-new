@@ -8,7 +8,8 @@ import {
 import {
   getRepairPricesFromFirestore,
   getAvailableSlots,
-  createJobInFirestore
+  createJobInFirestore,
+  saveRecentGuestJobLocally
 } from '../services/firestoreRepairService';
 import { DIRECT_UPI_ID } from '../services/paymentService';
 import { SURAT_LOCALITIES, BRANDS } from '../data/mockData';
@@ -347,7 +348,7 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
       origin: { y: 0.6 }
     });
 
-    setCompletedJob({
+    const fullCompletedJob: Job = {
       ...newJob,
       createdAt: new Date().toISOString(),
       statusHistory: [
@@ -357,7 +358,10 @@ export const CustomerRepairBookingFlow: React.FC<CustomerRepairBookingFlowProps>
           note: `बुकिंग दर्ज की गई। UPI ID (${DIRECT_UPI_ID}) व WhatsApp कन्फर्मेशन तैयार।`
         }
       ]
-    });
+    };
+
+    saveRecentGuestJobLocally(fullCompletedJob);
+    setCompletedJob(fullCompletedJob);
 
     setPendingQrJobId(null);
     setIsProcessingPayment(false);
